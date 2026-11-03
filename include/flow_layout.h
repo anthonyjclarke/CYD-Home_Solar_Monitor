@@ -29,4 +29,22 @@ struct FlowView {
     const char* time = "";
 };
 void drawFlow(Canvas& canvas, const FlowView& view);
+
+// Boot screen: identity, then one row per start-up step so the IP address and
+// Wi-Fi state can be read before the flow display takes over.
+enum BootState : unsigned char { BootInfo, BootOk, BootWaiting, BootProblem };
+struct BootRow {
+    const char* label = "";
+    const char* value = "";
+    BootState state = BootInfo;
+};
+struct BootView {
+    static constexpr int rowCount = 6;
+    BootRow rows[rowCount];
+    const char* version = "";
+    const char* footer = "";
+    float progress = 0;  // 0..1 across the boot screen's time on screen.
+    Layout layout = Centre;  // Matches the theme of the chosen panel layout.
+};
+void drawBoot(Canvas& canvas, const BootView& view);
 }  // namespace ui

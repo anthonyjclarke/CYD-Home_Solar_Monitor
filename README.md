@@ -1,6 +1,6 @@
 # CYD Home Solar Monitor
 
-Version `0.5.0-dev` – a PlatformIO energy-flow display for the 2.8-inch CYD, using the owner's existing SolarEdge Modbus Multi integration in Home Assistant.
+Version `0.6.0-dev` – a PlatformIO energy-flow display for the 2.8-inch CYD, using the owner's existing SolarEdge Modbus Multi integration in Home Assistant.
 
 The firmware reads Home Assistant at the configurable default `http://192.168.1.254:8123`. It does not connect to the inverter at `192.168.1.88`. Home Assistant keeps its existing Modbus connection.
 
@@ -122,7 +122,7 @@ HA requests run on a separate task with bounded connection/read timeouts and fai
 
 ### Serial diagnostics
 
-Firmware `0.5.0-dev` prints diagnostics at `115200` baud with uptime timestamps. After installing the app update, open the PlatformIO serial monitor:
+Firmware `0.6.0-dev` prints diagnostics at `115200` baud with uptime timestamps. After installing the app update, open the PlatformIO serial monitor:
 
 ```sh
 pio device monitor -b 115200

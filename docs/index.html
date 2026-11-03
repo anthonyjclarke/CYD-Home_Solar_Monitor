@@ -66,6 +66,7 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <a href="#install">Install and flash</a>
 <a href="#first-setup">First setup</a>
 <a href="#ha">Home Assistant setup</a>
+<a href="#boot">Boot screen</a>
 <a href="#display">The display</a>
 <a href="#states">Display states</a>
 <a href="#cards">Cards layout</a>
@@ -80,7 +81,7 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <main>
 <header class="hero">
 <h1>CYD Home Solar Monitor</h1>
-<p>Handbook for firmware <code>0.5.0-dev</code>: installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a SolarEdge SE6000 and LG battery, read from Home Assistant.</p>
+<p>Handbook for firmware <code>0.6.0-dev</code>: installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a SolarEdge SE6000 and LG battery, read from Home Assistant.</p>
 </header>
 
 <h2 id="overview">Overview</h2>
@@ -105,7 +106,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <ol>
 <li><b>Wi-Fi.</b> Power the CYD. If it has no working Wi-Fi after 20 seconds it opens a hotspot named <code>CYD-Solar-xxxx</code>. Its password is the 12-character device code shown on the panel. Join it, open the captive portal (or <code>192.168.4.1</code>), and choose your network. The portal times out after three minutes and reopens after bounded retries. When installing from the browser installer, Wi-Fi can instead be sent over USB (Improv-Serial).</li>
 <li><b>Open the device page.</b> Browse to <a href="http://solar.local/">http://solar.local/</a>. If your device can't resolve <code>.local</code> names (some older Android phones), tap the panel to see its IP address and use that. There is no login.</li>
-<li><b>Connect Home Assistant.</b> Under <b>Connection and display</b>, check the Home Assistant URL (default <code>http://192.168.1.254:8123</code>), paste a long-lived access token, and save. The default entity IDs match the owner's installation.</li>
+<li><b>Connect Home Assistant.</b> Under <b>Settings → Home Assistant</b>, check the Home Assistant URL (default <code>http://192.168.1.254:8123</code>), paste a long-lived access token, and save. The default entity IDs match the owner's installation.</li>
 <li><b>Optional extras.</b> Set the daily solar and forecast entities, search for your location to enable weather and set the timezone, choose a panel layout, and adjust night dimming.</li>
 <li><b>Check.</b> Readings appear after the next cycle. To preview the screen without Home Assistant, tick <b>Demo mode</b>; untick it when commissioning.</li>
 </ol>
@@ -127,49 +128,61 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <h3>Solar forecast (optional)</h3>
 <p>Install the <b>Forecast.Solar</b> or <b>Solcast</b> integration and enter its "tomorrow" energy sensor in <b>Solar forecast tomorrow</b>. With Forecast.Solar this is usually <code>sensor.energy_production_tomorrow</code>; check the actual ID in Home Assistant. Without it, the panel shows tomorrow's maximum temperature instead.</p>
 
+<h2 id="boot">Boot screen</h2>
+<p>At power-on the panel shows a start-up screen in the theme of the chosen layout. Each row fills in as that step completes; a green dot means done, amber means waiting, red needs attention.</p>
+<figure><span class="panel"><img src="images/boot-preview.svg" alt="Boot screen with Wi-Fi, IP address, web page, signal, Home Assistant and clock"></span>
+<figcaption>Boot screen after Wi-Fi has connected (sample values).</figcaption></figure>
+<table><thead><tr><th>Row</th><th>Shows</th></tr></thead><tbody>
+<tr><td>Wi-Fi</td><td><i>Connected - network name</i>; <i>Connecting...</i>; or, in red, the setup hotspot name when no network is saved.</td></tr>
+<tr><td>IP address</td><td>The address the router gave the CYD.</td></tr>
+<tr><td>Web page</td><td><code>http://solar.local/</code></td></tr>
+<tr><td>Signal</td><td>Wi-Fi strength in dBm: excellent (≥ −55), good (≥ −67), fair (≥ −75) or weak.</td></tr>
+<tr><td>Home Asst</td><td>Home Assistant host and port; red <i>no token</i> if none is saved; <i>demo mode</i> in demo.</td></tr>
+<tr><td>Clock</td><td>Local time once synchronised, or <i>waiting for time server</i>.</td></tr>
+</tbody></table>
+<p>The bar along the bottom shows how long the screen stays up. It closes <b>6 seconds after Wi-Fi connects</b>, so the IP address can be read, or after <b>15 seconds</b> if Wi-Fi hasn't connected (the panel then shows the Wi-Fi setup page). A tap closes it at once. Readings are fetched in the background meanwhile, so the energy display is usually live as soon as it appears. Both times are <code>APP_BOOT_HOLD_MS</code> and <code>APP_BOOT_MAX_MS</code> in <code>include/config.h</code>.</p>
+
 <h2 id="display">The display</h2>
 <p>The centre-flow layout puts the four power flows on arms meeting at a central hub: solar above, house below, grid to the left and battery to the right. Arrows (chevrons) move in the direction power flows.</p>
 <figure>
 <div class="annotated">
 <img src="images/centre-flow-preview.svg" alt="Annotated centre-flow layout">
-<span class="m" style="left:4%;top:6%">1</span>
-<span class="m" style="left:47%;top:6%">2</span>
-<span class="m" style="left:33%;top:14%">3</span>
-<span class="m" style="left:75%;top:28%">4</span>
-<span class="m" style="left:54%;top:41%">5</span>
-<span class="m" style="left:3%;top:35%">6</span>
-<span class="m" style="left:42%;top:45%">7</span>
-<span class="m" style="left:50%;top:58%">8</span>
-<span class="m" style="left:97%;top:35%">9</span>
-<span class="m" style="left:60%;top:56%">10</span>
-<span class="m" style="left:3%;top:59%">11</span>
-<span class="m" style="left:97%;top:59%">12</span>
-<span class="m" style="left:75%;top:70%">13</span>
-<span class="m" style="left:79%;top:86%">14</span>
-<span class="m" style="left:54%;top:66%">15</span>
-<span class="m" style="left:27%;top:82%">16</span>
-<span class="m" style="left:2%;top:96%">17</span>
-<span class="m" style="left:73%;top:96%">18</span>
+<span class="m" style="left:2%;top:6%">1</span>
+<span class="m" style="left:49%;top:6%">2</span>
+<span class="m" style="left:37%;top:24%">3</span>
+<span class="m" style="left:55%;top:37%">4</span>
+<span class="m" style="left:2%;top:33%">5</span>
+<span class="m" style="left:40%;top:40%">6</span>
+<span class="m" style="left:46%;top:52%">7</span>
+<span class="m" style="left:98%;top:33%">8</span>
+<span class="m" style="left:60%;top:40%">9</span>
+<span class="m" style="left:2%;top:55%">10</span>
+<span class="m" style="left:64%;top:55%">11</span>
+<span class="m" style="left:64%;top:65%">12</span>
+<span class="m" style="left:98%;top:62%">13</span>
+<span class="m" style="left:55%;top:55%">14</span>
+<span class="m" style="left:37%;top:74%">15</span>
+<span class="m" style="left:2%;top:91%">16</span>
+<span class="m" style="left:72%;top:91%">17</span>
 </div>
 <figcaption>Numbered areas of the centre-flow layout (sample: importing from the grid while charging the battery).</figcaption>
 </figure>
 <ol class="legend">
 <li><b>Today's solar energy</b> in kWh, from the optional daily entity. Without it, the clock is shown here, followed by the current temperature when weather is on.</li>
 <li><b>Tomorrow.</b> A weather icon for tomorrow's conditions, then the solar forecast (<code>~21 kWh</code>) or, without a forecast entity, tomorrow's maximum temperature. Shows <code>DEMO</code> or <code>OFFLINE</code> when neither is available.</li>
-<li><b>Solar generation</b>, calculated as inverter DC power plus battery charging power, never below zero. Shown in watts below 1 kW, otherwise kW to two decimals.</li>
-<li><b>Unit and caption.</b> The unit for the value (W or kW) with the arm's name beneath.</li>
+<li><b>SOLAR</b>: generation, calculated as inverter DC power plus battery charging power, never below zero. Shown in watts below 1 kW, otherwise kW to two decimals.</li>
 <li><b>Solar arrows</b> run down into the hub while solar exceeds 30 W.</li>
-<li><b>Grid power</b>, always shown as a positive number; the words under the arm give the direction.</li>
+<li><b>GRID</b>: grid power, always shown as a positive number; the words beneath give the direction.</li>
 <li><b>Grid arrows</b> point into the hub when importing and away from it when exporting.</li>
 <li><b>Hub</b>: the inverter, where the four flows balance.</li>
-<li><b>Battery power</b>, shown as a positive number.</li>
+<li><b>BATTERY</b>: battery power, shown as a positive number.</li>
 <li><b>Battery arrows</b> point away from the hub when charging and into it when the battery is supplying the house.</li>
-<li><b>Grid state</b>: <i>Importing</i>, <i>Exporting</i>, <i>Grid idle</i> (within ±30 W) or <i>Grid: no data</i>.</li>
+<li><b>Grid state</b>: <i>Importing</i>, <i>Exporting</i>, <i>Idle</i> (within ±30 W) or <i>No data</i>.</li>
 <li><b>Battery state</b>: <i>Charging</i>, <i>Supplying</i> (discharging into the inverter to cover what the house needs), <i>Idle</i> or <i>No data</i>.</li>
 <li><b>Battery gauge</b>: filled to the state of energy. <span class="swatch" style="background:#249255"></span>green at 50% and above, <span class="swatch" style="background:#db9255"></span>amber from 20%, <span class="swatch" style="background:#db2400"></span>red below 20%.</li>
 <li><b>State of energy</b> as a percentage. This is the battery's charge level, not a share of the house load.</li>
 <li><b>House arrows</b> run from the hub down to the house while demand exceeds 30 W.</li>
-<li><b>House demand</b>, from the household entity.</li>
+<li><b>HOUSE</b>: house demand, from the household entity.</li>
 <li><b>Status line.</b> A green dot and <i>Good time to use power</i> when every reading is live and you are exporting more than 100 W, or charging above 100 W with the battery at 95% or more. Otherwise <i>All readings live</i>, or the reason readings are missing (see <a href="#states">states</a>).</li>
 <li><b>Settings</b>: a reminder that tapping the screen opens the device setup page.</li>
 </ol>
@@ -201,7 +214,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <h2 id="cards">Cards layout</h2>
 <p>The original dark layout is still available under <b>Panel layout → Cards (dark)</b>. It shows the same readings in four cards around an inverter box, with today's solar energy in the title and current weather beside the badge.</p>
 <figure><span class="panel"><img src="images/flow-preview.svg" alt="Cards layout"></span>
-<figcaption>Cards layout. The badge reads <code>HA</code> when all readings are live, <code>WAIT</code> when some are not, <code>OFFLINE</code> without Wi-Fi and <code>DEMO</code> in demo mode. The battery card shows its gauge in the title row and the battery label with percentage at the bottom.</figcaption></figure>
+<figcaption>Cards layout. The badge reads <code>HA</code> when all readings are live, <code>WAIT</code> when some are not, <code>OFFLINE</code> without Wi-Fi and <code>DEMO</code> in demo mode. The battery card shows the battery label, percentage and a small gauge along its bottom line.</figcaption></figure>
 
 <h2 id="touch">Touch, setup page and dimming</h2>
 <table><thead><tr><th>Action</th><th>Result</th></tr></thead><tbody>
@@ -213,12 +226,15 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <p><b>Night dimming</b> runs from <i>Night starts</i> to <i>Night ends</i> (default 19:00–07:00) in the configured timezone, once the clock has synchronised. After a minute without touch the backlight drops to a fifth of the configured brightness.</p>
 
 <h2 id="browser">Browser dashboard</h2>
-<p>Open <code>http://solar.local/</code> from any device on the home network. The page refreshes every three seconds.</p>
-<figure class="shot"><img src="images/webui-dashboard.jpg" alt="Browser dashboard"><figcaption>Dashboard tiles mirror the panel. Below them: daily totals and weather, then the source status. The badge reads <code>HA CONNECTED</code>, <code>WAITING</code>, <code>DEMO</code> or <code>DISCONNECTED</code>.</figcaption></figure>
-<p>The <b>Device</b> section shows the firmware version, IP, local time, uptime and free memory, and has <b>Restart device</b> and <b>Reset Wi-Fi</b> (clears Wi-Fi only; Home Assistant settings stay). <b>Measurement diagnostics</b> expands to the raw readings with validity, freshness and ages. <b>Firmware update</b> takes the app <code>firmware.bin</code> only; the device pauses Home Assistant reads while uploading and restarts when done.</p>
+<p>Open <code>http://solar.local/</code> from any device on the home network. The page follows your system's light or dark setting and refreshes every three seconds. The sidebar groups the sections: <b>Live</b> (Dashboard), <b>Settings</b> (Home Assistant, Display, Location &amp; weather, Entities) and <b>Device</b> (Device &amp; firmware, Diagnostics). Beneath it, the <b>Device status</b> panel shows a status light (green live, amber waiting or demo, red disconnected) with the address, firmware, uptime, free memory and the source message.</p>
+<figure class="shot"><img src="images/webui-dashboard.jpg" alt="Browser dashboard"><figcaption><b>At a glance.</b> Tiles for solar, house, grid and battery power, battery level (bar coloured like the panel gauge), solar today, tomorrow's forecast and the current weather. Pills give direction: <span style="color:#C0392B">↓ Importing</span>, <span style="color:#1F8A5B">↑ Exporting</span>, <span style="color:#1F8A5B">↑ Charging</span>, ↓ Supplying house. Green and red are kept for meaning, as in SpendAnalysis; amber is only used for controls.</figcaption></figure>
+<figure class="shot"><img src="images/webui-flow.jpg" alt="Energy flow diagram and trend chart"><figcaption><b>Energy flow.</b> Solar, grid, battery and house around the inverter hub. Moving dots and arrowheads show which way power flows on each arm, and move faster as power rises; an arm with no arrows is idle, missing or stale. The battery icon fills to the battery level. <b>Last 30 minutes</b> charts solar, house, grid (+ import / − export) and battery (+ supplying / − charging) against a kW Y axis and an X axis of local clock times every 5 minutes, ending at <i>now</i>. The solid line is zero: above it the grid is importing and the battery supplying. Samples are collected by this browser while the page is open; the device keeps no history, so the chart fills from the right.</figcaption></figure>
+<figure class="shot"><img src="images/webui-diagnostics.jpg" alt="Diagnostics table"><figcaption><b>Diagnostics.</b> Every reading with its entity, value, validity, freshness, and received and reported ages, plus the raw status JSON.</figcaption></figure>
+<p><b>Device &amp; firmware</b> shows the firmware version, address, local time, uptime and free memory, and has <b>Restart device</b> and <b>Reset Wi-Fi</b> (clears Wi-Fi only; Home Assistant settings stay). <b>Firmware update</b> takes the app <code>firmware.bin</code> only; the device pauses Home Assistant reads while uploading and restarts when done.</p>
 
 <h2 id="settings">Settings reference</h2>
-<figure class="shot"><img src="images/webui-settings.jpg" alt="Connection and display settings"><figcaption>Connection and display settings.</figcaption></figure>
+<p>Settings are split across four sections, but they form one set: <b>Save settings</b> on any section saves them all. If a field elsewhere is invalid, the page switches to that section to show it.</p>
+<figure class="shot"><img src="images/webui-settings.jpg" alt="Home Assistant connection settings"><figcaption>Settings → Home Assistant.</figcaption></figure>
 <table><thead><tr><th>Setting</th><th>Default</th><th>Range and notes</th></tr></thead><tbody>
 <tr><td>Home Assistant base URL</td><td><code>http://192.168.1.254:8123</code></td><td><code>http://</code> or <code>https://</code>, no path, query or user name. HTTPS needs the CA certificate below.</td></tr>
 <tr><td>Home Assistant access token</td><td>none</td><td>Write-only. Blank keeps the saved token.</td></tr>
@@ -232,7 +248,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <tr><td>Panel layout</td><td>Centre flow (light)</td><td>Or Cards (dark). Applies immediately.</td></tr>
 <tr><td>Battery label</td><td><code>LG 9.8 kWh</code></td><td>Up to 14 characters; shown on the cards layout and in the browser.</td></tr>
 </tbody></table>
-<figure class="shot"><img src="images/webui-location.jpg" alt="Location, timezone and weather settings"><figcaption>Location, timezone and weather.</figcaption></figure>
+<figure class="shot"><img src="images/webui-location.jpg" alt="Location, timezone and weather settings"><figcaption>Settings → Location &amp; weather.</figcaption></figure>
 <table><thead><tr><th>Setting</th><th>Notes</th></tr></thead><tbody>
 <tr><td>Find a town or suburb</td><td>Searches Open-Meteo geocoding from your browser and lists matches. Choosing one fills the fields below.</td></tr>
 <tr><td>Latitude / Longitude</td><td>Both blank turns weather off. Only these coordinates are sent to Open-Meteo.</td></tr>
@@ -240,7 +256,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <tr><td>Timezone</td><td>Olson name such as <code>Australia/Sydney</code>; used to fill the POSIX rule.</td></tr>
 <tr><td>POSIX TZ rule</td><td>What the device actually uses, e.g. <code>AEST-10AEDT,M10.1.0,M4.1.0/3</code>. About 40 common zones fill automatically; for others, type the rule. Applies on save.</td></tr>
 </tbody></table>
-<figure class="shot"><img src="images/webui-entities.jpg" alt="Entity mapping and HTTPS certificate"><figcaption>Entity mapping and HTTPS certificate (collapsed by default).</figcaption></figure>
+<figure class="shot"><img src="images/webui-entities.jpg" alt="Entity mapping and HTTPS certificate"><figcaption>Settings → Entities: the six live-power sensors, optional daily totals and the HTTPS certificate.</figcaption></figure>
 <p>Entity IDs must be <code>sensor.</code> followed by lower-case letters, digits and underscores. The CA certificate is only needed for an <code>https://</code> Home Assistant URL; paste the PEM certificate of the authority that signed Home Assistant's certificate. Certificate checks are never skipped.</p>
 
 <h2 id="data">How readings are judged</h2>

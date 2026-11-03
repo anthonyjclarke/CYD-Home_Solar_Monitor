@@ -9,22 +9,21 @@
 <rect x='168' y='139' width='144' height='76' rx='8' fill='#002455'/>
 <rect x='17' y='44' width='3' height='11' rx='1' fill='#ffb655'/>
 <text x='25' y='53' font-size='13' text-anchor='start' fill='#ffb655'>SOLAR</text>
-<text x='17' y='98' font-size='44' text-anchor='start' fill='#6d6daa'>--</text>
-<text x='54' y='93' font-size='13' text-anchor='start' fill='#6d6daa'>kW</text>
+<text x='17' y='86' font-size='25' text-anchor='start' fill='#6d6daa'>-- kW</text>
+<text x='17' y='101' font-size='9' text-anchor='start' fill='#9292aa'>Calculated / DC</text>
 <rect x='177' y='44' width='3' height='11' rx='1' fill='#49dbaa'/>
 <text x='185' y='53' font-size='13' text-anchor='start' fill='#49dbaa'>HOME</text>
-<text x='177' y='98' font-size='44' text-anchor='start' fill='#6d6daa'>--</text>
-<text x='214' y='93' font-size='13' text-anchor='start' fill='#6d6daa'>kW</text>
-<text x='17' y='158' font-size='13' text-anchor='start' fill='#b6db55'>BATTERY</text>
-<text x='17' y='202' font-size='44' text-anchor='start' fill='#6d6daa'>--</text>
-<text x='54' y='197' font-size='13' text-anchor='start' fill='#6d6daa'>kW</text>
-<text x='17' y='212' font-size='9' text-anchor='start' fill='#6d6daa'>LG 9.8 kWh  --%</text>
-<rect x='118' y='145' width='24' height='12' rx='2' fill='#9292aa'/>
-<rect x='142' y='148' width='3' height='6' rx='0' fill='#9292aa'/>
-<rect x='119' y='146' width='22' height='10' rx='1' fill='#002455'/>
-<text x='177' y='158' font-size='13' text-anchor='start' fill='#6db6ff'>GRID</text>
-<text x='177' y='202' font-size='44' text-anchor='start' fill='#6d6daa'>--</text>
-<text x='214' y='197' font-size='13' text-anchor='start' fill='#6d6daa'>kW</text>
+<text x='177' y='86' font-size='25' text-anchor='start' fill='#6d6daa'>-- kW</text>
+<text x='177' y='101' font-size='9' text-anchor='start' fill='#9292aa'>Home demand / AC</text>
+<text x='17' y='158' font-size='13' text-anchor='start' fill='#b6db55'>BATTERY / DC</text>
+<text x='17' y='190' font-size='25' text-anchor='start' fill='#6d6daa'>-- kW</text>
+<text x='17' y='207' font-size='9' text-anchor='start' fill='#6d6daa'>LG 9.8 kWh  --%</text>
+<rect x='113' y='198' width='22' height='11' rx='2' fill='#9292aa'/>
+<rect x='135' y='200' width='3' height='6' rx='0' fill='#9292aa'/>
+<rect x='114' y='199' width='20' height='9' rx='1' fill='#002455'/>
+<text x='177' y='158' font-size='13' text-anchor='start' fill='#6db6ff'>GRID / AC</text>
+<text x='177' y='190' font-size='25' text-anchor='start' fill='#6d6daa'>-- kW</text>
+<text x='177' y='207' font-size='9' text-anchor='start' fill='#9292aa'>Whole-property meter</text>
 <path d='M80 110 L80 118' fill='none' stroke='#6d6daa'/>
 <path d='M80 118 L143 118' fill='none' stroke='#6d6daa'/>
 <path d='M177 118 L240 118' fill='none' stroke='#6d6daa'/>

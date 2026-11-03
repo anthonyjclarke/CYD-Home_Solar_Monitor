@@ -21,15 +21,27 @@ uint32_t revision = 0;
 bool paused = false;
 bool running = false;
 
+// An mbedTLS handshake runs its elliptic-curve maths as one long step that
+// cannot yield. On this core-0 task it starved IDLE0 for over 5 s during the
+// Open-Meteo handshake (ECDSA chain) and the task watchdog aborted the device.
+// Take IDLE0 off the watchdog only while a TLS session is open. Plain HTTP is
+// unaffected, and every request still has connect/read/handshake timeouts.
+struct TlsWatchdogPause {
+    const bool active;
+    explicit TlsWatchdogPause(bool tls) : active(tls) { if (active) disableCore0WDT(); }
+    ~TlsWatchdogPause() { if (active) enableCore0WDT(); }
+};
+
 // One keep-alive connection serves all entity reads in a cycle, so the six
 // readings arrive close together instead of over six separate handshakes.
 struct Connection {
+    bool secure;
+    TlsWatchdogPause watchdog{secure};  // Declared after secure, so initialised after it.
     WiFiClient plain;
     WiFiClientSecure tls;
     HTTPClient http;
-    bool secure;
     explicit Connection(const monitor::Config& c) : secure(c.url.startsWith("https://")) {
-        if (secure) { tls.setCACert(c.caCertificate.c_str()); tls.setHandshakeTimeout(4); }
+        if (secure) { tls.setCACert(c.caCertificate.c_str()); tls.setHandshakeTimeout(APP_TLS_HANDSHAKE_S); }
         http.setConnectTimeout(1500);
         http.setTimeout(1500);
         http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
@@ -128,9 +140,10 @@ void fetchWeather(const monitor::Config& c, weather::Report& report, RequestTrac
     else if (time(nullptr) < 1700000000) trace.error = ReadError::Clock;
     if (trace.error != ReadError::NotRead) { trace.elapsedMs = millis() - start; return; }
     report.valid = false;  // Only an attempted request can invalidate the last report.
+    TlsWatchdogPause watchdog(true);
     WiFiClientSecure tls;
     tls.setCACert(ISRG_ROOT_X1);
-    tls.setHandshakeTimeout(8);
+    tls.setHandshakeTimeout(APP_TLS_HANDSHAKE_S);
     HTTPClient http;
     http.setConnectTimeout(5000);
     http.setTimeout(5000);
@@ -168,6 +181,7 @@ void fetchWeather(const monitor::Config& c, weather::Report& report, RequestTrac
 void worker(void*) {
     uint32_t seenRevision = 0, lastCycle = 0, waitMs = 0, totalsRevision = 0, lastTotals = 0;
     uint32_t weatherRevision = 0, lastWeather = 0;
+    bool haPublished = false;  // Live readings have reached the display at least once.
     unsigned failures = 0;
     uint32_t cycleId = 0;
     monitor::Config c;
@@ -184,6 +198,7 @@ void worker(void*) {
         const uint32_t now = millis();
         if (!hold && (rev != seenRevision || static_cast<uint32_t>(now - lastCycle) >= waitMs)) {
             CycleTrace trace;
+            bool cycleHasData = false;
             seenRevision = rev;
             xSemaphoreTake(mutex, portMAX_DELAY);
             s = latest;
@@ -243,12 +258,18 @@ void worker(void*) {
                 failures = valid ? 0 : std::min(failures + 1, 4U);
                 waitMs = std::min<uint32_t>(c.pollSeconds * 1000UL * (1UL << failures), 60000UL);
                 if (!failures) waitMs = c.pollSeconds * 1000UL;
+                // Wi-Fi not up yet (typical at boot) is not a Home Assistant
+                // failure: retry soon instead of backing off.
+                if (!WiFi.isConnected()) { failures = 0; waitMs = 1000; }
+                cycleHasData = valid > 0;
                 s.cycleMs = millis();
             }
             // Weather runs after the HA connection is closed, so only one TLS
             // session is ever open. It is independent of the HA token.
             const uint32_t weatherWait = (s.weather.valid ? weather::refreshSeconds : weather::retrySeconds) * 1000UL;
-            if (!c.demo && !std::isnan(c.latitude) &&
+            // The first weather fetch (an ~8 s TLS handshake) waits until live
+            // readings have been published once, so they reach the panel first.
+            if (!c.demo && !std::isnan(c.latitude) && (haPublished || c.token.isEmpty()) &&
                 (rev != weatherRevision || static_cast<uint32_t>(millis() - lastWeather) >= weatherWait)) {
                 fetchWeather(c, s.weather, trace.weather);
                 trace.weatherRead = true;
@@ -260,7 +281,7 @@ void worker(void*) {
             s.revision = rev;
             trace.id=++cycleId; trace.elapsedMs=millis()-now; trace.nextPollMs=waitMs;
             xSemaphoreTake(mutex, portMAX_DELAY);
-            if (revision == rev && !paused) { latest = s; latestTrace=trace; }
+            if (revision == rev && !paused) { latest = s; latestTrace=trace; if (cycleHasData) haPublished = true; }
             xSemaphoreGive(mutex);
             lastCycle = millis();
         }

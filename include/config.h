@@ -1,7 +1,7 @@
 #pragma once
 
 #define PROJECT_NAME "CYD-Home-Solar-Monitor"
-#define FIRMWARE_VERSION "0.5.0-dev"
+#define FIRMWARE_VERSION "0.6.0-dev"
 #define IMPROV_SETUP_ENABLED 1
 #define IMPROV_DEVICE_PREFIX "CYD-Solar"
 #define APP_DEFAULT_DEBUG_LEVEL 3
@@ -9,6 +9,13 @@
 #define APP_OTA_PORT 3232
 // mDNS name: the device answers at http://solar.local/ (ArduinoOTA advertises it too).
 #define APP_MDNS_NAME "solar"
+// Boot screen: held this long after Wi-Fi connects so the IP can be read, and
+// at most this long overall if Wi-Fi never connects. A tap skips it.
+#define APP_BOOT_HOLD_MS 6000
+#define APP_BOOT_MAX_MS 15000
+// TLS handshake limit in seconds. Measured on this board: about 8 s to
+// Open-Meteo (ECDSA chain), so 8 s failed intermittently.
+#define APP_TLS_HANDSHAKE_S 20
 // Default timezone until one is chosen in the browser settings: Australia/Sydney
 // as a POSIX rule (applied with setenv/tzset, not ezTime).
 #define APP_TZ_POSIX "AEST-10AEDT,M10.1.0,M4.1.0/3"
@@ -37,7 +44,6 @@
 #define LOAD_GLCD
 #define LOAD_FONT2
 #define LOAD_FONT4
-#define LOAD_FONT6  // 48 px numerals for the main readings.
 
 #define CYD_BOARD_KEY "cyd28"
 #define CYD_BOARD_NAME "ESP32-2432S028R"

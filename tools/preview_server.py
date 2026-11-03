@@ -3,13 +3,15 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import json
+import math
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = (ROOT / "src/web/web_page.h").read_text().split('R"HTML(', 1)[1].rsplit(')HTML"', 1)[0]
 CONFIG = {
     "url": "http://192.168.1.254:8123", "tokenSaved": False, "poll": 5,
     "stale": 180, "brightness": 180, "nightStart": 19, "nightEnd": 7,
-    "nightDim": True, "demo": True, "ca": "", "battery": "LG 9.8 kWh", "layout": 1, "today": "sensor.solar_energy_today", "lat": -33.8679, "lon": 151.2073, "place": "Sydney, New South Wales", "tzName": "Australia/Sydney", "tz": "AEST-10AEDT,M10.1.0,M4.1.0/3", "forecast": "sensor.energy_production_tomorrow",
+    "nightDim": True, "demo": False, "ca": "", "battery": "LG 9.8 kWh", "layout": 1, "today": "sensor.solar_energy_today", "lat": -33.8679, "lon": 151.2073, "place": "Sydney, New South Wales", "tzName": "Australia/Sydney", "tz": "AEST-10AEDT,M10.1.0,M4.1.0/3", "forecast": "sensor.energy_production_tomorrow",
     "entities": ["sensor.solaredge_i1_ac_power", "sensor.home_power_usage",
                  "sensor.solaredge_i1_m1_ac_power", "sensor.solaredge_i1_b1_dc_power",
                  "sensor.solaredge_i1_b1_state_of_energy", "sensor.solaredge_i1_dc_power"],
@@ -33,14 +35,23 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(CONFIG)
         if self.path == "/api/status":
             readings = []
-            for i, n in enumerate([463, 1990, 1527, -3904, 28.5, 500, 4404]):
+            names = ["Inverter AC", "Household", "Grid (+import)", "Battery (+discharge)",
+                     "Battery level", "Inverter DC", "Solar generation"]
+            # Synthetic values drift slowly so the page's trend chart has shape.
+            k = time.time() / 20
+            home = 1990 + 400 * math.sin(k)
+            grid = 1527 + 900 * math.sin(k / 2)
+            battery = -3904 + 600 * math.cos(k / 3)
+            solar = home - grid + -battery
+            for i, n in enumerate([solar - 40, home, grid, battery, 28.5, solar + battery, solar]):
                 readings.append({"entity": CONFIG["entities"][i] if i < 6 else None, "value": n,
+                                 "name": names[i], "reportedAgeSeconds": 4,
                                  "derived": i == 6,
                                  "valid": True, "fresh": True, "hasValue": True,
                                  "unit": "%" if i == 4 else "W", "receivedAgeSeconds": 1})
-            return self.send({"demo": True, "complete": True, "reportTimeKnown": False,
+            return self.send({"demo": False, "complete": True, "reportTimeKnown": False,
                               "skewSeconds": 0, "weather": {"configured": True, "place": CONFIG["place"], "valid": True, "fresh": True, "nowC": 23.5, "nowCode": 2, "tomorrowMaxC": 24, "tomorrowCode": 61, "ageSeconds": 60}, "localTime": "2026-11-03 14:32 AEDT", "totals": {"today": {"entity": CONFIG["today"], "value": 25.6, "valid": True, "fresh": True}, "tomorrow": {"entity": CONFIG["forecast"], "value": 21, "valid": True, "fresh": True}}, "skewLimitSeconds": 10, "battery": CONFIG["battery"], "message": "Browser fixture / synthetic data",
-                              "project": "CYD-Home-Solar-Monitor", "version": "0.5.0-dev",
+                              "project": "CYD-Home-Solar-Monitor", "version": "0.6.0-dev",
                               "ip": "127.0.0.1", "uptimeSeconds": 120, "freeHeap": 100000,
                               "readings": readings})
         if self.path.startswith("/images/"):

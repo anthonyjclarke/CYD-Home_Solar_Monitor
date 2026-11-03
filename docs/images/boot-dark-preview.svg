@@ -1,0 +1,32 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>
+<rect x='0' y='0' width='320' height='240' rx='0' fill='#000000'/>
+<rect x='17' y='17' width='15' height='15' rx='7' fill='#ffb655'/>
+<path d='M24 15 L24 14' fill='none' stroke='#ffb655'/>
+<path d='M24 33 L24 34' fill='none' stroke='#ffb655'/>
+<path d='M15 24 L14 24' fill='none' stroke='#ffb655'/>
+<path d='M33 24 L34 24' fill='none' stroke='#ffb655'/>
+<path d='M18 18 L17 17' fill='none' stroke='#ffb655'/>
+<path d='M30 18 L31 17' fill='none' stroke='#ffb655'/>
+<path d='M18 30 L17 31' fill='none' stroke='#ffb655'/>
+<path d='M30 30 L31 31' fill='none' stroke='#ffb655'/>
+<text x='44' y='35' font-size='25' text-anchor='start' fill='#ffffff'>Solar Monitor</text>
+<text x='308' y='29' font-size='13' text-anchor='end' fill='#9292aa'>v0.6.0-dev</text>
+<rect x='12' y='46' width='296' height='1' rx='0' fill='#242455'/>
+<rect x='14' y='60' width='8' height='8' rx='4' fill='#b6db55'/>
+<text x='30' y='67' font-size='13' text-anchor='start' fill='#9292aa'>Wi-Fi</text>
+<text x='104' y='67' font-size='13' text-anchor='start' fill='#ffffff'>Connected - HomeNetwork</text>
+<text x='30' y='90' font-size='13' text-anchor='start' fill='#9292aa'>IP address</text>
+<text x='104' y='90' font-size='13' text-anchor='start' fill='#ffffff'>192.168.1.95</text>
+<text x='30' y='113' font-size='13' text-anchor='start' fill='#9292aa'>Web page</text>
+<text x='104' y='113' font-size='13' text-anchor='start' fill='#ffffff'>http://solar.local/</text>
+<text x='30' y='136' font-size='13' text-anchor='start' fill='#9292aa'>Signal</text>
+<text x='104' y='136' font-size='13' text-anchor='start' fill='#ffffff'>-37 dBm (excellent)</text>
+<text x='30' y='159' font-size='13' text-anchor='start' fill='#9292aa'>Home Asst</text>
+<text x='104' y='159' font-size='13' text-anchor='start' fill='#ffffff'>192.168.1.254:8123</text>
+<rect x='14' y='175' width='8' height='8' rx='4' fill='#b6db55'/>
+<text x='30' y='182' font-size='13' text-anchor='start' fill='#9292aa'>Clock</text>
+<text x='104' y='182' font-size='13' text-anchor='start' fill='#ffffff'>17:08 AEDT - synced</text>
+<rect x='12' y='204' width='296' height='5' rx='2' fill='#242455'/>
+<rect x='12' y='204' width='178' height='5' rx='2' fill='#ffb655'/>
+<text x='160' y='227' font-size='13' text-anchor='middle' fill='#9292aa'>Starting display in 3 s - tap to skip</text>
+</svg>

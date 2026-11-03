@@ -31,7 +31,6 @@ void setup() {
     // Keep the active-low LED off rather than run the scaffold demo cycle.
     for (int pin : {LED_R_PIN,LED_G_PIN,LED_B_PIN}) { pinMode(pin,OUTPUT); digitalWrite(pin,HIGH); }
     cyd::backlight::begin(); cyd::display::begin();
-    cyd::display::showBootMessage("HOME ENERGY", "Starting local services...");
     cyd::touch::begin(320,240); cyd::network::begin();
     cyd::ota::begin(cyd::storage::settings().deviceName);
     app::begin();

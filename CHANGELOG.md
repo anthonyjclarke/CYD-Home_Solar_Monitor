@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.6.0-dev] 03-11-2026
+
+### Changed
+
+- Web UI rebuilt in the SpendAnalysis style: warm paper palette with matching dark mode, amber accent for controls only, green/red for meaning, mono uppercase micro-labels, cream cards, grouped sidebar (Live · Settings · Device) and a CRT "Device status" panel.
+- Settings split into Home Assistant, Display, Location & weather and Entities sections; Save on any section saves all, and an invalid field elsewhere switches to its section.
+- Diagnostics shown as a table, with the raw status JSON behind a disclosure.
+
+### Added
+
+- Animated energy-flow diagram: solar, grid, battery and house around the inverter, with moving dots and arrowheads showing direction, faster at higher power, and a battery icon filled to the state of energy.
+- "At a glance" tiles with direction pills, a battery-level bar, solar today, tomorrow and current weather.
+- "Last 30 minutes" chart of solar, house, grid and battery, collected in the browser (no device storage).
+- Chart axes: kW Y axis on rounded steps with gridlines and a solid zero line; X axis ticked every 5 minutes in local time, ending at "now".
+- Boot screen in the panel's theme: Wi-Fi state and network, IP address, `solar.local`, signal strength, Home Assistant host (flags a missing token) and clock, with a progress bar. Held until 6 s after Wi-Fi connects (15 s cap without Wi-Fi); a tap skips it. Replaces the start-up message that vanished before it could be read.
+
+### Fixed
+
+- Boot loop since 0.4.0: the Open-Meteo TLS handshake (ECDSA chain, about 7.6 s on the device) blocked core 0 without yielding, so the task watchdog aborted about 19 s after boot. Core 0's idle task is now taken off the watchdog only while a TLS session is open (weather, and HTTPS Home Assistant). Verified on hardware: weather `http=200`, no resets, all readings fresh.
+- First readings now reach the panel about 2 s after boot instead of about 19 s: a Home Assistant read attempted before Wi-Fi is up no longer triggers a 10 s backoff, and the first weather fetch waits until readings have been published.
+- Weather TLS handshake limit raised from 8 s to 20 s (`APP_TLS_HANDSHAKE_S`); measured handshakes on the device take 4–9 s, so 8 s failed intermittently.
+- Reverted the 0.5.0 panel re-layout: font 6 values made the panel hard to read and dropped the SOLAR/GRID/BATTERY/HOUSE labels and card subtitles. Both layouts are back to the labelled 0.4.0 design.
+
+---
+
 ## [0.5.0-dev] 03-11-2026
 
 ### Added

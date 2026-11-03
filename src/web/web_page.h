@@ -1,53 +1,196 @@
 #pragma once
 #include <Arduino.h>
 
+// Device web UI, styled after the owner's SpendAnalysis app: warm "paper"
+// palette, one amber accent for chrome, green/red reserved for meaning, mono
+// uppercase micro-labels, cream cards, grouped sidebar and a CRT status panel.
+// Single page; the sidebar switches sections by URL hash. All element IDs and
+// API calls are part of the device contract (see monitor_web.cpp).
 const char WEB_PAGE[] PROGMEM = R"HTML(<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CYD Home Energy</title><style>
-:root{color-scheme:dark;font:16px system-ui;background:#080f1b;color:#f1f5f9}*{box-sizing:border-box}body{margin:0}main{max-width:1000px;margin:auto;padding:28px 20px 60px}header{display:flex;align-items:center;justify-content:space-between;gap:12px}h1{font-size:28px;margin:0}h2{font-size:20px;margin-top:0}p,small{color:#a8b8cb;line-height:1.5}.badge{border:1px solid #344761;border-radius:30px;padding:6px 12px;font-size:12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0}.tile,section{background:#142236;border:1px solid #263851;border-radius:16px;padding:20px}.tile label{color:var(--accent)}.value{font-size:clamp(28px,5vw,46px);font-variant-numeric:tabular-nums;margin:8px 0}.tile.stale{opacity:.5}.tile small{display:block;min-height:20px}section{margin:16px 0}label{display:block;font-size:14px;margin:12px 0 6px}select,input:not([type=checkbox]),textarea{font:inherit;width:100%;border:1px solid #3a4f6b;background:#0b1626;color:#f1f5f9;border-radius:8px;padding:10px}textarea{min-height:90px;font:13px monospace}input[type=checkbox]{margin-right:8px}button{font:inherit;background:#60ddbf;color:#08251e;border:0;border-radius:8px;padding:11px 16px;cursor:pointer;margin:14px 8px 0 0}button.secondary{background:#30445f;color:white}.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}.notice{border-left:3px solid #ffbe57;padding:8px 14px;color:#b9c8da}#message{position:sticky;top:10px;background:#213b4c;padding:12px;border-radius:8px;display:none;z-index:2}code{font-size:13px;word-break:break-all}summary{cursor:pointer;color:#bce47e}a{color:#60ddbf}.muted{color:#a8b8cb}#diagnostics{white-space:pre-wrap;font:13px monospace;overflow-wrap:anywhere}.hidden{display:none}@media(max-width:540px){.row{grid-template-columns:1fr}.tile{padding:14px}header{align-items:flex-start}h1{font-size:23px}}
-</style></head><body><main><header><div><h1>Home energy</h1><p>SolarEdge &middot; LG battery &middot; CYD 2.8&quot;</p></div><span class="badge" id="badge">CONNECTING</span></header>
-<div id="message" role="status" aria-live="polite"></div>
-<div class="grid">
-<article class="tile" id="tile0" style="--accent:#ffbe57"><label>SOLAR GENERATION</label><div class="value" id="value0">-- kW</div><small>Calculated from inverter DC and battery power</small></article>
-<article class="tile" id="tile1" style="--accent:#60ddbf"><label>HOUSEHOLD</label><div class="value" id="value1">-- kW</div><small>Whole-property demand</small></article>
-<article class="tile" id="tile3" style="--accent:#bce47e"><label id="batteryLabel">BATTERY / DC</label><div class="value" id="value3">-- kW</div><small id="soc">--%</small></article>
-<article class="tile" id="tile2" style="--accent:#77baff"><label id="gridLabel">GRID / AC</label><div class="value" id="value2">-- kW</div><small>Signed whole-property meter</small></article>
-</div><p id="totals"></p><p id="sourceStatus">Waiting for device status...</p>
-<div class="notice">Solar generation is calculated from inverter DC power and signed battery power. Inverter AC remains available in measurement diagnostics. Solar is marked unavailable when either input is missing, stale or too far apart in time.</div>
-<section><h2>Connection and display</h2><form id="settings">
+<title>Solar Monitor</title><style>
+:root{--bg:#F4F0E7;--side:#F1ECE0;--card:#FCFAF4;--tile:#F6F1E6;--line:#E4DDCC;--ink:#24221C;--muted:#6C675B;--label:#8A8472;
+--accent:#B97512;--accent-ink:#97600D;--sel:#E6DCC4;--good:#1F8A5B;--good-bg:#DDEFE3;--bad:#C0392B;--bad-bg:#F6DEDA;--field:#FFFFFF;--on-accent:#FFFFFF;
+--solar:#C0842C;--grid:#4A78A8;--battery:#2F7D62;--house:#6F7F95;--idle:#B9B2A0;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#161512;--side:#131210;--card:#201E18;--tile:#1A1813;--line:#2C2920;--ink:#ECE7D8;--muted:#A9A290;--label:#847C66;
+--accent:#E0A23F;--accent-ink:#F0B556;--sel:#2C281D;--good:#36B478;--good-bg:#173526;--bad:#E0644F;--bad-bg:#3A1D18;--field:#14130E;--on-accent:#161512;
+--solar:#D09A45;--grid:#6690C0;--battery:#47946E;--house:#8B98AC;--idle:#4A4537;color-scheme:dark}}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+aside{background:var(--side);border-right:1px solid var(--line);padding:20px 18px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.3px;color:var(--muted);margin:2px 0 22px 2px}.logo b{color:var(--accent);font-weight:600}
+.mono,nav h4,.k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.07em}
+nav h4{font-size:11px;font-weight:400;color:var(--label);margin:18px 0 6px 8px}
+nav a{display:block;color:var(--ink);text-decoration:none;padding:6px 10px;border-radius:9px;font-size:14.5px}
+nav a:hover{background:var(--tile)}nav a.on{background:var(--sel);font-weight:600}
+.crt-h{font:10px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:#A39C89;margin:26px 0 8px 2px}
+.crt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#131E18;border:1px solid #0C140F;border-radius:9px;padding:12px 13px;box-shadow:inset 0 0 24px rgba(0,0,0,.55);color:#84F3AD}
+.crt .t{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:#4D8A67}
+.led{width:8px;height:8px;border-radius:99px;background:#84F3AD;box-shadow:0 0 7px #84F3AD}
+.crt .r{display:grid;grid-template-columns:58px 1fr;gap:8px;font-size:11.5px;line-height:1.75}.crt .r span:first-child{color:#4D8A67}.crt .r span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{padding:30px 44px 70px;max-width:1180px;min-width:0}
+.page{display:none}.page.on{display:block}
+h1{font-size:40px;line-height:1.15;font-weight:600;letter-spacing:-.5px;margin:4px 0 6px}
+h2{font-size:24px;font-weight:600;margin:0 0 14px}.cap{color:var(--muted);margin:0 0 22px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:1px 9px;font-size:13px;background:var(--tile);color:var(--muted);white-space:nowrap}
+.pill.good{background:var(--good-bg);color:var(--good)}.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.warn{background:var(--sel);color:var(--accent-ink)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 18px}
+.tile{background:var(--tile);border:1px solid var(--line);border-radius:9px;padding:14px 16px;min-height:112px}
+.k{font-size:11px;color:var(--label);display:block}.v{font-size:30px;font-weight:600;letter-spacing:-.3px;font-variant-numeric:tabular-nums;margin:6px 0 4px;line-height:1.15}
+.v small{font-size:15px;color:var(--muted);font-weight:500;margin-left:3px}.tile.stale .v{color:var(--idle)}
+.bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden;margin-top:9px}.bar i{display:block;height:100%;background:var(--battery);border-radius:9px;transition:width .6s}
+.card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:22px 24px;margin:0 0 18px}
+.card p.note{color:var(--muted);font-size:13.5px;margin:10px 0 0}
+svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#flow{width:100%;height:auto;display:block;max-height:440px}
+.node rect.box{fill:var(--tile);stroke:var(--line)}.node .nk{font:11px ui-monospace,Menlo,monospace;letter-spacing:.07em;fill:var(--label)}
+.node .nv{font-size:24px;font-weight:600;fill:var(--ink)}.node .ns{font-size:12.5px;fill:var(--muted)}.node.stale .nv{fill:var(--idle)}
+.track{stroke:var(--line);stroke-width:8;stroke-linecap:round}
+.flowline{fill:none;stroke-width:5;stroke-linecap:round;stroke-dasharray:1 16;animation:run 1.2s linear infinite}
+@keyframes run{to{stroke-dashoffset:-17}}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin:8px 0 0}.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+#trend{width:100%;height:250px;display:block}
+label{display:block;font-size:14px;margin:14px 0 6px}
+input:not([type=checkbox]),select,textarea{font:inherit;width:100%;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:9px;padding:9px 11px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+textarea{min-height:110px;font:12.5px ui-monospace,Menlo,monospace}input[type=checkbox]{accent-color:var(--accent);margin-right:8px}
+.check{display:flex;align-items:center;margin:14px 0 0}.hint{display:block;color:var(--muted);font-size:13px;margin-top:5px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+button{font:inherit;font-weight:500;border-radius:9px;padding:9px 16px;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button:hover{border-color:var(--accent)}button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}button.danger{color:var(--bad)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font:11px ui-monospace,Menlo,monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--label);background:var(--tile);font-weight:400}
+td.num{font-variant-numeric:tabular-nums}.ok{color:var(--good);font-weight:600}.no{color:var(--bad);font-weight:600}
+code{font:12.5px ui-monospace,Menlo,monospace;background:var(--tile);padding:1px 5px;border-radius:5px}
+details summary{cursor:pointer;color:var(--accent-ink);margin-top:14px}pre{font:12px ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
+#message{position:fixed;right:22px;bottom:22px;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:9px;display:none;max-width:420px;z-index:5;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.hidden{display:none}
+@media(max-width:980px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.app{display:block}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:14px 16px}
+nav{display:flex;flex-wrap:wrap;gap:4px}nav h4{display:none}.crt-h,.crt{display:none}.logo{margin-bottom:10px}
+main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.tiles{gap:10px}.v{font-size:24px}.card{padding:16px}}
+</style></head><body><div class="app">
+<aside>
+<div class="logo"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><g stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" fill="none"><circle cx="15" cy="15" r="5.5"/><path d="M15 2.5v3.5M15 24v3.5M2.5 15H6M24 15h3.5M6.2 6.2l2.4 2.4M21.4 21.4l2.4 2.4M6.2 23.8l2.4-2.4M21.4 8.6l2.4-2.4"/></g></svg><span>Solar<b>Monitor</b></span></div>
+<nav aria-label="Sections">
+<h4>Live</h4><a href="#dashboard">Dashboard</a>
+<h4>Settings</h4><a href="#connection">Home Assistant</a><a href="#display">Display</a><a href="#location">Location &amp; weather</a><a href="#entities">Entities</a>
+<h4>Device</h4><a href="#device">Device &amp; firmware</a><a href="#diagnostics">Diagnostics</a>
+</nav>
+<div class="crt-h">Device status</div>
+<div class="crt"><div class="t"><span class="led" id="led"></span><span id="crtTitle">Connecting</span></div>
+<div class="r"><span>host</span><span>solar.local</span></div><div class="r"><span>ip</span><span id="crtIp">–</span></div>
+<div class="r"><span>fw</span><span id="crtFw">–</span></div><div class="r"><span>uptime</span><span id="crtUp">–</span></div>
+<div class="r"><span>heap</span><span id="crtHeap">–</span></div><div class="r"><span>source</span><span id="crtSrc">–</span></div></div>
+</aside>
+<main>
+<section class="page" id="p-dashboard">
+<div class="head"><div><h1 id="title">Home energy</h1><p class="cap" id="caption">SolarEdge &middot; LG battery &middot; waiting for the device&hellip;</p></div><span class="pill" id="badge">Connecting</span></div>
+<h2>At a glance</h2>
+<div class="tiles">
+<div class="tile" id="tSolar"><span class="k">Solar</span><div class="v" id="vSolar">&ndash;</div><span class="pill" id="sSolar">from DC + battery</span></div>
+<div class="tile" id="tHouse"><span class="k">House</span><div class="v" id="vHouse">&ndash;</div><span class="pill" id="sHouse">demand</span></div>
+<div class="tile" id="tGrid"><span class="k">Grid</span><div class="v" id="vGrid">&ndash;</div><span class="pill" id="sGrid">&ndash;</span></div>
+<div class="tile" id="tBatt"><span class="k">Battery</span><div class="v" id="vBatt">&ndash;</div><span class="pill" id="sBatt">&ndash;</span></div>
+<div class="tile" id="tSoc"><span class="k" id="kSoc">Battery level</span><div class="v" id="vSoc">&ndash;</div><div class="bar"><i id="socBar" style="width:0"></i></div></div>
+<div class="tile" id="tToday"><span class="k">Solar today</span><div class="v" id="vToday">&ndash;</div><span class="pill" id="sToday">not configured</span></div>
+<div class="tile" id="tTomorrow"><span class="k">Tomorrow</span><div class="v" id="vTomorrow">&ndash;</div><span class="pill" id="sTomorrow">&ndash;</span></div>
+<div class="tile" id="tWeather"><span class="k" id="kWeather">Weather</span><div class="v" id="vWeather">&ndash;</div><span class="pill" id="sWeather">not configured</span></div>
+</div>
+<div class="card"><h2>Energy flow</h2>
+<svg id="flow" viewBox="0 0 640 400" role="img" aria-label="Energy flow between solar, grid, battery and house">
+<defs><marker id="aSolar" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--solar)"/></marker>
+<marker id="aGrid" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--grid)"/></marker>
+<marker id="aBatt" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--battery)"/></marker>
+<marker id="aHouse" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--house)"/></marker></defs>
+<line class="track" x1="320" y1="98" x2="320" y2="172"/><line class="track" x1="168" y1="200" x2="292" y2="200"/>
+<line class="track" x1="348" y1="200" x2="472" y2="200"/><line class="track" x1="320" y1="228" x2="320" y2="302"/>
+<path class="flowline" id="fSolar" style="stroke:var(--solar)" marker-end="url(#aSolar)"/><path class="flowline" id="fGrid" style="stroke:var(--grid)" marker-end="url(#aGrid)"/>
+<path class="flowline" id="fBatt" style="stroke:var(--battery)" marker-end="url(#aBatt)"/><path class="flowline" id="fHouse" style="stroke:var(--house)" marker-end="url(#aHouse)"/>
+<circle cx="320" cy="200" r="26" fill="var(--card)" stroke="var(--line)" stroke-width="2"/>
+<text x="320" y="204" text-anchor="middle" class="mono" font-size="10" fill="var(--label)" letter-spacing=".07em">INV</text>
+<g class="node" id="nSolar" transform="translate(240,12)"><rect class="box" width="160" height="86" rx="9"/>
+<g transform="translate(20,30)" stroke="var(--solar)" stroke-width="2.4" stroke-linecap="round" fill="none"><circle r="7"/><path d="M0-14v3M0 11v3M-14 0h3M11 0h3M-10-10l2 2M8 8l2 2M-10 10l2-2M8-8l2-2"/></g>
+<text class="nk" x="44" y="26">SOLAR</text><text class="nv" x="44" y="54" id="nvSolar">&ndash;</text><text class="ns" x="44" y="74" id="nsSolar"></text></g>
+<g class="node" id="nGrid" transform="translate(8,157)"><rect class="box" width="160" height="86" rx="9"/>
+<g transform="translate(20,30)" stroke="var(--grid)" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M-7 15L0-14L7 15M-9-7h18M-6 3h12M-4-7L4 3M4-7L-4 3"/></g>
+<text class="nk" x="44" y="26">GRID</text><text class="nv" x="44" y="54" id="nvGrid">&ndash;</text><text class="ns" x="44" y="74" id="nsGrid"></text></g>
+<g class="node" id="nBatt" transform="translate(472,157)"><rect class="box" width="160" height="86" rx="9"/>
+<g transform="translate(10,20)"><rect width="20" height="30" rx="3" fill="none" stroke="var(--battery)" stroke-width="2.2"/><rect x="6" y="-4" width="8" height="4" rx="1" fill="var(--battery)"/><rect id="battFill" x="3" y="27" width="14" height="0" rx="1" fill="var(--battery)"/></g>
+<text class="nk" x="44" y="26">BATTERY</text><text class="nv" x="44" y="54" id="nvBatt">&ndash;</text><text class="ns" x="44" y="74" id="nsBatt"></text></g>
+<g class="node" id="nHouse" transform="translate(240,302)"><rect class="box" width="160" height="86" rx="9"/>
+<g transform="translate(20,30)" stroke="var(--house)" stroke-width="2.2" stroke-linejoin="round" fill="none"><path d="M-12 0L0-11L12 0M-8-3v15h16V-3M-3 12V5h6v7"/></g>
+<text class="nk" x="44" y="26">HOUSE</text><text class="nv" x="44" y="54" id="nvHouse">&ndash;</text><text class="ns" x="44" y="74" id="nsHouse"></text></g>
+</svg>
+<p class="note">Moving dots and arrowheads show which way power is flowing; they move faster as power rises. A grey arm means the reading is idle, missing or stale.</p></div>
+<div class="card"><h2>Last 30 minutes</h2>
+<svg id="trend" viewBox="0 0 640 250" role="img" aria-label="Power over the last 30 minutes"></svg>
+<div class="legend"><span><i style="background:var(--solar)"></i>Solar</span><span><i style="background:var(--house)"></i>House</span><span><i style="background:var(--grid)"></i>Grid (+ import / &minus; export)</span><span><i style="background:var(--battery)"></i>Battery (+ supplying / &minus; charging)</span></div>
+<p class="note" id="trendNote">Collected by this browser while the page is open; the device keeps no history.</p></div>
+<p class="cap" id="sourceStatus">Waiting for device status&hellip;</p>
+</section>
+
+<form id="settings">
+<section class="page" id="p-connection"><h1>Home Assistant</h1><p class="cap">Where readings come from, and how often.</p>
+<div class="card"><h2>Connection</h2>
 <label for="url">Home Assistant base URL</label><input id="url" maxlength="180" required placeholder="http://192.168.1.254:8123">
-<label for="token">Home Assistant access token</label><input id="token" type="password" autocomplete="new-password" maxlength="2048" placeholder="Leave blank to keep the saved token"><small id="tokenState">The saved token is never returned to this page.</small>
-<label><input id="clearToken" type="checkbox">Clear saved Home Assistant token</label>
-<div class="row"><div><label for="poll">Read interval (seconds)</label><input id="poll" type="number" min="2" max="300" required></div><div><label for="stale">Stale after (seconds)</label><input id="stale" type="number" min="15" max="3600" required></div></div>
-<div class="row"><div><label for="brightness">Brightness (10&ndash;255)</label><input id="brightness" type="number" min="10" max="255" required></div><div><label><input id="demo" type="checkbox">Demo mode &ndash; synthetic data</label><label><input id="nightDim" type="checkbox">Dim overnight</label></div></div>
-<label for="today">Solar energy today (kWh entity, optional)</label><input id="today" maxlength="100" placeholder="sensor.solar_energy_today">
-<small>A daily-resetting sensor, e.g. a Home Assistant <em>Utility Meter</em> (daily) on the solar production sensor used by the Energy dashboard.</small>
-<label for="forecast">Solar forecast tomorrow (kWh entity, optional)</label><input id="forecast" maxlength="100" placeholder="sensor.energy_production_tomorrow">
-<small>From the Forecast.Solar or Solcast integration. Leave either field blank to hide it.</small>
-<label for="layout">Panel layout</label><select id="layout"><option value="1">Centre flow (light)</option><option value="0">Cards (dark)</option></select>
-<label for="battery">Battery label on panel (up to 14 characters, may be blank)</label><input id="battery" maxlength="14" placeholder="LG 9.8 kWh">
+<label for="token">Access token</label><input id="token" type="password" autocomplete="new-password" maxlength="2048" placeholder="Leave blank to keep the saved token"><span class="hint" id="tokenState">The saved token is never returned to this page.</span>
+<label class="check"><input id="clearToken" type="checkbox">Clear saved Home Assistant token</label>
+<div class="row"><div><label for="poll">Read interval (seconds)</label><input id="poll" type="number" min="2" max="300" required></div><div><label for="stale">Stale after (seconds)</label><input id="stale" type="number" min="15" max="3600" required><span class="hint">At least 3&times; the read interval.</span></div></div>
+<div class="actions"><button class="primary" type="submit">Save settings</button></div></div></section>
+
+<section class="page" id="p-display"><h1>Display</h1><p class="cap">How the CYD panel looks and behaves.</p>
+<div class="card"><h2>Panel</h2>
+<div class="row"><div><label for="layout">Layout</label><select id="layout"><option value="1">Centre flow (light)</option><option value="0">Cards (dark)</option></select></div>
+<div><label for="battery">Battery label (up to 14 characters)</label><input id="battery" maxlength="14" placeholder="LG 9.8 kWh"></div></div>
+<div class="row"><div><label for="brightness">Brightness (10&ndash;255)</label><input id="brightness" type="number" min="10" max="255" required></div>
+<div><label class="check" style="margin-top:40px"><input id="demo" type="checkbox">Demo mode &ndash; synthetic data</label></div></div></div>
+<div class="card"><h2>Night</h2>
+<label class="check"><input id="nightDim" type="checkbox">Dim overnight</label>
 <div class="row"><div><label for="nightStart">Night starts (hour 0&ndash;23)</label><input id="nightStart" type="number" min="0" max="23" required></div><div><label for="nightEnd">Night ends (hour 0&ndash;23)</label><input id="nightEnd" type="number" min="0" max="23" required></div></div>
-<p><small>Night dimming uses the configured timezone after NTP sync. Touch restores brightness for a minute. Matching start/end hours disables the night window.</small></p>
-<h2 style="margin-top:22px">Location, timezone and weather</h2>
-<label for="placeSearch">Find a town or suburb</label><div class="row"><input id="placeSearch" placeholder="e.g. Parramatta"><div><button type="button" id="findPlace" class="secondary" style="margin-top:0">Search</button> <button type="button" id="clearPlace" class="secondary" style="margin-top:0">Clear location</button></div></div>
-<select id="placeResults" class="hidden" aria-label="Search results"></select>
-<small>Search runs from this browser using Open-Meteo geocoding and fills the fields below. The device then fetches weather from Open-Meteo every 30 minutes over verified HTTPS, sending only the coordinates.</small>
+<span class="hint">Uses the configured timezone once the clock is set. After a minute without touch the panel dims to a fifth; a tap restores it. Equal hours turn this off.</span>
+<div class="actions"><button class="primary" type="submit">Save settings</button></div></div></section>
+
+<section class="page" id="p-location"><h1>Location &amp; weather</h1><p class="cap">Sets the clock's timezone and the weather shown on the panel.</p>
+<div class="card"><h2>Find your location</h2>
+<div class="row"><input id="placeSearch" placeholder="Town or suburb, e.g. Parramatta" aria-label="Town or suburb"><div style="display:flex;gap:10px"><button type="button" id="findPlace">Search</button><button type="button" id="clearPlace">Clear location</button></div></div>
+<select id="placeResults" class="hidden" aria-label="Search results" style="margin-top:12px"></select>
+<span class="hint">Search runs from this browser using Open-Meteo geocoding. The device fetches weather every 30 minutes over verified HTTPS, sending only the coordinates.</span>
 <div class="row"><div><label for="lat">Latitude</label><input id="lat" type="number" step="0.0001" min="-90" max="90"></div><div><label for="lon">Longitude</label><input id="lon" type="number" step="0.0001" min="-180" max="180"></div></div>
-<label for="place">Place name (shown in the browser)</label><input id="place" maxlength="48">
+<label for="place">Place name</label><input id="place" maxlength="48"></div>
+<div class="card"><h2>Timezone</h2>
 <div class="row"><div><label for="tzName">Timezone</label><input id="tzName" maxlength="40" placeholder="Australia/Sydney"></div><div><label for="tz">POSIX TZ rule</label><input id="tz" maxlength="60" required placeholder="AEST-10AEDT,M10.1.0,M4.1.0/3"></div></div>
-<small id="tzHint">The device uses the POSIX rule; choosing a known timezone fills it in. Leave latitude and longitude blank to turn weather off.</small>
-<details><summary>Entity mapping and HTTPS certificate</summary>
-<div id="entities"></div>
-<label for="ca">Trusted CA certificate (PEM, required for an HTTPS URL)</label><textarea id="ca" maxlength="6000" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
-<small>HTTPS verifies the server certificate. Leave the CA empty for the default local HTTP URL.</small></details>
-<button type="submit">Save settings</button></form></section>
-<section><h2>Device</h2><p id="device"></p><details><summary>Measurement diagnostics</summary><pre id="diagnostics"></pre></details>
-<button id="reboot" class="secondary">Restart device</button><button id="wifiReset" class="secondary">Reset Wi-Fi</button></section>
-<section><h2>Firmware update</h2><p>Upload the PlatformIO <code>firmware.bin</code> app image. Keep power connected until the device restarts. Use the merged image only for a clean USB installation.</p>
-<form id="updateForm"><input type="file" id="firmware" accept=".bin" required><button type="submit">Upload firmware</button></form><p id="uploadStatus"></p></section>
-</main><script>
+<span class="hint" id="tzHint">The device uses the POSIX rule; choosing a known timezone fills it in. Leave latitude and longitude blank to turn weather off.</span>
+<div class="actions"><button class="primary" type="submit">Save settings</button></div></div></section>
+
+<section class="page" id="p-entities"><h1>Entities</h1><p class="cap">Home Assistant sensors the device reads. Defaults match the SolarEdge Modbus Multi integration.</p>
+<div class="card"><h2>Live power</h2><div id="entities"></div></div>
+<div class="card"><h2>Daily totals (optional)</h2>
+<label for="today">Solar energy today (kWh)</label><input id="today" maxlength="100" placeholder="sensor.solar_energy_today"><span class="hint">A daily Utility Meter helper on the solar production sensor your Energy dashboard uses.</span>
+<label for="forecast">Solar forecast tomorrow (kWh)</label><input id="forecast" maxlength="100" placeholder="sensor.energy_production_tomorrow"><span class="hint">From Forecast.Solar or Solcast. Leave blank to show tomorrow's temperature instead.</span></div>
+<div class="card"><h2>HTTPS certificate</h2>
+<label for="ca">Trusted CA certificate (PEM, only for an https:// URL)</label><textarea id="ca" maxlength="6000" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+<div class="actions"><button class="primary" type="submit">Save settings</button></div></div></section>
+</form>
+
+<section class="page" id="p-device"><h1>Device &amp; firmware</h1><p class="cap">This CYD, at <code>http://solar.local/</code>.</p>
+<div class="card"><h2>Device</h2><table><tbody id="deviceRows"></tbody></table>
+<div class="actions"><button type="button" id="reboot">Restart device</button><button type="button" class="danger" id="wifiReset">Reset Wi-Fi</button></div></div>
+<div class="card"><h2>Firmware update</h2><p class="cap" style="margin:0 0 12px">Upload the PlatformIO <code>firmware.bin</code> app image; settings are kept. Keep power connected until the device restarts. The merged image is for a clean USB install only.</p>
+<form id="updateForm"><input type="file" id="firmware" accept=".bin" required><div class="actions"><button class="primary" type="submit">Upload firmware</button></div></form><p class="cap" id="uploadStatus" style="margin-top:12px"></p></div>
+</section>
+
+<section class="page" id="p-diagnostics"><h1>Diagnostics</h1><p class="cap">Every reading as the device judged it on its last cycle.</p>
+<div class="card"><h2>Readings</h2><div style="overflow-x:auto"><table><thead><tr><th>Reading</th><th>Entity</th><th>Value</th><th>Valid</th><th>Fresh</th><th>Received</th><th>Reported</th></tr></thead><tbody id="diagRows"></tbody></table></div>
+<details><summary>Raw status JSON</summary><pre id="diagnostics"></pre></details></div>
+</section>
+</main></div>
+<div id="message" role="status" aria-live="polite"></div>
+<script>
 'use strict';
-const $=id=>document.getElementById(id);let busy=false;
+const $=id=>document.getElementById(id);let busy=false,last=0;
 const labels=['Inverter AC power (W/kW)','Household consumption (W/kW)','Raw grid power (+ export, - import)','Battery DC power (+ charge, - discharge)','Battery state of energy (%)','Inverter DC power (W/kW)'];
 labels.forEach((name,i)=>{const label=document.createElement('label');label.htmlFor='entity'+i;label.textContent=name;const input=document.createElement('input');input.id='entity'+i;input.required=true;input.maxLength=100;$('entities').append(label,input)});
 // Olson name to POSIX TZ rule. The device has no tz database; anything not
@@ -60,15 +203,90 @@ $('tzName').addEventListener('change',()=>setZone($('tzName').value.trim()));
 $('findPlace').onclick=async()=>{const q=$('placeSearch').value.trim();if(!q)return;try{const r=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=8&language=en&format=json&name='+encodeURIComponent(q));const d=await r.json();places=d.results||[];const sel=$('placeResults');sel.replaceChildren(new Option(places.length?'Choose a result...':'No places found',''));places.forEach((p,i)=>sel.add(new Option([p.name,p.admin1,p.country].filter(Boolean).join(', '),i)));sel.classList.remove('hidden')}catch(e){message('Place search failed: '+e.message)}};
 $('placeResults').onchange=()=>{const p=places[$('placeResults').value];if(!p)return;$('lat').value=p.latitude.toFixed(4);$('lon').value=p.longitude.toFixed(4);$('place').value=[p.name,p.admin1].filter(Boolean).join(', ');if(p.timezone)setZone(p.timezone)};
 $('clearPlace').onclick=()=>{['lat','lon','place'].forEach(k=>$(k).value='');$('placeResults').classList.add('hidden')};
-function power(w){w=Math.round(Math.abs(w));return w<1000?w+' W':(w/1000).toFixed(2)+' kW'}
-function message(text){$('message').textContent=text;$('message').style.display='block'}
+// Sections are switched by URL hash so the browser back button works.
+function route(){const id=(location.hash||'#dashboard').slice(1);const page=$('p-'+id)?id:'dashboard';document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+page));document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.hash==='#'+page))}
+window.addEventListener('hashchange',route);route();
+function fmt(w){w=Math.round(Math.abs(w));return w<1000?[w,'W']:[(w/1000).toFixed(2),'kW']}
+function power(w){const f=fmt(w);return f[0]+' '+f[1]}
+function setV(id,r){const f=fmt(r.value);$(id).innerHTML=r.hasValue?f[0]+'<small>'+f[1]+'</small>':'&ndash;'}
+function pill(id,text,kind){const e=$(id);e.textContent=text;e.className='pill'+(kind?' '+kind:'')}
+let toastTimer;function message(text){const m=$('message');m.textContent=text;m.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>m.style.display='none',5000)}
 async function api(path,body){const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-CYD-Request':'1'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const data=await response.json();if(!response.ok)throw Error(data.error||'Request failed');return data}
 async function load(){const c=await api('/api/config');['url','poll','stale','brightness','nightStart','nightEnd','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>$(k).value=c[k]);$('lat').value=c.lat??'';$('lon').value=c.lon??'';['demo','nightDim'].forEach(k=>$(k).checked=c[k]);$('layout').value=String(c.layout);c.entities.forEach((id,i)=>$('entity'+i).value=id);$('tokenState').textContent=c.tokenSaved?'A token is saved. Leave blank to keep it.':'No Home Assistant token saved yet.'}
-async function refresh(){if(busy)return;try{const s=await api('/api/status');$('badge').textContent=s.demo?'DEMO':s.complete?'HA CONNECTED':'WAITING';[[0,6],[1,1],[2,2],[3,3]].forEach(([tile,metric])=>{const r=s.readings[metric];$('value'+tile).textContent=r.hasValue?power(r.value):'-- kW';$('tile'+tile).classList.toggle('stale',!r.fresh)});const g=s.readings[2],b=s.readings[3],soc=s.readings[4];$('gridLabel').textContent=!g.fresh?'GRID / AC':g.value>30?'GRID IMPORT':g.value< -30?'GRID EXPORT':'GRID IDLE';$('batteryLabel').textContent=!b.fresh?'BATTERY / DC':b.value< -30?'CHARGING / DC':b.value>30?'DISCHARGING / DC':'BATTERY IDLE';$('soc').textContent=(s.battery?s.battery+' · ':'')+(soc.hasValue?soc.value.toFixed(1)+'%':'--%')+(soc.fresh?'':' · unavailable/stale');const t=s.totals||{},parts=[];if(t.today&&t.today.entity)parts.push(t.today.fresh?t.today.value.toFixed(2)+' kWh solar today':'Solar today unavailable');if(t.tomorrow&&t.tomorrow.entity)parts.push(t.tomorrow.fresh?'Tomorrow ~'+Math.round(t.tomorrow.value)+' kWh':'Forecast unavailable');const w=s.weather||{};if(w.configured)parts.push(w.fresh?(w.place?w.place+': ':'')+'now '+w.nowC.toFixed(0)+'° '+SKY(w.nowCode).toLowerCase()+', tomorrow '+w.tomorrowMaxC.toFixed(0)+'° '+SKY(w.tomorrowCode).toLowerCase():'Weather unavailable');$('totals').textContent=parts.join(' · ');$('sourceStatus').textContent=s.message+' · '+(s.reportTimeKnown?'Source reporting time verified':'Source age unknown');$('device').textContent=s.project+' '+s.version+' · '+s.ip+' · '+(s.localTime||'clock not set')+' · uptime '+s.uptimeSeconds+'s · free heap '+s.freeHeap+' bytes';$('diagnostics').textContent=JSON.stringify(s.readings,null,2)}catch(e){$('badge').textContent='DISCONNECTED';$('sourceStatus').textContent=e.message;document.querySelectorAll('.tile').forEach(el=>el.classList.add('stale'))}}
+// Flow diagram: each arm is drawn from source to destination, so dots and the
+// arrowhead travel the way power flows. Each arm is [outer end, hub end];
+// grid +import and battery +supplying flow into the hub (320,200).
+const ARMS={Solar:[[320,100],[320,170]],Grid:[[170,200],[290,200]],Batt:[[470,200],[350,200]],House:[[320,300],[320,230]]};
+function arm(id,live,watts,intoHub){const f=$('f'+id),[a,b]=ARMS[id],active=live&&Math.abs(watts)>30;
+const s=intoHub?a:b,e=intoHub?b:a;f.setAttribute('d','M'+s[0]+' '+s[1]+'L'+e[0]+' '+e[1]);f.style.display=active?'':'none';
+f.style.animationDuration=Math.max(.35,1.6-Math.abs(watts)/4000)+'s'}
+function node(id,r,sub){$('n'+id).classList.toggle('stale',!r.fresh);$('nv'+id).textContent=r.hasValue?power(r.value):'–';$('ns'+id).textContent=sub}
+const hist=[],HMAX=600;
+// Fixed 30-minute window ending now, with a kW Y axis on "nice" steps and an
+// X axis ticked every 5 minutes in local time. The viewBox follows the element's
+// real width so axis text is never stretched.
+function niceStep(range){const raw=range/4,p=Math.pow(10,Math.floor(Math.log10(raw)));for(const m of [1,2,2.5,5,10])if(m*p>=raw)return m*p;return 10*p}
+function trend(){const svg=$('trend'),W=Math.max(320,Math.round(svg.getBoundingClientRect().width)||640),H=250;svg.setAttribute('viewBox','0 0 '+W+' '+H);
+const L=50,R=14,T=24,B=30,pw=W-L-R,ph=H-T-B,now=Date.now(),t0=now-1800000;
+const keys=[['s','--solar'],['h','--house'],['g','--grid'],['b','--battery']];let lo=0,hi=500;
+hist.forEach(p=>keys.forEach(([k])=>{if(p[k]!=null){lo=Math.min(lo,p[k]);hi=Math.max(hi,p[k])}}));
+const step=niceStep(hi-lo);lo=Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;if(hi===lo)hi=lo+step;
+const X=t=>L+(t-t0)/1800000*pw,Y=v=>T+(hi-v)/(hi-lo)*ph;
+let out='<text x="'+(L-8)+'" y="'+(T-10)+'" text-anchor="end" font-size="11" fill="var(--label)" font-family="ui-monospace,Menlo,monospace">kW</text>';
+for(let v=lo;v<=hi+1e-6;v+=step){const y=Y(v).toFixed(1);
+out+='<line x1="'+L+'" x2="'+(L+pw)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"'+(v===0?'':' stroke-dasharray="2 4"')+'/>';
+out+='<text x="'+(L-8)+'" y="'+(+y+4)+'" text-anchor="end" font-size="11" fill="var(--label)">'+(v/1000).toFixed(step%1000?1:0)+'</text>'}
+for(let m=30;m>=0;m-=5){const t=now-m*60000,x=X(t).toFixed(1),d=new Date(t);
+out+='<line x1="'+x+'" x2="'+x+'" y1="'+(T+ph)+'" y2="'+(T+ph+5)+'" stroke="var(--label)"/>';
+out+='<text x="'+x+'" y="'+(T+ph+19)+'" text-anchor="'+(m===0?'end':m===30?'start':'middle')+'" font-size="11" fill="var(--label)">'+(m===0?'now':String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))+'</text>'}
+out+='<line x1="'+L+'" x2="'+L+'" y1="'+T+'" y2="'+(T+ph)+'" stroke="var(--label)"/><line x1="'+L+'" x2="'+(L+pw)+'" y1="'+(T+ph)+'" y2="'+(T+ph)+'" stroke="var(--label)"/>';
+if(lo<0)out+='<line x1="'+L+'" x2="'+(L+pw)+'" y1="'+Y(0).toFixed(1)+'" y2="'+Y(0).toFixed(1)+'" stroke="var(--label)" stroke-width="1"/>';
+keys.forEach(([k,c])=>{let d='',pen=false;hist.forEach(p=>{if(p[k]==null||p.t<t0){pen=false;return}d+=(pen?'L':'M')+X(p.t).toFixed(1)+' '+Y(p[k]).toFixed(1);pen=true});
+if(d)out+='<path d="'+d+'" fill="none" stroke="var('+c+')" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'});
+if(hist.length<2)out+='<text x="'+(L+pw/2)+'" y="'+(T+ph/2)+'" text-anchor="middle" font-size="13" fill="var(--muted)">Collecting readings&hellip;</text>';
+svg.innerHTML=out;const span=hist.length?Math.round((now-hist[0].t)/60000):0;
+$('trendNote').textContent='Collected by this browser while the page is open ('+span+' min so far); the device keeps no history. Above zero: grid importing, battery supplying.'}
+window.addEventListener('resize',trend);
+function age(s){return s==null?'–':s<90?s+' s':Math.round(s/60)+' min'}
+function rows(id,pairs){$(id).innerHTML=pairs.map(([k,v])=>'<tr><th style="width:34%">'+k+'</th><td>'+v+'</td></tr>').join('')}
+function esc(t){return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function refresh(){if(busy)return;try{const s=await api('/api/status');last=Date.now();
+const R=s.readings,solar=R[6],house=R[1],grid=R[2],batt=R[3],soc=R[4],live=s.complete;
+pill('badge',s.demo?'Demo data':live?'Live':'Waiting',s.demo?'warn':live?'good':'warn');
+const led=s.demo||!live?'#FFCF7A':'#84F3AD';$('led').style.background=led;$('led').style.boxShadow='0 0 7px '+led;
+$('crtTitle').textContent=s.demo?'Demo mode':live?'Live':'Waiting';$('crtIp').textContent=s.ip;$('crtFw').textContent=s.version;$('crtUp').textContent=age(s.uptimeSeconds);$('crtHeap').textContent=Math.round(s.freeHeap/1024)+' KB';$('crtSrc').textContent=s.message;
+const tm=(s.localTime||'').split(' ')[1];$('title').textContent='Home energy'+(tm?' — '+tm:'');
+$('caption').textContent='SolarEdge · LG battery · '+(s.demo?'synthetic demo data':'live from Home Assistant')+(s.localTime?' · '+s.localTime:'');
+setV('vSolar',solar);setV('vHouse',house);setV('vGrid',grid);setV('vBatt',batt);
+[['tSolar',solar],['tHouse',house],['tGrid',grid],['tBatt',batt],['tSoc',soc]].forEach(([t,r])=>$(t).classList.toggle('stale',!r.fresh));
+const gs=!grid.fresh?['No data','']:grid.value>30?['↓ Importing','bad']:grid.value<-30?['↑ Exporting','good']:['Idle',''];pill('sGrid',...gs);
+const bs=!batt.fresh?['No data','']:batt.value<-30?['↑ Charging','good']:batt.value>30?['↓ Supplying house','']:['Idle',''];pill('sBatt',...bs);
+pill('sSolar',solar.fresh?(solar.value>30?'Generating':'No generation'):'Unavailable',solar.fresh&&solar.value>30?'good':'');
+pill('sHouse',house.fresh?'Demand':'Unavailable','');
+$('kSoc').textContent=s.battery?'Battery · '+s.battery:'Battery level';$('vSoc').innerHTML=soc.hasValue?soc.value.toFixed(0)+'<small>%</small>':'&ndash;';
+$('socBar').style.width=(soc.hasValue?Math.max(0,Math.min(100,soc.value)):0)+'%';$('socBar').style.background=soc.value>=50?'var(--battery)':soc.value>=20?'var(--solar)':'var(--bad)';
+const t=s.totals||{},w=s.weather||{};
+if(t.today&&t.today.entity){$('vToday').innerHTML=t.today.fresh?t.today.value.toFixed(2)+'<small>kWh</small>':'&ndash;';pill('sToday',t.today.fresh?'since midnight':'unavailable','')}
+if(t.tomorrow&&t.tomorrow.entity&&t.tomorrow.fresh){$('vTomorrow').innerHTML='~'+Math.round(t.tomorrow.value)+'<small>kWh</small>';pill('sTomorrow',w.fresh?SKY(w.tomorrowCode)+' · '+w.tomorrowMaxC.toFixed(0)+'°':'solar forecast','')}
+else if(w.fresh){$('vTomorrow').innerHTML=w.tomorrowMaxC.toFixed(0)+'<small>°C max</small>';pill('sTomorrow',SKY(w.tomorrowCode),'')}
+if(w.configured){$('kWeather').textContent=w.place?'Now · '+w.place.split(',')[0]:'Weather now';$('vWeather').innerHTML=w.fresh?w.nowC.toFixed(0)+'<small>°C</small>':'&ndash;';pill('sWeather',w.fresh?SKY(w.nowCode):'unavailable','')}
+arm('Solar',solar.fresh,solar.value,true);arm('Grid',grid.fresh,grid.value,grid.value>0);arm('Batt',batt.fresh,batt.value,batt.value>0);arm('House',house.fresh,house.value,false);
+node('Solar',solar,solar.fresh?(solar.value>30?'generating':'idle'):'unavailable');node('House',house,house.fresh?'demand':'unavailable');
+node('Grid',grid,!grid.fresh?'unavailable':grid.value>30?'importing':grid.value<-30?'exporting':'idle');
+node('Batt',batt,(!batt.fresh?'unavailable':batt.value<-30?'charging':batt.value>30?'supplying':'idle')+(soc.hasValue?' · '+soc.value.toFixed(0)+'%':''));
+const fh=soc.hasValue?Math.round(24*Math.max(0,Math.min(100,soc.value))/100):0;$('battFill').setAttribute('height',fh);$('battFill').setAttribute('y',27-fh);
+const now=Date.now(),val=r=>r.fresh?r.value:null;hist.push({t:now,s:val(solar),h:val(house),g:val(grid),b:val(batt)});while(hist.length>HMAX||(hist.length&&now-hist[0].t>1800000))hist.shift();trend();
+$('sourceStatus').textContent=s.message+' · '+(s.reportTimeKnown?'source reporting time verified':'source age unknown');
+rows('deviceRows',[['Firmware',esc(s.project+' '+s.version)],['Address','<code>http://solar.local/</code> · '+esc(s.ip)],['Local time',esc(s.localTime||'clock not set')],['Uptime',age(s.uptimeSeconds)],['Free memory',Math.round(s.freeHeap/1024)+' KB']]);
+$('diagRows').innerHTML=R.map(r=>'<tr><td>'+esc(r.name)+'</td><td><code>'+esc(r.entity||'derived')+'</code></td><td class="num">'+(r.hasValue?(r.unit==='%'?r.value.toFixed(1)+' %':Math.round(r.value)+' W'):'–')+'</td><td class="'+(r.valid?'ok':'no')+'">'+(r.valid?'yes':'no')+'</td><td class="'+(r.fresh?'ok':'no')+'">'+(r.fresh?'yes':'no')+'</td><td class="num">'+age(r.receivedAgeSeconds)+'</td><td class="num">'+age(r.reportedAgeSeconds)+'</td></tr>').join('');
+$('diagnostics').textContent=JSON.stringify(s,null,2)}
+catch(e){pill('badge','Disconnected','bad');$('crtTitle').textContent='Disconnected';$('led').style.background='#E0644F';$('led').style.boxShadow='0 0 7px #E0644F';$('sourceStatus').textContent=e.message;document.querySelectorAll('.tile,.node').forEach(el=>el.classList.add('stale'))}}
 $('settings').addEventListener('submit',async e=>{e.preventDefault();const c={};['url','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>c[k]=$(k).value.trim());const lat=$('lat').value.trim(),lon=$('lon').value.trim();c.lat=lat===''?null:Number(lat);c.lon=lon===''?null:Number(lon);['poll','stale','brightness','nightStart','nightEnd','layout'].forEach(k=>c[k]=Number($(k).value));['demo','nightDim','clearToken'].forEach(k=>c[k]=$(k).checked);c.entities=labels.map((_,i)=>$('entity'+i).value.trim());c.token=$('token').value;try{await api('/api/config',c);$('token').value='';$('clearToken').checked=false;message('Settings saved');await load();await refresh()}catch(err){message(err.message)}});
+// Settings span several sections; a field that fails browser validation may be
+// on a hidden one, so show that section before the browser reports it.
+document.querySelectorAll('#settings input,#settings select,#settings textarea').forEach(el=>el.addEventListener('invalid',()=>{const p=el.closest('.page');if(p&&!p.classList.contains('on'))location.hash=p.id.slice(2)}));
 $('reboot').onclick=async()=>{if(!confirm('Restart this CYD?'))return;try{await api('/api/reboot',{});message('Restarting. Reload this page shortly.')}catch(e){message(e.message)}};
 $('wifiReset').onclick=async()=>{if(!confirm('Clear saved Wi-Fi and restart? Home Assistant settings remain saved.'))return;try{await api('/api/wifi-reset',{});message('Wi-Fi cleared. Join the setup hotspot shown on the display.')}catch(e){message(e.message)}};
 $('updateForm').onsubmit=async e=>{e.preventDefault();if(!confirm('Install this app firmware and restart the CYD?'))return;const file=$('firmware').files[0];if(!file)return;busy=true;$('uploadStatus').textContent='Uploading. Keep power connected...';const body=new FormData();body.append('firmware',file);try{const r=await fetch('/update',{method:'POST',headers:{'X-CYD-Request':'1'},body});const d=await r.json();if(!r.ok)throw Error(d.error||'Update failed');$('uploadStatus').textContent='Installed. Device is restarting. Reload shortly.'}catch(err){$('uploadStatus').textContent=err.message;busy=false}};
 load().then(refresh).catch(e=>message(e.message));setInterval(refresh,3000);
 </script></body></html>)HTML";
-

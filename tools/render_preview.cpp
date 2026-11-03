@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <string>
 
 std::string escaped(const char* s) {
     std::string out;
@@ -38,6 +39,16 @@ public:
     }
 };
 int main(int argc,char**argv) {
+    SvgCanvas c;
+    const char* head="<svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>\n";
+    if(argc>1&&std::string(argv[1])=="boot") {  // boot <layout>: sample start-up screen after Wi-Fi connects.
+        ui::BootView b;b.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Centre;b.version="v0.6.0-dev";
+        b.rows[0]={"Wi-Fi","Connected - HomeNetwork",ui::BootOk};b.rows[1]={"IP address","192.168.1.95",ui::BootInfo};
+        b.rows[2]={"Web page","http://solar.local/",ui::BootInfo};b.rows[3]={"Signal","-37 dBm (excellent)",ui::BootInfo};
+        b.rows[4]={"Home Asst","192.168.1.254:8123",ui::BootInfo};b.rows[5]={"Clock","17:08 AEDT - synced",ui::BootOk};
+        b.progress=.6f;b.footer="Starting display in 3 s - tap to skip";
+        std::cout<<head;ui::drawBoot(c,b);std::cout<<"</svg>\n";return 0;
+    }
     unsigned scene=argc>1?std::atoi(argv[1]):0;
     ui::FlowView v;v.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Cards;v.time="14:32";v.data=energy::demoSnapshot(1000,scene);v.wifi=true;v.phase=1;
     for(bool& b:v.usable)b=true;
@@ -47,8 +58,7 @@ int main(int argc,char**argv) {
     v.status="DEMO / tap for setup";v.address="192.168.1.50";v.batteryLabel="LG 9.8 kWh";
     if(scene==4){for(bool& b:v.usable)b=false;for(bool& b:v.totalLive)b=false;v.weatherLive=false;v.data.demo=false;v.wifi=false;v.status="WiFi disconnected";}
     if(scene==5){v.weatherLive=false;v.data=energy::Snapshot();for(bool& b:v.usable)b=false;for(bool& b:v.totalLive)b=false;v.status="Configure Home Assistant";}
-    SvgCanvas c;
-    std::cout<<"<svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>\n";
+    std::cout<<head;
     ui::drawFlow(c,v);std::cout<<"</svg>\n";
 }
 

@@ -22,11 +22,14 @@ with tempfile.TemporaryDirectory(prefix="cyd-solar-check-") as directory:
                 subprocess.run([str(renderer), str(scene), str(layout)], stdout=image, check=True)
     with (output / "centre-weather-preview.svg").open("w") as image:
         subprocess.run([str(renderer), "1", "1", "weather-only"], stdout=image, check=True)
-    print("Rendered six states of both layouts, plus a weather-only top row, in docs/images/.")
+    for layout, name in enumerate(["boot-dark-preview", "boot-preview"]):
+        with (output / f"{name}.svg").open("w") as image:
+            subprocess.run([str(renderer), "boot", str(layout)], stdout=image, check=True)
+    print("Rendered six states of both layouts, a weather-only top row and the boot screen in docs/images/.")
     converter = shutil.which("rsvg-convert")
     if not converter and Path("/opt/homebrew/bin/rsvg-convert").exists():
         converter = "/opt/homebrew/bin/rsvg-convert"
     if converter:
-        for name in ["flow-preview", "centre-flow-preview", "centre-export-preview", "centre-weather-preview"]:
+        for name in ["flow-preview", "centre-flow-preview", "centre-export-preview", "centre-weather-preview", "boot-preview"]:
             subprocess.run([converter, "-o", str(output / f"{name}.png"), str(output / f"{name}.svg")], check=True)
         print("Rendered preview PNGs with rsvg-convert.")

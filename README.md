@@ -4,7 +4,7 @@ A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-24
 
 It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
 
-Version `0.7.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
+Version `0.8.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
 
 | Centre flow (light, default)                                     | Cards (dark)                                     |
 |:----------------------------------------------------------------:|:------------------------------------------------:|
@@ -16,13 +16,14 @@ Both layouts show the same readings. Switch between them in the browser under **
 
 ## Features
 
-- **Two panel layouts.** Centre flow (light, the default) has the four flows meeting at the inverter, with moving arrows showing direction. Cards (dark) shows the same readings as four cards. Choose either in the web UI under **Settings → Display → Layout**.
+- **Two panel layouts.** Centre flow (light, the default) has the four flows meeting at the inverter, with comets travelling along each pipe the way power flows. Cards (dark) shows the same readings as four cards. Choose either in the web UI under **Settings → Display → Layout**.
 - **Battery at a glance.** A gauge filled to the state of energy turns amber below 50% and red below 20%. The status line says when it's a good time to use power.
 - **Optional extras:** today's solar kWh, tomorrow's solar forecast, and weather from Open-Meteo for a location you choose.
 - **Browser dashboard** at `http://solar.local/`, covering:
   - live tiles and an animated flow diagram;
   - a 30-minute trend chart;
-  - every setting, diagnostics and firmware update.
+  - every setting, diagnostics and firmware update;
+  - this project's handbook, served by the panel itself at `/guide/`.
 - **Honest readings.** Stale or missing values grey out and keep their last number instead of dropping to zero, and the status line gives the reason.
 - **Quality of life:**
   - a boot screen with the IP address, Wi-Fi signal and Home Assistant host;
@@ -130,9 +131,11 @@ The pills say which way power is going: green when you're exporting or charging,
 
 **Energy flow.** Each reading joins the inverter by a pipe, and comets travel the way power is flowing. A thicker pipe and faster comets mean more power, and a plain grey pipe means that reading is idle or stale. It's the quickest way to see where your solar is going: into the house, into the battery, or out to the grid.
 
+If your phone or computer has **Reduce Motion** turned on (on an iPhone: Settings → Accessibility → Motion), the comets stay still. That's deliberate: they sit near the end of each pipe, pointing the way power flows.
+
 **Last 30 minutes.** Solar, house, grid and battery are charted against clock time. Above the zero line, the grid is importing and the battery supplying; below it, you're exporting and charging. The chart is collected by your browser while the page is open, so it fills from the right. The panel itself keeps no history.
 
-The footer links to the handbook and to this repository.
+At the foot of the page there's a small illustration of the system, with Australian plants and wildlife, then links to the handbook and to this repository.
 
 ![Settings: Home Assistant connection, token and read interval](docs/images/webui-settings.jpg)
 

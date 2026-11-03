@@ -1,8 +1,21 @@
 # Changelog
 
-## [0.8.0-dev] 04-11-2026
+## [0.8.0] 04-11-2026
 
-No changes yet.
+### Added
+
+- Web dashboard footer artwork: an Australian solar illustration (sun to rooftop panels, house to grid, house to battery, native plants and wildlife) between the 30-minute chart and the footer links. It's decorative only (`alt=""`), shown centred at up to 480 px wide (full width on narrow phones), keeps its 3:1 shape, and is lightened in dark mode with a CSS filter.
+- `web/assets/` for static web files. `tools/embed_docs.py` embeds them at build time and the device serves them at `/assets/<name>`, with a one-year browser cache; the page adds `?v=` to the address, so a new version gets fetched. The transparent WebP is 112 KB; the PNG fallback in the handoff package (215 KB) is left out, since every current browser shows WebP. App flash is now 92%.
+
+### Changed
+
+- Documentation sweep:
+  - Reduce Motion explained in the handbook (energy flow caption and a troubleshooting row) and the README: with it on, the web comets stay still by design.
+  - Footer artwork described in the handbook and README.
+  - "Layout" setting named as in the web UI.
+  - Comets replace chevrons and arrows in the hardware checklist.
+  - Items the owner has verified are ticked: panel layout, iPhone access, CI releases.
+- Every web screenshot retaken for 0.8.0 with the footer artwork, including the README's full-page dashboard capture.
 
 ---
 

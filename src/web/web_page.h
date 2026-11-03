@@ -67,7 +67,9 @@ code{font:12.5px ui-monospace,Menlo,monospace;background:var(--tile);padding:1px
 details summary{cursor:pointer;color:var(--accent-ink);margin-top:14px}pre{font:12px ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
 #message{position:fixed;right:22px;bottom:22px;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:9px;display:none;max-width:420px;z-index:5;box-shadow:0 6px 24px rgba(0,0,0,.18)}
 .hidden{display:none}
-.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:28px 0 0;padding:14px 18px;border:1px solid var(--line);border-radius:9px;background:var(--tile);color:var(--muted);font-size:13.5px}
+.art{margin:28px 0 0}.art img{display:block;width:min(100%,480px);height:auto;margin:0 auto}
+@media(prefers-color-scheme:dark){.art img{filter:invert(.82) hue-rotate(180deg)}}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 0;padding:14px 18px;border:1px solid var(--line);border-radius:9px;background:var(--tile);color:var(--muted);font-size:13.5px}
 .foot a{color:var(--accent-ink);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:7px}.foot a:hover{text-decoration:underline}
 @media(max-width:980px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.app{display:block}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:14px 16px}
@@ -128,6 +130,7 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 <div class="legend"><span><i style="background:var(--solar)"></i>Solar</span><span><i style="background:var(--house)"></i>House</span><span><i style="background:var(--grid)"></i>Grid (+ import / &minus; export)</span><span><i style="background:var(--battery)"></i>Battery (+ supplying / &minus; charging)</span></div>
 <p class="note" id="trendNote">Collected by this browser while the page is open; the device keeps no history.</p></div>
 <p class="cap" id="sourceStatus">Waiting for device status&hellip;</p>
+<footer class="art"><img src="/assets/solar-footer.webp?v=1" alt="" aria-hidden="true" width="1600" height="533" loading="lazy" decoding="async"></footer>
 <div class="foot"><span>CYD Home Solar Monitor &middot; SolarEdge + Home Assistant &middot; <a href="/guide/" target="_blank" rel="noopener">Handbook</a></span>
 <a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.6 7.6 0 0 1 8 3.9c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>github.com/anthonyjclarke/CYD-Home_Solar_Monitor</a></div>
 </section>

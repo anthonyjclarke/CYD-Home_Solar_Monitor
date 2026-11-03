@@ -1,7 +1,8 @@
 # PlatformIO pre-build script: embeds docs/index.html and the images it uses
-# into src/web/handbook_data.h, served by the device at /guide/.
-# Text assets are gzipped; JPEGs are stored as-is. The header is generated
-# (gitignored) and only rewritten when its content changes.
+# (served at /guide/) and every file in web/assets/ (served at /assets/) into
+# src/web/handbook_data.h. Text assets are gzipped; images that are already
+# compressed are stored as-is. The header is generated (gitignored) and only
+# rewritten when its content changes.
 import gzip
 import re
 from pathlib import Path
@@ -13,16 +14,20 @@ except NameError:
     ROOT = Path(__file__).resolve().parent.parent
 
 DOCS = ROOT / "docs"
+WEB_ASSETS = ROOT / "web" / "assets"
 OUT = ROOT / "src" / "web" / "handbook_data.h"
-TYPES = {".html": "text/html", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg"}
+TYPES = {".html": "text/html", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp"}
+PACKED = {".html", ".svg"}
 
 
 def assets():
     page = (DOCS / "index.html").read_text(encoding="utf-8")
     names = sorted(set(re.findall(r'src="(images/[\w.-]+)"', page)))
-    yield "index.html", (DOCS / "index.html").read_bytes()
+    yield "/guide/", "index.html", (DOCS / "index.html").read_bytes()
     for name in names:
-        yield name, (DOCS / name).read_bytes()
+        yield "/guide/" + name, name, (DOCS / name).read_bytes()
+    for path in sorted(WEB_ASSETS.glob("*")) if WEB_ASSETS.is_dir() else []:
+        yield "/assets/" + path.name, path.name, path.read_bytes()
 
 
 def main():
@@ -30,13 +35,12 @@ def main():
              "#include <Arduino.h>", "", "namespace handbook {",
              "struct Asset { const char* path; const char* type; const uint8_t* data; size_t size; bool gzip; };"]
     table = []
-    for i, (name, data) in enumerate(assets()):
+    for i, (url, name, data) in enumerate(assets()):
         ext = Path(name).suffix
-        packed = ext != ".jpg" and ext != ".png"
+        packed = ext in PACKED
         body = gzip.compress(data, 9, mtime=0) if packed else data
         lines.append("const uint8_t a%d[] PROGMEM = {%s};" % (i, ",".join(str(b) for b in body)))
-        table.append('{"/guide/%s","%s",a%d,%d,%s}' % ("" if name == "index.html" else name, TYPES[ext], i, len(body),
-                                                       "true" if packed else "false"))
+        table.append('{"%s","%s",a%d,%d,%s}' % (url, TYPES[ext], i, len(body), "true" if packed else "false"))
     lines.append("const Asset assets[] = {%s};" % ",".join(table))
     lines.append("constexpr size_t count = sizeof(assets) / sizeof(assets[0]);")
     lines.append("}  // namespace handbook")

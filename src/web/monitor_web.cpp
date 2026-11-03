@@ -219,10 +219,13 @@ void begin() {
         if(!uploadOK) { error(updateError.isEmpty()?"No firmware uploaded":updateError.c_str());return; }
         server.send(200,"application/json","{\"updated\":true}");requestReboot();
     },uploadChunk);
-    // Handbook from docs/, embedded at build time by tools/embed_docs.py.
+    // Handbook (docs/) and web assets (web/assets/), embedded at build time by
+    // tools/embed_docs.py. The page links /assets/ files with a ?v= version, so
+    // browsers may keep them; the handbook changes with each firmware.
     for (size_t i=0;i<handbook::count;++i) server.on(handbook::assets[i].path,HTTP_GET,[i]{
         const auto& a=handbook::assets[i];
-        server.sendHeader("Cache-Control","no-cache");  // Content changes with each firmware.
+        const bool versioned=strncmp(a.path,"/assets/",8)==0;
+        server.sendHeader("Cache-Control",versioned ? "public, max-age=31536000, immutable" : "no-cache");
         if (a.gzip) server.sendHeader("Content-Encoding","gzip");
         server.send_P(200,a.type,reinterpret_cast<PGM_P>(a.data),a.size);
     });

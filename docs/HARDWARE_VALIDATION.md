@@ -1,6 +1,6 @@
 # Hardware Validation
 
-Firmware `0.7.0`. Build and portable model checks pass, and the firmware runs on the owner's panel with live Home Assistant data. Unchecked items below still need a check on a real CYD.
+Firmware `0.8.0`. Build and portable model checks pass, and the firmware runs on the owner's panel with live Home Assistant data. Unchecked items below still need a check on a real CYD.
 
 ---
 
@@ -24,8 +24,8 @@ The browser fixture uses synthetic data. Its success does not validate device au
 
 - [ ] Fresh USB flash starts with readable, correctly coloured 320 × 240 output.
 - [ ] Panel colours match `docs/images/flow-preview.png` (navy cards, not green); the palette is RGB332-exact.
-- [ ] Centre-flow layout matches `docs/images/centre-flow-preview.png`; chevrons move toward/away from the hub correctly for import/export and charge/supply.
-- [ ] Switching **Panel layout** in the browser changes the panel immediately and persists across restart.
+- [ ] Centre-flow layout matches `docs/images/centre-flow-preview.png`; comets move toward/away from the hub correctly for import/export and charge/supply, smoothly at 20 fps.
+- [ ] Switching **Settings → Display → Layout** in the browser changes the panel immediately and persists across restart.
 - [x] Boot screen shows Wi-Fi, IP, signal, HA and clock, and closes about 6.4 s after boot when Wi-Fi connects; readings are live by then (first poll at 2 s).
 - [ ] Boot screen readable by eye; a tap skips it; with Wi-Fi unavailable it closes at 15 s onto the Wi-Fi setup page.
 - [ ] Setup page refreshes once per second without visible flashing.
@@ -63,6 +63,7 @@ The browser fixture uses synthetic data. Its success does not validate device au
 - [ ] Place search fills latitude, longitude, timezone and POSIX rule; saving changes the clock immediately.
 - [x] `[WEATHER]` shows HTTP 200 after boot (fetch ≈7.6 s, no watchdog reset). Still to check: repeats about every 30 minutes; icons match conditions.
 - [ ] Weather survives an HA outage and clears when the location is cleared.
+- [ ] Web page stays responsive while the panel animates at 20 fps (page loads typically 0.3–0.7 s).
 - [x] Free heap healthy across a weather TLS fetch (`min_heap` 53 KB, idle heap ~114–122 KB). Still to check over hours.
 - [ ] Battery gauge fill and colour match state of energy (green ≥ 50%, amber ≥ 20%, red below).
 - [ ] Daily solar total matches the HA Energy dashboard and resets at local midnight.
@@ -78,9 +79,9 @@ The browser fixture uses synthetic data. Its success does not validate device au
 - [ ] Updating a 0.1.0 device preserves its token, URL and first five entity mappings and supplies the new DC default.
 - [ ] Saving migrated settings retains all six mappings after a subsequent restart.
 - [ ] Blank token preserves the saved value; explicit clear removes it.
-- [x] `solar.local` resolves on the Mac and the request-header guard returns 403 without the header. Still to check: `http://solar.local/` opens from an iPhone; browser changes work without a login and are refused without the `X-CYD-Request` header.
-- [ ] Panel matches `docs/images/centre-flow-preview.png`: SOLAR/GRID/BATTERY/HOUSE labels readable, no overlaps.
-- [ ] Web UI: flow-diagram arrows match real import/export and charge/supply; light/dark follow the browser; Save works from every settings section.
+- [x] `solar.local` resolves on the Mac and the request-header guard returns 403 without the header. `http://solar.local/` opens from an iPhone (owner, 04-11-2026). Still to check: browser changes work without a login and are refused without the `X-CYD-Request` header.
+- [x] Panel matches `docs/images/centre-flow-preview.png`: SOLAR/GRID/BATTERY/HOUSE labels readable, no overlaps, even pipe gaps (owner, 04-11-2026).
+- [ ] Web UI: flow-diagram comets match real import/export and charge/supply (still, by design, with Reduce Motion on); light/dark follow the browser; Save works from every settings section.
 - [ ] Night dimming follows Sydney time; touch restores brightness for a minute.
 - [ ] Wi-Fi reset preserves HA settings and returns to setup after restart.
 - [ ] Browser app update succeeds and preserves settings/calibration.
@@ -93,8 +94,8 @@ The browser fixture uses synthetic data. Its success does not validate device au
 
 ## Browser installer release
 
-- [ ] Create/configure the remote repository and Pages only when requested.
-- [ ] Build a credential-free CI release on a `v*` tag on `main`.
+- [x] Create/configure the remote repository and Pages only when requested.
+- [x] Build a credential-free CI release on a `v*` tag on `main` (v0.6.0, v0.7.0).
 - [ ] Fresh browser installation provisions Wi-Fi and reports the expected project identity.
 - [ ] Reconnecting recognises the same firmware and offers an update preserving NVS.
 

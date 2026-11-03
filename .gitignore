@@ -7,3 +7,4 @@ include/secrets.h
 _site/
 *.local.json
 
+src/web/handbook_data.h

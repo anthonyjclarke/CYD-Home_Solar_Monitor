@@ -51,7 +51,7 @@ class Handler(BaseHTTPRequestHandler):
                                  "unit": "%" if i == 4 else "W", "receivedAgeSeconds": 1})
             return self.send({"demo": False, "complete": True, "reportTimeKnown": False,
                               "skewSeconds": 0, "weather": {"configured": True, "place": CONFIG["place"], "valid": True, "fresh": True, "nowC": 23.5, "nowCode": 2, "tomorrowMaxC": 24, "tomorrowCode": 61, "ageSeconds": 60}, "localTime": "2026-11-03 14:32 AEDT", "totals": {"today": {"entity": CONFIG["today"], "value": 25.6, "valid": True, "fresh": True}, "tomorrow": {"entity": CONFIG["forecast"], "value": 21, "valid": True, "fresh": True}}, "skewLimitSeconds": 10, "battery": CONFIG["battery"], "message": "Browser fixture / synthetic data",
-                              "project": "CYD-Home-Solar-Monitor", "version": "0.6.0",
+                              "project": "CYD-Home-Solar-Monitor", "version": "0.7.0-dev",
                               "ip": "127.0.0.1", "uptimeSeconds": 120, "freeHeap": 100000,
                               "readings": readings})
         if self.path.startswith("/images/"):

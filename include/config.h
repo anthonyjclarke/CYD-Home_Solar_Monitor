@@ -1,7 +1,7 @@
 #pragma once
 
 #define PROJECT_NAME "CYD-Home-Solar-Monitor"
-#define FIRMWARE_VERSION "0.6.0"
+#define FIRMWARE_VERSION "0.7.0-dev"
 #define IMPROV_SETUP_ENABLED 1
 #define IMPROV_DEVICE_PREFIX "CYD-Solar"
 #define APP_DEFAULT_DEBUG_LEVEL 3

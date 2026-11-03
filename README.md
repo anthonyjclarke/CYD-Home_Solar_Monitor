@@ -1,16 +1,22 @@
 # CYD Home Solar Monitor
 
-A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-2432S028R). It shows solar generation, house demand, grid import/export and battery power and charge as live, animated flows, read from **Home Assistant**. It was built for a SolarEdge SE6000 inverter with an LG battery, and works with any Home Assistant power sensors that follow the same conventions.
+A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-2432S028R). It shows solar generation, house demand, grid import/export and battery power and charge as live, animated flows.
 
-Version `0.6.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
+It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
 
-![Centre-flow layout](docs/images/centre-flow-preview.png)
+Version `0.6.0` (`dev`: `0.7.0-dev`) · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
+
+| Centre flow (light, default)                                     | Cards (dark)                                     |
+|:----------------------------------------------------------------:|:------------------------------------------------:|
+| ![Centre-flow layout](docs/images/centre-flow-preview.png)       | ![Cards layout](docs/images/flow-preview.png)    |
+
+Both layouts show the same readings. Switch between them in the browser under **Settings → Display → Layout**.
 
 ---
 
 ## Features
 
-- **Two panel layouts.** Centre flow (light, the default) has the four flows meeting at the inverter, with moving arrows showing direction. Cards (dark) shows the same readings as four cards.
+- **Two panel layouts.** Centre flow (light, the default) has the four flows meeting at the inverter, with moving arrows showing direction. Cards (dark) shows the same readings as four cards. Choose either in the web UI under **Settings → Display → Layout**.
 - **Battery at a glance.** A gauge filled to the state of energy turns amber below 50% and red below 20%. The status line says when it's a good time to use power.
 - **Optional extras:** today's solar kWh, tomorrow's solar forecast, and weather from Open-Meteo for a location you choose.
 - **Browser dashboard** at `http://solar.local/`, covering:
@@ -25,6 +31,37 @@ Version `0.6.0` · [Install in your browser](https://anthonyjclarke.github.io/CY
   - POSIX timezone set from the browser.
 
 The monitor never talks to the inverter. Home Assistant keeps its existing connection (here, SolarEdge Modbus Multi), and the CYD reads entity states from Home Assistant's local REST API every few seconds.
+
+---
+
+## What you need
+
+### Energy system and Home Assistant
+
+| Item                   | Requirement                                   |
+|:-----------------------|:----------------------------------------------|
+| SolarEdge inverter     | Modbus TCP turned on in SetApp (port 1502)    |
+| Battery                | On that inverter; reports DC power and SoE    |
+| SolarEdge energy meter | At the grid connection (import/export)        |
+| Home Assistant         | Same LAN as the panel                         |
+| SolarEdge Modbus Multi | Installed from HACS, meters and batteries on  |
+| House power sensor     | A template helper (in the handbook)           |
+| Access token           | A long-lived token from your HA profile       |
+| Optional               | Forecast.Solar or Solcast; daily solar kWh    |
+
+The inverter takes one Modbus client at a time. Home Assistant is that client, which is why the panel reads Home Assistant and never the inverter. The cloud SolarEdge integration isn't enough: it updates every 15 minutes and has no battery power.
+
+### Hardware
+
+| Item               | Notes                                         |
+|:-------------------|:----------------------------------------------|
+| ESP32-2432S028R    | 2.8″ CYD: ILI9341, resistive touch, micro-USB |
+| USB data cable     | Charge-only cables aren't detected            |
+| 5 V USB supply     | 1 A or better, to run it permanently          |
+| Chrome or Edge     | Desktop browser, for the web installer        |
+| 2.4 GHz Wi-Fi      | The ESP32 can't join 5 GHz-only networks      |
+
+No soldering or wiring. The board costs about US$10–15; the [CYD community repository](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display) describes it, where to buy it and printable cases. Newer two-USB-port boards use a different display controller and are untested.
 
 ---
 
@@ -47,7 +84,7 @@ You need a Home Assistant **long-lived access token**: Profile → Security → 
 
 1. Browse to `http://solar.local/`, or tap the panel to see its IP address. There is no login, so keep the device on a trusted home network.
 2. Under **Settings → Home Assistant**, enter the Home Assistant URL and the token, then save.
-3. Under **Settings → Entities**, check the six power sensors.
+3. Under **Settings → Entities**, check the six power sensors. Five come from Modbus Multi with its default names. The household sensor is a template you create; the handbook gives it, along with a true daily-solar sensor (inverter AC energy overcounts with a battery).
 4. Optionally:
    - search for your town under **Location & weather**;
    - add the daily-solar and forecast sensors;
@@ -75,12 +112,6 @@ Open it from a local clone or the GitHub file view.
 
 ---
 
-## Hardware
-
-An ESP32-2432S028R (CYD 2.8″) with an ILI9341 display in landscape, USB on the right, and an XPT2046 touch controller on its own SPI bus. No other wiring is needed.
-
----
-
 ## Building
 
 Open the folder in PlatformIO (env `cyd28`, `espressif32@6.12.0`, Arduino core 2.0.17, C++17):
@@ -95,10 +126,27 @@ No secrets are compiled in: the token and Wi-Fi live in the device's NVS. Releas
 
 ---
 
-## Credits
+## Acknowledgements
 
-- The service scaffold and installer tooling come from the author's `CYD_Display_Test` and [cyd-web-installer](https://github.com/anthonyjclarke/cyd-web-installer).
-- The display and touch bus handling come from `CYD_AnimatedPixelClock`.
-- Weather is from [Open-Meteo](https://open-meteo.com/).
+Thank you to the projects this one builds on:
+
+- **Energy and Home Assistant:**
+  - [SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi) by WillCodeForCats, plus its [template-sensor wiki](https://github.com/WillCodeForCats/solaredge-modbus-multi/wiki/Template-Sensors-for-Power-and-Energy);
+  - [Home Assistant](https://www.home-assistant.io/) and [HACS](https://hacs.xyz/);
+  - [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/) and [Solcast](https://github.com/BJReplay/ha-solcast-solar).
+- **Weather:** [Open-Meteo](https://open-meteo.com/). Weather data by Open-Meteo.com, licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- **Hardware:** the [ESP32 Cheap Yellow Display](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display) community, led by Brian Lough.
+- **Firmware libraries:**
+  - [Arduino core for ESP32](https://github.com/espressif/arduino-esp32) and [PlatformIO](https://platformio.org/);
+  - [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI) by Bodmer;
+  - [XPT2046_Touchscreen](https://github.com/PaulStoffregen/XPT2046_Touchscreen) by Paul Stoffregen;
+  - [WiFiManager](https://github.com/tzapu/WiFiManager) by tzapu;
+  - [ArduinoJson](https://arduinojson.org/) by Benoît Blanchon;
+  - [Improv-WiFi-Library](https://github.com/jnthas/Improv-WiFi-Library) by jnthas.
+- **Installer:** [ESP Web Tools](https://esphome.github.io/esp-web-tools/) and [Improv Wi-Fi](https://www.improv-wifi.com/), through [cyd-web-installer](https://github.com/anthonyjclarke/cyd-web-installer).
+
+The handbook's [appendix](docs/index.html#appendix) lists what each one is used for.
+
+SolarEdge, LG and Home Assistant are trademarks of their owners. This project isn't affiliated with or endorsed by them.
 
 MIT licensed – see [LICENSE](LICENSE).

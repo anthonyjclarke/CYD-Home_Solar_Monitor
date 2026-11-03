@@ -6,7 +6,7 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 
 ## What it is
 
-`0.6.0`. Energy-flow display (solar / home / grid / battery + SOC) that reads a SolarEdge SE6000 + LG battery **via Home Assistant's REST API** (`/api/states/<entity>`), never the inverter directly. A background FreeRTOS task polls six entities; the main loop renders, handles touch, web UI, OTA and Improv. Running on the owner's panel; open checks in `docs/HARDWARE_VALIDATION.md`.
+`0.7.0-dev` (0.6.0 released). Energy-flow display (solar / home / grid / battery + SOC) that reads a SolarEdge SE6000 + LG battery **via Home Assistant's REST API** (`/api/states/<entity>`), never the inverter directly. A background FreeRTOS task polls six entities; the main loop renders, handles touch, web UI, OTA and Improv. Running on the owner's panel; open checks in `docs/HARDWARE_VALIDATION.md`.
 
 ---
 
@@ -72,6 +72,7 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 - Release images come only from CI on a `v*` tag on `main` matching `FIRMWARE_VERSION` with no suffix. Never put `firmware-merged.bin` in a manifest.
 - Improv is vendored in `lib/ImprovWiFi` – never add it to `lib_deps`. `improvTick()` must run at least every ~1 s.
 - Before the next release, clear *Tests owed* in `docs/WEB_INSTALLER.md`.
+- `src/web/handbook_data.h` is generated (gitignored) by the `pre:tools/embed_docs.py` script from `docs/index.html` and the images it references, served at `/guide/`. Keep doc images small: app flash is ~84% of the 1.79 MB slot.
 
 ## Style
 

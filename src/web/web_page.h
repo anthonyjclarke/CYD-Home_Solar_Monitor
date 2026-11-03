@@ -8,7 +8,7 @@
 // API calls are part of the device contract (see monitor_web.cpp).
 const char WEB_PAGE[] PROGMEM = R"HTML(<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Solar Monitor</title><style>
+<title>Solar Monitor</title><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg stroke='%23E0A23F' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='6.5' fill='%23F2B84B'/%3E%3Cpath d='M16 2v4M16 26v4M2 16h4M26 16h4M6.1 6.1l2.8 2.8M23.1 23.1l2.8 2.8M6.1 25.9l2.8-2.8M23.1 8.9l2.8-2.8'/%3E%3C/g%3E%3C/svg%3E"><style>
 :root{--bg:#F4F0E7;--side:#F1ECE0;--card:#FCFAF4;--tile:#F6F1E6;--line:#E4DDCC;--ink:#24221C;--muted:#6C675B;--label:#8A8472;
 --accent:#B97512;--accent-ink:#97600D;--sel:#E6DCC4;--good:#1F8A5B;--good-bg:#DDEFE3;--bad:#C0392B;--bad-bg:#F6DEDA;--field:#FFFFFF;--on-accent:#FFFFFF;
 --solar:#C0842C;--grid:#4A78A8;--battery:#2F7D62;--house:#6F7F95;--idle:#B9B2A0;color-scheme:light}
@@ -47,8 +47,8 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 .node rect.box{fill:var(--tile);stroke:var(--line)}.node .nk{font:11px ui-monospace,Menlo,monospace;letter-spacing:.07em;fill:var(--label)}
 .node .nv{font-size:24px;font-weight:600;fill:var(--ink)}.node .ns{font-size:12.5px;fill:var(--muted)}.node.stale .nv{fill:var(--idle)}
 .track{stroke:var(--line);stroke-width:8;stroke-linecap:round}
-.flowline{fill:none;stroke-width:5;stroke-linecap:round;stroke-dasharray:1 16;animation:run 1.2s linear infinite}
-@keyframes run{to{stroke-dashoffset:-17}}
+.band{fill:none;stroke-linecap:round;stroke-opacity:.2;transition:stroke-width .8s}.spine{fill:none;stroke-width:1.2;stroke-linecap:round;stroke-opacity:.35}
+.comet .hot{fill:#FFF8E8;opacity:.85}@media(prefers-color-scheme:dark){.band{stroke-opacity:.24}.comet .hot{fill:#FFF3D6;opacity:.7}}
 .legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin:8px 0 0}.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
 #trend{width:100%;height:250px;display:block}
 label{display:block;font-size:14px;margin:14px 0 6px}
@@ -67,6 +67,8 @@ code{font:12.5px ui-monospace,Menlo,monospace;background:var(--tile);padding:1px
 details summary{cursor:pointer;color:var(--accent-ink);margin-top:14px}pre{font:12px ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
 #message{position:fixed;right:22px;bottom:22px;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:9px;display:none;max-width:420px;z-index:5;box-shadow:0 6px 24px rgba(0,0,0,.18)}
 .hidden{display:none}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:28px 0 0;padding:14px 18px;border:1px solid var(--line);border-radius:9px;background:var(--tile);color:var(--muted);font-size:13.5px}
+.foot a{color:var(--accent-ink);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:7px}.foot a:hover{text-decoration:underline}
 @media(max-width:980px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.app{display:block}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:14px 16px}
 nav{display:flex;flex-wrap:wrap;gap:4px}nav h4{display:none}.crt-h,.crt{display:none}.logo{margin-bottom:10px}
@@ -78,6 +80,7 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 <h4>Live</h4><a href="#dashboard">Dashboard</a>
 <h4>Settings</h4><a href="#connection">Home Assistant</a><a href="#display">Display</a><a href="#location">Location &amp; weather</a><a href="#entities">Entities</a>
 <h4>Device</h4><a href="#device">Device &amp; firmware</a><a href="#diagnostics">Diagnostics</a>
+<h4>Help</h4><a href="/guide/" target="_blank" rel="noopener">Handbook &#8599;</a>
 </nav>
 <div class="crt-h">Device status</div>
 <div class="crt"><div class="t"><span class="led" id="led"></span><span id="crtTitle">Connecting</span></div>
@@ -101,16 +104,11 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 </div>
 <div class="card"><h2>Energy flow</h2>
 <svg id="flow" viewBox="0 0 640 400" role="img" aria-label="Energy flow between solar, grid, battery and house">
-<defs><marker id="aSolar" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--solar)"/></marker>
-<marker id="aGrid" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--grid)"/></marker>
-<marker id="aBatt" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--battery)"/></marker>
-<marker id="aHouse" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--house)"/></marker></defs>
 <line class="track" x1="320" y1="98" x2="320" y2="172"/><line class="track" x1="168" y1="200" x2="292" y2="200"/>
 <line class="track" x1="348" y1="200" x2="472" y2="200"/><line class="track" x1="320" y1="228" x2="320" y2="302"/>
-<path class="flowline" id="fSolar" style="stroke:var(--solar)" marker-end="url(#aSolar)"/><path class="flowline" id="fGrid" style="stroke:var(--grid)" marker-end="url(#aGrid)"/>
-<path class="flowline" id="fBatt" style="stroke:var(--battery)" marker-end="url(#aBatt)"/><path class="flowline" id="fHouse" style="stroke:var(--house)" marker-end="url(#aHouse)"/>
+<g id="flows"></g>
 <circle cx="320" cy="200" r="26" fill="var(--card)" stroke="var(--line)" stroke-width="2"/>
-<text x="320" y="204" text-anchor="middle" class="mono" font-size="10" fill="var(--label)" letter-spacing=".07em">INV</text>
+<path d="M305 200q3.75-9 7.5 0t7.5 0t7.5 0t7.5 0" fill="none" stroke="var(--label)" stroke-width="2" stroke-linecap="round"><title>Inverter</title></path>
 <g class="node" id="nSolar" transform="translate(240,12)"><rect class="box" width="160" height="86" rx="9"/>
 <g transform="translate(20,30)" stroke="var(--solar)" stroke-width="2.4" stroke-linecap="round" fill="none"><circle r="7"/><path d="M0-14v3M0 11v3M-14 0h3M11 0h3M-10-10l2 2M8 8l2 2M-10 10l2-2M8-8l2-2"/></g>
 <text class="nk" x="44" y="26">SOLAR</text><text class="nv" x="44" y="54" id="nvSolar">&ndash;</text><text class="ns" x="44" y="74" id="nsSolar"></text></g>
@@ -124,12 +122,14 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 <g transform="translate(20,30)" stroke="var(--house)" stroke-width="2.2" stroke-linejoin="round" fill="none"><path d="M-12 0L0-11L12 0M-8-3v15h16V-3M-3 12V5h6v7"/></g>
 <text class="nk" x="44" y="26">HOUSE</text><text class="nv" x="44" y="54" id="nvHouse">&ndash;</text><text class="ns" x="44" y="74" id="nsHouse"></text></g>
 </svg>
-<p class="note">Moving dots and arrowheads show which way power is flowing; they move faster as power rises. A grey arm means the reading is idle, missing or stale.</p></div>
+<p class="note">Comets travel the way power is flowing. A thicker arm and faster comets mean more power; a plain grey arm is idle, missing or stale.</p></div>
 <div class="card"><h2>Last 30 minutes</h2>
 <svg id="trend" viewBox="0 0 640 250" role="img" aria-label="Power over the last 30 minutes"></svg>
 <div class="legend"><span><i style="background:var(--solar)"></i>Solar</span><span><i style="background:var(--house)"></i>House</span><span><i style="background:var(--grid)"></i>Grid (+ import / &minus; export)</span><span><i style="background:var(--battery)"></i>Battery (+ supplying / &minus; charging)</span></div>
 <p class="note" id="trendNote">Collected by this browser while the page is open; the device keeps no history.</p></div>
 <p class="cap" id="sourceStatus">Waiting for device status&hellip;</p>
+<div class="foot"><span>CYD Home Solar Monitor &middot; SolarEdge + Home Assistant &middot; <a href="/guide/" target="_blank" rel="noopener">Handbook</a></span>
+<a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.6 7.6 0 0 1 8 3.9c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>github.com/anthonyjclarke/CYD-Home_Solar_Monitor</a></div>
 </section>
 
 <form id="settings">
@@ -168,7 +168,7 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 <section class="page" id="p-entities"><h1>Entities</h1><p class="cap">Home Assistant sensors the device reads. Defaults match the SolarEdge Modbus Multi integration.</p>
 <div class="card"><h2>Live power</h2><div id="entities"></div></div>
 <div class="card"><h2>Daily totals (optional)</h2>
-<label for="today">Solar energy today (kWh)</label><input id="today" maxlength="100" placeholder="sensor.solar_energy_today"><span class="hint">A daily Utility Meter helper on the solar production sensor your Energy dashboard uses.</span>
+<label for="today">Solar energy today (kWh)</label><input id="today" maxlength="100" placeholder="sensor.solar_energy_today"><span class="hint">A daily Utility Meter on solar energy built from DC + battery power, not inverter AC energy. See the handbook.</span>
 <label for="forecast">Solar forecast tomorrow (kWh)</label><input id="forecast" maxlength="100" placeholder="sensor.energy_production_tomorrow"><span class="hint">From Forecast.Solar or Solcast. Leave blank to show tomorrow's temperature instead.</span></div>
 <div class="card"><h2>HTTPS certificate</h2>
 <label for="ca">Trusted CA certificate (PEM, only for an https:// URL)</label><textarea id="ca" maxlength="6000" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
@@ -213,13 +213,30 @@ function pill(id,text,kind){const e=$(id);e.textContent=text;e.className='pill'+
 let toastTimer;function message(text){const m=$('message');m.textContent=text;m.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>m.style.display='none',5000)}
 async function api(path,body){const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-CYD-Request':'1'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const data=await response.json();if(!response.ok)throw Error(data.error||'Request failed');return data}
 async function load(){const c=await api('/api/config');['url','poll','stale','brightness','nightStart','nightEnd','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>$(k).value=c[k]);$('lat').value=c.lat??'';$('lon').value=c.lon??'';['demo','nightDim'].forEach(k=>$(k).checked=c[k]);$('layout').value=String(c.layout);c.entities.forEach((id,i)=>$('entity'+i).value=id);$('tokenState').textContent=c.tokenSaved?'A token is saved. Leave blank to keep it.':'No Home Assistant token saved yet.'}
-// Flow diagram: each arm is drawn from source to destination, so dots and the
-// arrowhead travel the way power flows. Each arm is [outer end, hub end];
+// Flow diagram: comets travel from source to destination, the way power
+// flows. Each arm is [outer end, hub end];
 // grid +import and battery +supplying flow into the hub (320,200).
 const ARMS={Solar:[[320,100],[320,170]],Grid:[[170,200],[290,200]],Batt:[[470,200],[350,200]],House:[[320,300],[320,230]]};
-function arm(id,live,watts,intoHub){const f=$('f'+id),[a,b]=ARMS[id],active=live&&Math.abs(watts)>30;
-const s=intoHub?a:b,e=intoHub?b:a;f.setAttribute('d','M'+s[0]+' '+s[1]+'L'+e[0]+' '+e[1]);f.style.display=active?'':'none';
-f.style.animationDuration=Math.max(.35,1.6-Math.abs(watts)/4000)+'s'}
+// Comets: a pale core, coloured head and fading tail, eased along each arm.
+// The faint band under them widens with power (capped at 5 kW).
+const FL={},NS='http://www.w3.org/2000/svg',COL={Solar:'--solar',Grid:'--grid',Batt:'--battery',House:'--house'};
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function svgEl(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e}
+Object.keys(ARMS).forEach(id=>{const g=svgEl('g',{style:'display:none'},$('flows')),[a,b]=ARMS[id],d='M'+a[0]+' '+a[1]+'L'+b[0]+' '+b[1],c='var('+COL[id]+')';
+const band=svgEl('path',{class:'band',d,style:'stroke:'+c},g);svgEl('path',{class:'spine',d,style:'stroke:'+c},g);const comets=[];
+for(let i=0;i<3;i++){const k=svgEl('g',{class:'comet'},g);[[0,1,1],[-.9,.8,.7],[-1.9,.64,.45],[-3,.5,.28],[-4.2,.38,.15]].forEach(([x,r,o])=>svgEl('circle',{cx:x,r,style:'fill:'+c,opacity:o},k));svgEl('circle',{class:'hot',r:.42},k);comets.push(k)}
+FL[id]={g,band,comets,track:document.querySelectorAll('#flow .track')[Object.keys(ARMS).indexOf(id)],on:false,kw:0,into:true,ph:Math.random()}});
+function arm(id,live,watts,intoHub){const f=FL[id],kw=Math.abs(watts)/1000;f.on=live&&Math.abs(watts)>30;f.kw=kw;f.into=intoHub;
+f.g.style.display=f.on?'':'none';f.track.style.opacity=f.on?.35:1;f.band.setAttribute('stroke-width',(3+Math.min(kw,5)*2.2).toFixed(1));if(RM)frame(0)}
+const ease=p=>p<.5?2*p*p:1-2*(1-p)*(1-p);
+let lastFrame=0;function frame(now){const dt=Math.min(.1,(now-lastFrame)/1000||0);lastFrame=now;
+for(const id in FL){const f=FL[id];if(!f.on)continue;const [a,b]=ARMS[id],s=f.into?a:b,e=f.into?b:a,ang=Math.atan2(e[1]-s[1],e[0]-s[0])*57.3;
+const n=f.kw>2.5?3:2,hr=3.4+Math.min(f.kw,5)*.9;f.ph=(f.ph+dt/Math.max(.8,2.8-f.kw*.42))%1;
+f.comets.forEach((k,i)=>{if(i>=n){k.style.opacity=0;return}const p=RM?.72:(f.ph+i/n)%1,q=ease(p);
+k.setAttribute('transform','translate('+(s[0]+(e[0]-s[0])*q).toFixed(1)+' '+(s[1]+(e[1]-s[1])*q).toFixed(1)+') rotate('+ang+') scale('+hr.toFixed(2)+')');
+k.style.opacity=RM?1:Math.min(1,p/.18,(1-p)/.18).toFixed(2)})}
+if(!RM)requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
 function node(id,r,sub){$('n'+id).classList.toggle('stale',!r.fresh);$('nv'+id).textContent=r.hasValue?power(r.value):'–';$('ns'+id).textContent=sub}
 const hist=[],HMAX=600;
 // Fixed 30-minute window ending now, with a kW Y axis on "nice" steps and an

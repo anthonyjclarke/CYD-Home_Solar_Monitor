@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.7.0-dev] 04-11-2026
+
+### Added
+
+- Web dashboard: banner at the foot linking to the GitHub repository.
+- Sun icon for the browser tab, on the device page and the handbook.
+- Handbook served by the device at `http://solar.local/guide/` (works offline), linked from a new Help group in the sidebar and from the dashboard banner. `tools/embed_docs.py` embeds `docs/index.html` and its images at build time (about 270 KB; app flash now 84%). Served with `Cache-Control: no-cache`, so browsers pick up the new handbook after a firmware update.
+- Handbook screenshots retaken with the comet flow, the Help link and the footer banner; the 30-minute chart has its own figure.
+- Handbook "What you need" section: SolarEdge inverter, battery and meter with Modbus TCP enabled, Home Assistant with SolarEdge Modbus Multi, the house power template, an access token, and the hardware (CYD board, data cable, 5 V supply, browser, 2.4 GHz Wi-Fi). README carries the same summary.
+- Handbook appendix and README acknowledgements, with links to every integration, library and service used.
+- Handbook recipes for the house power template and a true daily solar energy sensor (template, integral, utility meter).
+
+### Changed
+
+- Web flow diagram: comets (pale core, coloured head, fading tail) travel each arm in the direction of flow, easing in and out, replacing the blunt dashes and triangle arrowheads. Arm thickness, comet size and speed scale with power (capped at 5 kW); browsers set to reduce motion show still comets. The hub shows a sine wave instead of "INV".
+- Handbook "Choosing a layout" shows both layouts side by side and says where to switch (Settings → Display → Layout); the README shows both too.
+- The web UI hint for "Solar energy today" warns against inverter AC energy on battery systems.
+- References to the author's other projects removed from the README.
+
+---
+
 ## [0.6.0] 04-11-2026
 
 First public release, with a browser installer at https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/.

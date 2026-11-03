@@ -3,6 +3,7 @@
 #include "ha_source.h"
 #include "config.h"
 #include "web_page.h"
+#include "handbook_data.h"
 #include <ArduinoJson.h>
 #include <WebServer.h>
 #include <Update.h>
@@ -218,6 +219,14 @@ void begin() {
         if(!uploadOK) { error(updateError.isEmpty()?"No firmware uploaded":updateError.c_str());return; }
         server.send(200,"application/json","{\"updated\":true}");requestReboot();
     },uploadChunk);
+    // Handbook from docs/, embedded at build time by tools/embed_docs.py.
+    for (size_t i=0;i<handbook::count;++i) server.on(handbook::assets[i].path,HTTP_GET,[i]{
+        const auto& a=handbook::assets[i];
+        server.sendHeader("Cache-Control","no-cache");  // Content changes with each firmware.
+        if (a.gzip) server.sendHeader("Content-Encoding","gzip");
+        server.send_P(200,a.type,reinterpret_cast<PGM_P>(a.data),a.size);
+    });
+    server.on("/guide",HTTP_GET,[]{server.sendHeader("Location","/guide/");server.send(302);});
     server.onNotFound([]{server.send(404,"application/json","{\"error\":\"Not found\"}");});
     server.begin();started=true;
 }

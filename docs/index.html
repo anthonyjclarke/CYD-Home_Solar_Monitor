@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CYD Solar Monitor Handbook</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg stroke='%23E0A23F' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='6.5' fill='%23F2B84B'/%3E%3Cpath d='M16 2v4M16 26v4M2 16h4M26 16h4M6.1 6.1l2.8 2.8M23.1 23.1l2.8 2.8M6.1 25.9l2.8-2.8M23.1 8.9l2.8-2.8'/%3E%3C/g%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#f7f6f2;--surface:#ffffff;--ink:#1d2330;--muted:#5d6472;--line:#e3e1da;--accent:#2449aa;
@@ -63,13 +64,14 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <nav aria-label="Contents">
 <b>Handbook</b>
 <a href="#overview">Overview</a>
+<a href="#prereqs">What you need</a>
 <a href="#install">Install and flash</a>
 <a href="#first-setup">First setup</a>
 <a href="#ha">Home Assistant setup</a>
 <a href="#boot">Boot screen</a>
 <a href="#display">The display</a>
 <a href="#states">Display states</a>
-<a href="#cards">Cards layout</a>
+<a href="#cards">Choosing a layout</a>
 <a href="#touch">Touch, setup page, dimming</a>
 <a href="#browser">Browser dashboard</a>
 <a href="#settings">Settings reference</a>
@@ -77,11 +79,13 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <a href="#serial">Serial diagnostics</a>
 <a href="#troubleshooting">Troubleshooting</a>
 <a href="#security">Security and privacy</a>
+<a href="#appendix">Appendix: links and thanks</a>
 </nav>
 <main>
 <header class="hero">
 <h1>CYD Home Solar Monitor</h1>
-<p>Handbook for firmware <code>0.6.0</code>: installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a SolarEdge SE6000 and LG battery, read from Home Assistant.</p>
+<p>Handbook for firmware <code>0.7.0-dev</code>: installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a <b>SolarEdge</b> inverter and battery, read from <b>Home Assistant</b> through the <b>SolarEdge Modbus Multi</b> integration. It was built on a SolarEdge SE6000 with an LG 9.8 kWh battery.</p>
+<p>Source: <a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor">github.com/anthonyjclarke/CYD-Home_Solar_Monitor</a> · Installer: <a href="https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/">anthonyjclarke.github.io/CYD-Home_Solar_Monitor</a></p>
 </header>
 
 <h2 id="overview">Overview</h2>
@@ -90,6 +94,34 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <p>Six Home Assistant entities are read every cycle: inverter AC power, household power, the signed grid meter, signed battery DC power, battery state of energy and inverter DC power. Solar generation is calculated from inverter DC and battery power. Two optional kWh entities (today's solar energy and tomorrow's solar forecast) are read once a minute.</p>
 <figure><span class="panel"><img src="images/centre-flow-preview.svg" alt="Centre-flow layout showing solar, grid, battery and house power"></span>
 <figcaption>The default centre-flow layout. All panel images in this handbook are rendered from the firmware's own drawing code with sample data; fonts are approximated on the desktop.</figcaption></figure>
+
+<h2 id="prereqs">What you need</h2>
+<div class="note warn"><b>This is not a stand-alone solar monitor.</b> It displays sensors that Home Assistant already has. You need a working SolarEdge system <i>and</i> Home Assistant reading it over Modbus before the panel can show anything other than demo data.</div>
+<h3>Energy system</h3>
+<table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody>
+<tr><td>Inverter</td><td>A SolarEdge inverter with Modbus TCP, such as the HD-Wave SE6000 used here. One inverter is assumed (<code>i1</code> entities).</td></tr>
+<tr><td>Battery</td><td>A battery on that inverter (LG RESU, SolarEdge Home Battery) reporting DC power and state of energy (<code>b1</code> entities). Without one, the battery readings stay "No data" and the status line never reads live.</td></tr>
+<tr><td>Grid meter</td><td>A SolarEdge energy meter at the grid connection (<code>m1</code> entities), giving signed import/export power.</td></tr>
+<tr><td>Modbus TCP</td><td>Turned on in the inverter: in <a href="https://www.solaredge.com/en/products/software-tools/setapp">SetApp</a>, <b>Site Communication → Modbus TCP</b> (default port <code>1502</code>). Your installer may need to do this. The inverter accepts one Modbus client at a time. Home Assistant is that client, which is why the CYD reads Home Assistant and never the inverter.</td></tr>
+</tbody></table>
+<h3>Home Assistant</h3>
+<table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody>
+<tr><td>Home Assistant</td><td><a href="https://www.home-assistant.io/installation/">Any installation</a> on the same network as the CYD, reachable over HTTP (or HTTPS with its CA certificate).</td></tr>
+<tr><td>SolarEdge Modbus Multi</td><td>Installed from <a href="https://hacs.xyz/">HACS</a> and connected to the inverter: <a href="https://github.com/WillCodeForCats/solaredge-modbus-multi">WillCodeForCats/solaredge-modbus-multi</a>. In its options, turn on <b>Detect meters</b> and <b>Detect batteries</b>. It provides five of the six required entities. The built-in cloud SolarEdge integration is not enough: it updates every 15 minutes and has no battery power.</td></tr>
+<tr><td>House power sensor</td><td>A template sensor for household demand (see <a href="#ha">Home Assistant setup</a>). Modbus Multi doesn't provide one.</td></tr>
+<tr><td>Access token</td><td>A long-lived access token from your Home Assistant user profile.</td></tr>
+<tr><td>Optional</td><td>A daily solar energy sensor, and <a href="https://www.home-assistant.io/integrations/forecast_solar/">Forecast.Solar</a> or <a href="https://github.com/BJReplay/ha-solcast-solar">Solcast</a> for tomorrow's forecast.</td></tr>
+</tbody></table>
+<h3>Hardware</h3>
+<table><thead><tr><th>Item</th><th>Notes</th></tr></thead><tbody>
+<tr><td>ESP32-2432S028R ("Cheap Yellow Display", CYD)</td><td>The 2.8″ 320×240 ILI9341 board with resistive touch and a single micro-USB port. Widely sold for about US$10–15; the <a href="https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display">CYD community repository</a> describes the board and where to buy it. Some newer boards have two USB ports (USB-C and micro-USB) and a different display controller; they are untested with this firmware.</td></tr>
+<tr><td>USB data cable</td><td>Micro-USB. A charge-only cable powers the board but the installer can't see it.</td></tr>
+<tr><td>USB power supply</td><td>Any 5 V, 1 A or better phone charger, for running the panel permanently.</td></tr>
+<tr><td>Computer for installing</td><td>Desktop Chrome or Edge, for the browser installer. Windows may need the board's USB-serial driver (CH340 or CP2102, depending on the board).</td></tr>
+<tr><td>Wi-Fi</td><td>A 2.4 GHz network. The ESP32 can't join 5 GHz-only networks.</td></tr>
+<tr><td>Case (optional)</td><td>The bare board works on a stand; the CYD community repository links printable cases.</td></tr>
+</tbody></table>
+<p>No soldering or extra wiring is needed. The board's RGB LED, SD slot and spare pins are unused.</p>
 
 <h2 id="install">Install and flash</h2>
 <h3>From the browser (recommended)</h3>
@@ -114,7 +146,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <ol>
 <li><b>Wi-Fi.</b> Power the CYD. If it has no working Wi-Fi after 20 seconds it opens a hotspot named <code>CYD-Solar-xxxx</code>. Its password is the 12-character device code shown on the panel. Join it, open the captive portal (or <code>192.168.4.1</code>), and choose your network. The portal times out after three minutes and reopens after bounded retries. When installing from the browser installer, Wi-Fi can instead be sent over USB (Improv-Serial).</li>
 <li><b>Open the device page.</b> Browse to <a href="http://solar.local/">http://solar.local/</a>. If your device can't resolve <code>.local</code> names (some older Android phones), tap the panel to see its IP address and use that. There is no login.</li>
-<li><b>Connect Home Assistant.</b> Under <b>Settings → Home Assistant</b>, check the Home Assistant URL (default <code>http://192.168.1.254:8123</code>), paste a long-lived access token, and save. The default entity IDs match the owner's installation.</li>
+<li><b>Connect Home Assistant.</b> Under <b>Settings → Home Assistant</b>, check the Home Assistant URL (default <code>http://192.168.1.254:8123</code>), paste a long-lived access token, and save. The default entity IDs are SolarEdge Modbus Multi's, plus the house sensor you create (see <a href="#ha">Home Assistant setup</a>).</li>
 <li><b>Optional extras.</b> Set the daily solar and forecast entities, search for your location to enable weather and set the timezone, choose a panel layout, and adjust night dimming.</li>
 <li><b>Check.</b> Readings appear after the next cycle. To preview the screen without Home Assistant, tick <b>Demo mode</b>; untick it when commissioning.</li>
 </ol>
@@ -131,8 +163,22 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <tr><td>Battery level</td><td><code>sensor.solaredge_i1_b1_state_of_energy</code></td><td>% (0–100)</td></tr>
 <tr><td>Inverter DC</td><td><code>sensor.solaredge_i1_dc_power</code></td><td>W/kW (<code>Watt</code>/<code>Watts</code> also accepted)</td></tr>
 </tbody></table>
+<p>All except <b>Household</b> come from SolarEdge Modbus Multi with its default names. If your entity IDs differ (for example a second inverter, or a renamed device), enter yours under <b>Settings → Entities</b>.</p>
+<h3>House power sensor (required)</h3>
+<p>Household demand is inverter AC output plus whatever the grid supplies. With the meter's export-positive sign, that is inverter AC minus meter power. Create it under <b>Settings → Devices &amp; services → Helpers → Create helper → Template → Template a sensor</b>, with unit <code>W</code>, device class <b>Power</b> and state class <b>Measurement</b>:</p>
+<pre>{{ [0, states('sensor.solaredge_i1_ac_power') | float(0)
+      - states('sensor.solaredge_i1_m1_ac_power') | float(0)] | max }}</pre>
+<p>Name it so its entity ID is <code>sensor.home_power_usage</code>, or enter whatever ID it gets under <b>Household</b>. The <a href="https://github.com/WillCodeForCats/solaredge-modbus-multi/wiki/Template-Sensors-for-Power-and-Energy">Modbus Multi template-sensor wiki</a> has this and the other templates used below.</p>
 <h3>Daily solar energy (optional)</h3>
-<p>The top-left "kWh today" figure needs a sensor that resets at midnight. In Home Assistant, go to <b>Settings → Devices &amp; services → Helpers → Create helper → Utility Meter</b>. Use the solar production energy sensor your Energy dashboard already uses as the input, with a <b>daily</b> meter reset cycle. Enter the new sensor (for example <code>sensor.solar_energy_today</code>) in <b>Solar energy today</b>.</p>
+<p>The top-left "kWh today" figure needs a solar energy sensor that resets at midnight. With a battery, <b>don't</b> use the inverter's AC energy (<code>sensor.solaredge_i1_ac_energy_kwh</code>): it counts battery discharge as production and misses solar that went into the battery. Build true solar energy instead, with the same formula the panel uses for SOLAR. All three helpers are under <b>Settings → Devices &amp; services → Helpers → Create helper</b>:</p>
+<ol>
+<li><b>Template → Template a sensor</b>, "Solar production power": unit <code>W</code>, device class Power, state class Measurement.
+<pre>{{ [0, states('sensor.solaredge_i1_dc_power') | float(0)
+      + states('sensor.solaredge_i1_b1_dc_power') | float(0)] | max }}</pre></li>
+<li><b>Integral sensor</b> (Riemann sum) of that sensor: method <b>Left</b>, metric prefix <b>k</b>, time unit <b>Hours</b>. This is lifetime solar kWh, and also the right <b>Solar production</b> source for the Energy dashboard.</li>
+<li><b>Utility Meter</b> on the integral sensor, with a <b>Daily</b> reset cycle, for example <code>sensor.solar_energy_today</code>.</li>
+</ol>
+<p>Enter the utility meter's entity ID in <b>Solar energy today</b>. It counts from when it is created, so the first day reads low. If your Energy dashboard already uses a sensor built this way, a daily utility meter on it is all you need.</p>
 <h3>Solar forecast (optional)</h3>
 <p>Install the <b>Forecast.Solar</b> or <b>Solcast</b> integration and enter its "tomorrow" energy sensor in <b>Solar forecast tomorrow</b>. With Forecast.Solar this is usually <code>sensor.energy_production_tomorrow</code>; check the actual ID in Home Assistant. Without it, the panel shows tomorrow's maximum temperature instead.</p>
 
@@ -206,10 +252,13 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <h3>Weather icons</h3>
 <p>Icons are drawn from Open-Meteo's WMO weather codes: clear (sun), partly cloudy (sun behind cloud), cloudy, fog (horizontal bars), drizzle (cloud with dots), rain (cloud with slanted lines), snow (cloud with flakes) and storm (cloud with lightning).</p>
 
-<h2 id="cards">Cards layout</h2>
-<p>The original dark layout is still available under <b>Panel layout → Cards (dark)</b>. It shows the same readings in four cards around an inverter box, with today's solar energy in the title and current weather beside the badge.</p>
-<figure><span class="panel"><img src="images/flow-preview.svg" alt="Cards layout"></span>
-<figcaption>Cards layout. The badge reads <code>HA</code> when all readings are live, <code>WAIT</code> when some are not, <code>OFFLINE</code> without Wi-Fi and <code>DEMO</code> in demo mode. The battery card shows the battery label, percentage and a small gauge along its bottom line.</figcaption></figure>
+<h2 id="cards">Choosing a layout</h2>
+<p>The panel has two layouts showing the same readings. Choose one in the browser under <b>Settings → Display → Layout</b> and click <b>Save settings</b>; the panel switches straight away, and the boot screen follows the same theme.</p>
+<div class="gallery">
+<figure><span class="panel"><img src="images/centre-flow-preview.svg" alt="Centre flow layout"></span><figcaption><b>Centre flow (light)</b>, the default. Four labelled arms meet at the inverter, with moving arrows, a battery gauge and today's energy, forecast or clock and weather along the top. Described in <a href="#display">The display</a>.</figcaption></figure>
+<figure><span class="panel"><img src="images/flow-preview.svg" alt="Cards layout"></span><figcaption><b>Cards (dark).</b> Four cards around an inverter box, with today's solar energy in the title and current weather beside the badge. Easier on the eye in a dark room.</figcaption></figure>
+</div>
+<p>On the cards layout, the badge reads <code>HA</code> when all readings are live, <code>WAIT</code> when some are not, <code>OFFLINE</code> without Wi-Fi and <code>DEMO</code> in demo mode. The battery card shows the battery label, percentage and a small gauge along its bottom line.</p>
 
 <h2 id="touch">Touch, setup page and dimming</h2>
 <table><thead><tr><th>Action</th><th>Result</th></tr></thead><tbody>
@@ -221,9 +270,10 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <p><b>Night dimming</b> runs from <i>Night starts</i> to <i>Night ends</i> (default 19:00–07:00) in the configured timezone, once the clock has synchronised. After a minute without touch the backlight drops to a fifth of the configured brightness.</p>
 
 <h2 id="browser">Browser dashboard</h2>
-<p>Open <code>http://solar.local/</code> from any device on the home network. The page follows your system's light or dark setting and refreshes every three seconds. The sidebar groups the sections: <b>Live</b> (Dashboard), <b>Settings</b> (Home Assistant, Display, Location &amp; weather, Entities) and <b>Device</b> (Device &amp; firmware, Diagnostics). Beneath it, the <b>Device status</b> panel shows a status light (green live, amber waiting or demo, red disconnected) with the address, firmware, uptime, free memory and the source message.</p>
+<p>Open <code>http://solar.local/</code> from any device on the home network. The page follows your system's light or dark setting and refreshes every three seconds. The sidebar groups the sections: <b>Live</b> (Dashboard), <b>Settings</b> (Home Assistant, Display, Location &amp; weather, Entities) and <b>Device</b> (Device &amp; firmware, Diagnostics) and <b>Help</b>, which opens this handbook from the device itself at <code>http://solar.local/guide/</code>, so it works without internet. A banner at the foot of the dashboard links to this project on GitHub. Beneath the sidebar, the <b>Device status</b> panel shows a status light (green live, amber waiting or demo, red disconnected) with the address, firmware, uptime, free memory and the source message.</p>
 <figure class="shot"><img src="images/webui-dashboard.jpg" alt="Browser dashboard"><figcaption><b>At a glance.</b> Tiles for solar, house, grid and battery power, battery level (bar coloured like the panel gauge), solar today, tomorrow's forecast and the current weather. Pills give direction: <span style="color:#C0392B">↓ Importing</span>, <span style="color:#1F8A5B">↑ Exporting</span>, <span style="color:#1F8A5B">↑ Charging</span>, ↓ Supplying house. Green and red are kept for meaning, as in SpendAnalysis; amber is only used for controls.</figcaption></figure>
-<figure class="shot"><img src="images/webui-flow.jpg" alt="Energy flow diagram and trend chart"><figcaption><b>Energy flow.</b> Solar, grid, battery and house around the inverter hub. Moving dots and arrowheads show which way power flows on each arm, and move faster as power rises; an arm with no arrows is idle, missing or stale. The battery icon fills to the battery level. <b>Last 30 minutes</b> charts solar, house, grid (+ import / − export) and battery (+ supplying / − charging) against a kW Y axis and an X axis of local clock times every 5 minutes, ending at <i>now</i>. The solid line is zero: above it the grid is importing and the battery supplying. Samples are collected by this browser while the page is open; the device keeps no history, so the chart fills from the right.</figcaption></figure>
+<figure class="shot"><img src="images/webui-flow.jpg" alt="Energy flow diagram with comets on each arm"><figcaption><b>Energy flow.</b> Solar, grid, battery and house around the inverter hub. Comets travel each arm the way power flows; the arm gets thicker and its comets faster and larger as power rises. A plain grey arm is idle, missing or stale. The hub's sine wave marks the inverter, and the battery icon fills to the battery level.</figcaption></figure>
+<figure class="shot"><img src="images/webui-chart.jpg" alt="Last 30 minutes chart and the dashboard footer"><figcaption><b>Last 30 minutes</b> charts solar, house, grid (+ import / − export) and battery (+ supplying / − charging) against a kW Y axis and an X axis of local clock times every 5 minutes, ending at <i>now</i>. The solid line is zero: above it the grid is importing and the battery supplying. Samples are collected by this browser while the page is open; the device keeps no history, so the chart fills from the right. The banner beneath links to this handbook and to the project on GitHub.</figcaption></figure>
 <figure class="shot"><img src="images/webui-diagnostics.jpg" alt="Diagnostics table"><figcaption><b>Diagnostics.</b> Every reading with its entity, value, validity, freshness, and received and reported ages, plus the raw status JSON.</figcaption></figure>
 <p><b>Device &amp; firmware</b> shows the firmware version, address, local time, uptime and free memory, and has <b>Restart device</b> and <b>Reset Wi-Fi</b> (clears Wi-Fi only; Home Assistant settings stay). <b>Firmware update</b> takes the app <code>firmware.bin</code> only; the device pauses Home Assistant reads while uploading and restarts when done.</p>
 
@@ -308,6 +358,37 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <li>The Home Assistant token is stored on the device, is never returned to the browser and is never logged.</li>
 <li>ArduinoOTA and the Wi-Fi setup hotspot still use the device code as their password.</li>
 <li>Weather requests send only latitude and longitude to Open-Meteo over HTTPS verified against ISRG Root X1 (valid to 2035). Place search runs in your browser, not on the device.</li>
+</ul>
+
+<h2 id="appendix">Appendix: links and acknowledgements</h2>
+<p>This project stands on other people's work. Thank you to everyone below.</p>
+<h3>Energy system and Home Assistant</h3>
+<table><thead><tr><th>Project</th><th>Used for</th></tr></thead><tbody>
+<tr><td><a href="https://github.com/WillCodeForCats/solaredge-modbus-multi">SolarEdge Modbus Multi</a> by WillCodeForCats</td><td>The Home Assistant integration that reads the inverter, battery and meter over Modbus TCP. Its <a href="https://github.com/WillCodeForCats/solaredge-modbus-multi/wiki/Template-Sensors-for-Power-and-Energy">template-sensor wiki</a> is the source of the solar and house formulas.</td></tr>
+<tr><td><a href="https://www.home-assistant.io/">Home Assistant</a></td><td>The hub the panel reads, through its <a href="https://developers.home-assistant.io/docs/api/rest/">REST API</a>.</td></tr>
+<tr><td><a href="https://hacs.xyz/">HACS</a></td><td>Installs SolarEdge Modbus Multi and Solcast.</td></tr>
+<tr><td><a href="https://www.solaredge.com/en/products/software-tools/setapp">SolarEdge SetApp</a></td><td>Turning on Modbus TCP in the inverter.</td></tr>
+<tr><td><a href="https://www.home-assistant.io/integrations/forecast_solar/">Forecast.Solar</a> and <a href="https://github.com/BJReplay/ha-solcast-solar">Solcast for Home Assistant</a></td><td>Optional solar forecast for tomorrow.</td></tr>
+<tr><td><a href="https://open-meteo.com/">Open-Meteo</a></td><td>Weather and place search. Weather data by Open-Meteo.com, licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</td></tr>
+</tbody></table>
+<h3>Hardware and firmware</h3>
+<table><thead><tr><th>Project</th><th>Used for</th></tr></thead><tbody>
+<tr><td><a href="https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display">ESP32 Cheap Yellow Display</a> by Brian Lough and the community</td><td>Board documentation, pinouts and buying guide for the ESP32-2432S028R.</td></tr>
+<tr><td><a href="https://github.com/espressif/arduino-esp32">Arduino core for ESP32</a> and <a href="https://platformio.org/">PlatformIO</a></td><td>Framework and build system.</td></tr>
+<tr><td><a href="https://github.com/Bodmer/TFT_eSPI">TFT_eSPI</a> by Bodmer</td><td>Display driver and fonts.</td></tr>
+<tr><td><a href="https://github.com/PaulStoffregen/XPT2046_Touchscreen">XPT2046_Touchscreen</a> by Paul Stoffregen</td><td>Touch controller.</td></tr>
+<tr><td><a href="https://github.com/tzapu/WiFiManager">WiFiManager</a> by tzapu</td><td>Wi-Fi setup hotspot and captive portal.</td></tr>
+<tr><td><a href="https://arduinojson.org/">ArduinoJson</a> by Benoît Blanchon</td><td>Parsing Home Assistant and weather responses, and stored settings.</td></tr>
+<tr><td><a href="https://github.com/jnthas/Improv-WiFi-Library">Improv-WiFi-Library</a> by jnthas, and the <a href="https://www.improv-wifi.com/">Improv Wi-Fi</a> standard</td><td>Wi-Fi setup over USB from the installer (vendored copy with a fix).</td></tr>
+<tr><td><a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a> by ESPHome</td><td>The browser installer.</td></tr>
+<tr><td><a href="https://letsencrypt.org/certificates/">Let's Encrypt ISRG Root X1</a></td><td>Verifying the HTTPS connection to Open-Meteo.</td></tr>
+</tbody></table>
+<h3>This project</h3>
+<ul>
+<li>Source, issues and releases: <a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor">github.com/anthonyjclarke/CYD-Home_Solar_Monitor</a></li>
+<li>Browser installer: <a href="https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/">anthonyjclarke.github.io/CYD-Home_Solar_Monitor</a>, and other projects on the <a href="https://anthonyjclarke.github.io/">ESP32 Web Installers</a> hub</li>
+<li>Release tooling: <a href="https://github.com/anthonyjclarke/cyd-web-installer">cyd-web-installer</a></li>
+<li>MIT licensed. SolarEdge, LG and Home Assistant are trademarks of their owners; this project isn't affiliated with or endorsed by them.</li>
 </ul>
 </main>
 </div>

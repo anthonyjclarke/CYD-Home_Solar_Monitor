@@ -34,8 +34,9 @@ public:
         std::cout<<"<path d='M"<<x<<' '<<y<<" L"<<a<<' '<<b<<"' fill='none' stroke='"<<color(c)<<"'/>\n";
     }
     void text(int x,int y,int font,unsigned c,ui::Align align,const char* value) override {
-        int size=font==6?44:font==4?25:font==2?13:9;
-        std::cout<<"<text x='"<<x<<"' y='"<<y+size-2<<"' font-size='"<<size<<"' text-anchor='"<<(align==ui::Left?"start":align==ui::Right?"end":"middle")<<"' fill='"<<color(c)<<"'>"<<escaped(value)<<"</text>\n";
+        // Baselines as in TFT_eSPI: font 2 is 13 px and font 4 19 px below the text top.
+        int size=font==6?44:font==4?25:font==2?13:9, base=font==6?size-2:font==4?19:font==2?13:7;
+        std::cout<<"<text x='"<<x<<"' y='"<<y+base<<"' font-size='"<<size<<"' text-anchor='"<<(align==ui::Left?"start":align==ui::Right?"end":"middle")<<"' fill='"<<color(c)<<"'>"<<escaped(value)<<"</text>\n";
     }
 };
 int main(int argc,char**argv) {

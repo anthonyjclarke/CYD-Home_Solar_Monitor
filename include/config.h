@@ -13,6 +13,11 @@
 // at most this long overall if Wi-Fi never connects. A tap skips it.
 #define APP_BOOT_HOLD_MS 6000
 #define APP_BOOT_MAX_MS 15000
+// Panel redraw: the whole screen 4 times a second, and in between only the
+// centre layout's pipes at 20 fps. Pushing the full sprite at 10-20 fps
+// starved Wi-Fi (TCP connects took 0.4 s and downloads ran 4x slower).
+#define APP_FULL_FRAME_MS 250
+#define APP_FLOW_FRAME_MS 50
 // TLS handshake limit in seconds. Measured on this board: about 8 s to
 // Open-Meteo (ECDSA chain), so 8 s failed intermittently.
 #define APP_TLS_HANDSHAKE_S 20

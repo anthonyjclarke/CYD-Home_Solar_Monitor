@@ -4,6 +4,14 @@
 
 ### Added
 
+- Panel (centre layout) re-laid out to match the web flow:
+  - pipes of equal width end exactly 6 px from each text block;
+  - comets (head, mid and pale tail) ease along each pipe the way power flows, faster as power rises, with a second comet above 2.5 kW;
+  - a sine-wave hub at (140,115);
+  - grid and battery blocks centred under their labels;
+  - an upright battery gauge with the percentage beneath.
+- Panel redraw: the whole screen 4 times a second (`APP_FULL_FRAME_MS`); between full frames, only the pipe area is redrawn and pushed at 20 fps (`APP_FLOW_FRAME_MS`). Pushing the full screen at 10–20 fps starved Wi-Fi: TCP connects took 0.4 s and page loads 2.2 s. With the partial redraw, loads are typically 0.3–0.7 s, with occasional slower ones.
+- Wi-Fi modem sleep turned off (`WiFi.setSleep(false)`); the panel is mains-powered. With sleep on, pings to the panel swung between 40 and 450 ms.
 - Web dashboard: banner at the foot linking to the GitHub repository.
 - Sun icon for the browser tab, on the device page and the handbook.
 - Handbook served by the device at `http://solar.local/guide/` (works offline), linked from a new Help group in the sidebar and from the dashboard banner. `tools/embed_docs.py` embeds `docs/index.html` and its images at build time (about 270 KB; app flash now 84%). Served with `Cache-Control: no-cache`, so browsers pick up the new handbook after a firmware update.

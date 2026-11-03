@@ -1,4 +1,5 @@
 #include "flow_layout.h"
+#include <algorithm>
 #include <cstdio>
 #include <cmath>
 
@@ -21,6 +22,12 @@ constexpr unsigned solarInk = 0x926d00, solarFlow = 0xdb9255, gridInk = 0x2449aa
 constexpr unsigned goodDot = 0x92b6aa, lowRed = 0xdb2400;
 static_assert(rgb332(paper) && rgb332(ink) && rgb332(label) && rgb332(track) && rgb332(hubDot) && rgb332(solarInk) &&
               rgb332(solarFlow) && rgb332(gridInk) && rgb332(batteryInk) && rgb332(goodDot) && rgb332(lowRed),
+              "Palette must be exact RGB332 levels");
+// Pipe bands (pale) and comet tails (mid) per flow; heads use the ink colours above.
+constexpr unsigned bandSolar = 0xffdbaa, bandGrid = 0xb6dbff, bandBattery = 0xb6ffaa, bandHouse = 0xdbdbff, bandIdle = 0xdbdbaa;
+constexpr unsigned tailSolar = 0xffb655, tailGrid = 0x6d92ff, tailBattery = 0x49b655, tailHouse = 0x6d6daa;
+static_assert(rgb332(bandSolar) && rgb332(bandGrid) && rgb332(bandBattery) && rgb332(bandHouse) && rgb332(bandIdle) &&
+              rgb332(tailSolar) && rgb332(tailGrid) && rgb332(tailBattery) && rgb332(tailHouse),
               "Palette must be exact RGB332 levels");
 
 // Watts below 1 kW, two decimals above: a third decimal only adds flicker.
@@ -183,29 +190,57 @@ void reading(Canvas& c, int x, int y, Align align, const energy::Reading& r, boo
     c.text(left, y, 4, live ? color : track, Left, number);
     c.text(left + numberWidth + 3, y + 8, 2, live ? label : track, Left, unit);
 }
+int readingWidth(Canvas& c, const energy::Reading& r) {
+    char number[20];
+    const char* unit;
+    formatPower(number, sizeof(number), unit, r);
+    return c.textWidth(4, number) + 3 + c.textWidth(2, unit);
+}
 
-// Chevrons march along a straight horizontal or vertical path. They stop, and
-// only the faint track remains, when the flow is stale or below the idle threshold.
-void chevrons(Canvas& c, int x0, int y0, int x1, int y1, unsigned color, bool active, bool forward, unsigned phase) {
+void dot(Canvas& c, int x, int y, int r, unsigned color) { c.rect(x - r, y - r, 2 * r + 1, 2 * r + 1, color, r); }
+
+// A 6 px rounded pipe along a horizontal or vertical centre line, with comets
+// (head, mid and pale tail) eased from start to end while power flows. Comets
+// fade in and out at the ends; speed and count rise with power, size does not.
+constexpr int pipeCap = 3;
+void pipe(Canvas& c, int x0, int y0, int x1, int y1, unsigned band, unsigned tail, unsigned head,
+          bool active, float kw, float& phase, float dt, bool forward) {
+    c.rect(std::min(x0, x1) - pipeCap, std::min(y0, y1) - pipeCap, std::abs(x1 - x0) + 2 * pipeCap + 1,
+           std::abs(y1 - y0) + 2 * pipeCap + 1, active ? band : bandIdle, pipeCap);
     c.line(x0, y0, x1, y1, track);
     if (!active) return;
-    const bool vertical = x0 == x1;
-    const int length = vertical ? y1 - y0 : x1 - x0, spacing = 9, size = 4;
-    const int offset = int(phase * 3 % spacing);
-    for (int p = forward ? offset : spacing - 1 - offset; p + size <= length; p += spacing) {
-        // Tip leads in the direction of flow.
-        const int tip = forward ? p + size : p, tail = forward ? p : p + size;
-        for (int w = 0; w < 2; ++w) {  // Two strokes for a bolder mark.
-            if (vertical) {
-                c.line(x0 - size, y0 + tail + (forward ? -w : w), x0, y0 + tip + (forward ? -w : w), color);
-                c.line(x0 + size, y0 + tail + (forward ? -w : w), x0, y0 + tip + (forward ? -w : w), color);
-            } else {
-                c.line(x0 + tail + (forward ? -w : w), y0 - size, x0 + tip + (forward ? -w : w), y0, color);
-                c.line(x0 + tail + (forward ? -w : w), y0 + size, x0 + tip + (forward ? -w : w), y0, color);
-            }
-        }
+    phase = std::fmod(phase + dt / std::fmax(0.9f, 2.6f - kw * 0.35f), 1.0f);
+    if (!forward) { std::swap(x0, x1); std::swap(y0, y1); }
+    const int ux = (x1 > x0) - (x1 < x0), uy = (y1 > y0) - (y1 < y0), count = kw > 2.5f ? 2 : 1;
+    for (int i = 0; i < count; ++i) {
+        const float p = std::fmod(phase + float(i) / count, 1.0f), q = p < 0.5f ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p);
+        const int x = x0 + int((x1 - x0) * q + 0.5f), y = y0 + int((y1 - y0) * q + 0.5f);
+        if (p < 0.12f || p > 0.88f) { dot(c, x, y, 2, tail); continue; }  // Fading in or out.
+        dot(c, x - ux * 7, y - uy * 7, 1, tail);
+        dot(c, x - ux * 4, y - uy * 4, 2, tail);
+        dot(c, x, y, 3, head);
     }
 }
+
+// Upright battery with a terminal nub on top, filled from the bottom to the
+// state of energy: healthy colour from 50%, amber from 20%, red below.
+void uprightBattery(Canvas& c, int x, int y, int w, int h, const energy::Reading& soc, bool live) {
+    const unsigned outline = live ? ink : track;
+    c.rect(x + 5, y - 4, w - 10, 4, outline, 1);
+    c.rect(x, y, w, h, outline, 3);
+    c.rect(x + 2, y + 2, w - 4, h - 4, paper, 2);
+    if (!soc.valid && !soc.receivedMs) return;
+    const float level = std::fmin(std::fmax(soc.value, 0.0f), 100.0f);
+    const int fill = int((h - 6) * level / 100 + 0.5f);
+    const unsigned color = !live ? track : level >= 50 ? batteryInk : level >= 20 ? solarFlow : lowRed;
+    if (fill > 0) c.rect(x + 3, y + h - 3 - fill, w - 6, fill, color, 1);
+}
+
+// Comet positions persist between frames so a change in power alters their
+// speed smoothly instead of making them jump.
+float cometPhase[4] = {0.45f, 0.4f, 0.55f, 0.5f};
+uint32_t cometMs = 0;
+int textHalf[2] = {36, 36};  // Half widths of the grid and battery blocks.
 
 void gear(Canvas& c, int x, int y, unsigned color) {
     c.rect(x - 1, y - 7, 3, 14, color);
@@ -216,9 +251,11 @@ void gear(Canvas& c, int x, int y, unsigned color) {
     c.rect(x - 2, y - 2, 5, 5, paper, 2);
 }
 
-void drawCentre(Canvas& c, const FlowView& v) {
+// A motionOnly frame redraws just the pipes and hub, inside the returned box.
+Box drawCentre(Canvas& c, const FlowView& v) {
     const auto& r = v.data.readings;
     const auto& u = v.usable;
+    if (!v.motionOnly) {
     c.rect(0, 0, 320, 240, paper);
     // Top row: today's solar energy (else the clock) and tomorrow's forecast.
     if (v.totalLive[energy::Today]) {
@@ -248,38 +285,67 @@ void drawCentre(Canvas& c, const FlowView& v) {
                     solarFlow, hubDot, gridInk);
     } else if (v.data.demo) c.text(308, 14, 2, solarInk, Right, "DEMO");
     else if (!v.wifi) c.text(308, 14, 2, label, Right, "OFFLINE");
+    }
 
-    // Labelled arms around a central hub: solar above, house below, grid left,
-    // battery right. Font 4 values keep every label on screen and readable.
-    c.text(160, 30, 2, label, Center, "SOLAR");
-    reading(c, 160, 46, Center, r[energy::Solar], u[energy::Solar], solarInk);
-    c.text(12, 78, 2, label, Left, "GRID");
-    reading(c, 12, 96, Left, r[energy::Grid], u[energy::Grid], gridInk);
-    c.text(308, 78, 2, label, Right, "BATTERY");
-    reading(c, 308, 96, Right, r[energy::Battery], u[energy::Battery], batteryInk);
-    c.text(160, 150, 2, label, Center, "HOUSE");
-    reading(c, 160, 166, Center, r[energy::Home], u[energy::Home], ink);
-
+    // Labelled blocks around a hub at (140,115): solar above, house below, grid
+    // left and battery right, the side blocks centred on x = 38 and x = 244.
+    // Every pipe stops exactly pipeGap px from the ink of its block. Font tops:
+    // font 4 digits end 19 px below y, font 2 capitals start 3 px below y.
+    // The solar block starts below the top row so "kWh today" can't touch it.
+    constexpr int hubX = 140, hubY = 115, hubR = 9, pipeGap = 6, gridX = 38, batteryX = 244, solarY = 50;
     const float grid = r[energy::Grid].value, battery = r[energy::Battery].value;
     const char* gridState = !u[energy::Grid] ? "No data" : grid > 30 ? "Importing" : grid < -30 ? "Exporting" : "Idle";
-    c.text(12, 124, 2, u[energy::Grid] ? gridInk : track, Left, gridState);
     const char* batteryState = !u[energy::Battery] ? "No data" : battery < -30 ? "Charging" : battery > 30 ? "Supplying" : "Idle";
-    c.text(214, 124, 2, u[energy::Battery] ? batteryInk : track, Left, batteryState);
+    if (!v.motionOnly) {
+    c.text(hubX, solarY - 20, 2, label, Center, "SOLAR");
+    reading(c, hubX, solarY, Center, r[energy::Solar], u[energy::Solar], solarInk);
+    c.text(gridX, 84, 2, label, Center, "GRID");
+    reading(c, gridX, 104, Center, r[energy::Grid], u[energy::Grid], gridInk);
+    c.text(gridX, 125, 2, u[energy::Grid] ? gridInk : track, Center, gridState);
+    c.text(batteryX, 84, 2, label, Center, "BATTERY");
+    reading(c, batteryX, 104, Center, r[energy::Battery], u[energy::Battery], batteryInk);
+    c.text(batteryX, 125, 2, u[energy::Battery] ? batteryInk : track, Center, batteryState);
+    c.text(hubX, 157, 2, label, Center, "HOUSE");
+    reading(c, hubX, 178, Center, r[energy::Home], u[energy::Home], ink);
+
     char soc[12];
     const bool socKnown = r[energy::Soc].valid || r[energy::Soc].receivedMs;
     if (socKnown) std::snprintf(soc, sizeof(soc), "%.0f%%", r[energy::Soc].value);
     else std::snprintf(soc, sizeof(soc), "--%%");
-    // State of energy as a battery icon and its percentage, on its own row so
-    // it is not read as part of "Charging" / "Supplying".
-    batteryGauge(c, 214, 142, 52, 14, r[energy::Soc], u[energy::Soc], u[energy::Soc] ? ink : track, paper, batteryInk);
-    c.text(308, 141, 2, u[energy::Soc] ? ink : track, Right, soc);
+    uprightBattery(c, 291, 88, 18, 56, r[energy::Soc], u[energy::Soc]);
+    c.text(300, 148, 2, u[energy::Soc] ? ink : track, Center, soc);
+    }
 
+    // Motion frames reuse the text widths of the last full frame, so the box
+    // they clear always matches the text on screen.
+    if (!v.motionOnly) {
+        textHalf[0] = std::max({c.textWidth(2, "GRID"), readingWidth(c, r[energy::Grid]), c.textWidth(2, gridState)}) / 2;
+        textHalf[1] = std::max({c.textWidth(2, "BATTERY"), readingWidth(c, r[energy::Battery]), c.textWidth(2, batteryState)}) / 2;
+    }
+    const int gridHalf = textHalf[0], batteryHalf = textHalf[1];
+    const float dt = cometMs && v.ms ? std::min<uint32_t>(v.ms - cometMs, 100) / 1000.0f : 0.0f;
+    cometMs = v.ms;
+    // The pipes and hub sit inside this box, clear of every text block.
+    const int stop = pipeGap + pipeCap;
+    Box box;
+    box.x = gridX + gridHalf + pipeGap; box.y = solarY + 19 + pipeGap;
+    box.w = batteryX - batteryHalf - pipeGap - box.x; box.h = 157 + 3 - pipeGap - box.y;
+    if (v.motionOnly) c.rect(box.x, box.y, box.w, box.h, paper);
     // Grid +import flows into the hub; battery +discharge flows into the hub.
-    chevrons(c, 160, 74, 160, 102, solarFlow, u[energy::Solar] && r[energy::Solar].value > 30, true, v.phase);
-    chevrons(c, 104, 108, 152, 108, gridInk, u[energy::Grid] && std::abs(grid) > 30, grid > 0, v.phase);
-    chevrons(c, 168, 108, 210, 108, batteryInk, u[energy::Battery] && std::abs(battery) > 30, battery < 0, v.phase);
-    chevrons(c, 160, 114, 160, 144, ink, u[energy::Home] && r[energy::Home].value > 30, true, v.phase);
-    c.rect(156, 104, 9, 9, hubDot, 4);
+    pipe(c, hubX, solarY + 19 + stop, hubX, hubY - hubR, bandSolar, tailSolar, solarFlow,
+         u[energy::Solar] && r[energy::Solar].value > 30, r[energy::Solar].value / 1000, cometPhase[0], dt, true);
+    pipe(c, gridX + gridHalf + stop, hubY, hubX - hubR, hubY, bandGrid, tailGrid, gridInk,
+         u[energy::Grid] && std::abs(grid) > 30, std::abs(grid) / 1000, cometPhase[1], dt, grid > 0);
+    pipe(c, hubX + hubR, hubY, batteryX - batteryHalf - stop, hubY, bandBattery, tailBattery, batteryInk,
+         u[energy::Battery] && std::abs(battery) > 30, std::abs(battery) / 1000, cometPhase[2], dt, battery < 0);
+    pipe(c, hubX, hubY + hubR, hubX, 157 + 3 - stop, bandHouse, tailHouse, ink,
+         u[energy::Home] && r[energy::Home].value > 30, r[energy::Home].value / 1000, cometPhase[3], dt, true);
+    // Hub: a ring with a small sine wave, the inverter.
+    dot(c, hubX, hubY, hubR, hubDot);
+    dot(c, hubX, hubY, hubR - 2, paper);
+    static const signed char wave[] = {0, -2, -2, 0, 2, 2, 0, -2, -2, 0};
+    for (int i = 0; i + 1 < int(sizeof(wave)); ++i) c.line(hubX - 4 + i, hubY + wave[i], hubX - 3 + i, hubY + wave[i + 1], hubDot);
+    if (v.motionOnly) return box;
 
     bool all = true;
     for (auto metric : energy::displayMetrics) all &= u[metric];
@@ -290,6 +356,7 @@ void drawCentre(Canvas& c, const FlowView& v) {
     const int settingsWidth = c.textWidth(2, "Settings");
     c.text(308, 214, 2, label, Right, "Settings");
     gear(c, 308 - settingsWidth - 12, 221, label);
+    return box;
 }
 }  // namespace
 
@@ -318,8 +385,9 @@ void drawBoot(Canvas& c, const BootView& v) {
     c.text(160, 216, 2, soft, Center, v.footer);
 }
 
-void drawFlow(Canvas& c, const FlowView& v) {
-    if (v.layout == Cards) drawCards(c, v);
-    else drawCentre(c, v);
+Box drawFlow(Canvas& c, const FlowView& v) {
+    if (v.layout == Centre) return drawCentre(c, v);
+    drawCards(c, v);
+    return {};
 }
 }  // namespace ui

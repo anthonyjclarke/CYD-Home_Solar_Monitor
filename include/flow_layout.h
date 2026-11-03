@@ -22,13 +22,18 @@ struct FlowView {
     bool totalLive[energy::TotalCount] = {};
     bool weatherLive = false;
     unsigned phase = 0;
+    uint32_t ms = 0;  // Frame time; the centre layout's comets advance with it.
+    bool motionOnly = false;  // Redraw only the moving pipes and hub (centre layout).
     Layout layout = Centre;
     const char* status = "Waiting for readings";
     const char* address = "";
     const char* batteryLabel = "";
     const char* time = "";
 };
-void drawFlow(Canvas& canvas, const FlowView& view);
+struct Box { int x = 0, y = 0, w = 0, h = 0; };
+// Returns the area holding the animated pipes (empty for the cards layout),
+// which is all a motionOnly frame changes.
+Box drawFlow(Canvas& canvas, const FlowView& view);
 
 // Boot screen: identity, then one row per start-up step so the IP address and
 // Wi-Fi state can be read before the flow display takes over.

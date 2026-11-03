@@ -8,3 +8,5 @@ _site/
 *.local.json
 
 src/web/handbook_data.h
+
+.claude/settings.local.json

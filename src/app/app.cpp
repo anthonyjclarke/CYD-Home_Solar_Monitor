@@ -16,7 +16,8 @@ namespace app {
 namespace {
 TFT_eSprite buffer(&cyd::display::tft());
 bool buffered = false, details = false, wasPressed = false, swallowTap = false;
-uint32_t lastPaint = 0, lastTouch = 0, pressedAt = 0;
+uint32_t lastPaint = 0, lastMotion = 0, lastTouch = 0, pressedAt = 0;
+bool flowShown = false;  // The last full frame was the flow screen.
 bool booting = true;
 uint32_t bootStart = 0, connectedAt = 0;
 bool calibrating = false, calibrationHeld = false;
@@ -188,8 +189,13 @@ void update(uint32_t now) {
     }
     wasPressed=touch.pressed;
     cyd::backlight::setBrightness(night && now-lastTouch>60000 ? std::max(5,int(cfg.brightness)/5) : cfg.brightness);
-    if (web::updating() || !buffered || now-lastPaint < 250) return;
-    lastPaint=now;
+    if (web::updating() || !buffered) return;
+    // Full frames repaint everything; between them, motion frames redraw and
+    // push only the pipes, once the flow screen is showing.
+    const bool full = now-lastPaint >= APP_FULL_FRAME_MS;
+    if (!full && (cfg.layout != ui::Centre || !flowShown || now-lastMotion < APP_FLOW_FRAME_MS)) return;
+    if (full) { lastPaint=now; flowShown=false; }
+    lastMotion=now;
     if (booting) {
         if (!connectedAt && cyd::network::status().connected) connectedAt = now;
         const bool done = connectedAt ? now - connectedAt >= APP_BOOT_HOLD_MS : now - bootStart >= APP_BOOT_MAX_MS;
@@ -206,7 +212,7 @@ void update(uint32_t now) {
     }
     ui::FlowView view;
     view.data=source::snapshot(); view.wifi=cyd::network::status().connected;
-    view.clockKnown=clock; view.phase=now/250;
+    view.clockKnown=clock; view.phase=now/250; view.ms=now; view.motionOnly=!full;
     bool all=true, reportKnown=clock;
     for (int i=0;i<energy::Count;++i) {
         view.usable[i]=energy::metricUsable(view.data,static_cast<energy::Metric>(i),view.wifi,now,clock ? uint64_t(epoch)*1000 : 0,cfg.staleSeconds,cfg.pollSeconds);
@@ -226,7 +232,9 @@ void update(uint32_t now) {
     char clockText[8]="";
     if (clock) strftime(clockText,sizeof(clockText),"%H:%M",&local);
     view.time=clockText;
-    ui::drawFlow(canvas,view); buffer.pushSprite(0,0);
+    const ui::Box box=ui::drawFlow(canvas,view);
+    if (full) { buffer.pushSprite(0,0); flowShown=true; }
+    else if (box.w > 0 && box.h > 0) buffer.pushSprite(box.x,box.y,box.x,box.y,box.w,box.h);
 }
 }  // namespace app
 

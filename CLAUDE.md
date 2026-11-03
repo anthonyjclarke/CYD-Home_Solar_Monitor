@@ -20,6 +20,7 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 - Frame buffer is a 320×240 **8-bit (RGB332)** sprite. Every palette colour in `flow_layout.cpp` must be an exact RGB332 level (R/G steps of 255/7, B steps of 85); a `static_assert` enforces it. Off-level colours shift hue on hardware.
 - Fonts are built-in GLCD 1/2/4 (known deviation from the VLW rule). Font 6 (48 px) was tried in 0.5.0 and rejected by the owner as unreadable and label-less – don't reintroduce large numerals at the cost of labels. Preview widths come from TFT_eSPI tables in `tools/render_preview.cpp`.
 - Web UI (`src/web/web_page.h`) deliberately mirrors the owner's SpendAnalysis app (`../SpendAnalysis/.streamlit/config.toml`): paper palette, amber chrome, green/red for meaning only. Element IDs are the API contract with `monitor_web.cpp`. Smooth fonts would anti-alias into off-palette RGB332 colours; they need 16-bit sprites, not the shared 8-bit buffer.
+- Centre layout animates at 20 fps by redrawing and pushing only the pipe box that `ui::drawFlow()` returns (`motionOnly` frames); the full screen repaints at 4 fps. Never push the full sprite faster than 4 fps: at 10–20 fps it starves Wi-Fi (page loads went from 0.35 s to 2.2 s). Nothing but pipes and hub may sit inside that box.
 - Two layouts share `ui::drawFlow()`: `Cards` (dark) and `Centre` (light, white is the nearest RGB332 off-white). Both palettes live in `flow_layout.cpp` under the same `static_assert`.
 
 ---

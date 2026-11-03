@@ -198,17 +198,17 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 
 <h2 id="display">The display</h2>
 <p>The centre-flow layout puts the four power flows on arms meeting at a central dot, the inverter: solar above, house below, grid to the left and battery to the right. Each power figure is shown as a positive number, in watts below 1 kW and kW to two decimals above.</p>
-<p><b>Arrows.</b> Chevrons march along an arm in the direction power is flowing, in that reading's colour, while it is above 30 W. Solar always flows in and the house always flows out; grid arrows point in when importing and out when exporting; battery arrows point out when charging and in when the battery is supplying the house. Below 30 W, or when a reading isn't live, only a faint grey track is left.</p>
+<p><b>Pipes and comets.</b> Each reading is joined to the hub by a pipe, all the same width and each ending the same distance from its text. While more than 30 W flows, the pipe is tinted in that reading's colour and comets travel along it the way power is flowing, faster as power rises, with a second comet above 2.5 kW. Solar always flows in and the house always flows out; grid comets run in when importing and out when exporting; battery comets run out when charging and in when the battery is supplying the house. Below 30 W, or when a reading isn't live, the pipe turns grey and empties. The hub's sine wave marks the inverter.</p>
 <figure>
 <div class="annotated">
 <img src="images/centre-weather-preview.svg" alt="Annotated centre-flow layout">
 <span class="m" style="left:34%;top:9%">1</span>
 <span class="m" style="left:58%;top:9%">2</span>
-<span class="m" style="left:60%;top:15%">3</span>
-<span class="m" style="left:17%;top:35%">4</span>
-<span class="m" style="left:74%;top:35%">5</span>
-<span class="m" style="left:64%;top:62%">6</span>
-<span class="m" style="left:40%;top:65%">7</span>
+<span class="m" style="left:54%;top:16%">3</span>
+<span class="m" style="left:20%;top:38%">4</span>
+<span class="m" style="left:64%;top:38%">5</span>
+<span class="m" style="left:93%;top:73%">6</span>
+<span class="m" style="left:33%;top:69%">7</span>
 <span class="m" style="left:55%;top:92%">8</span>
 <span class="m" style="left:72%;top:92%">9</span>
 </div>
@@ -220,7 +220,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <li><b>Solar</b> generation: inverter DC power less any battery discharge, never below zero.</li>
 <li><b>Grid</b> power, with <i>Importing</i>, <i>Exporting</i>, <i>Idle</i> (within ±30 W) or <i>No data</i> beneath.</li>
 <li><b>Battery</b> power, with <i>Charging</i>, <i>Supplying</i> (covering what the house needs), <i>Idle</i> or <i>No data</i> beneath.</li>
-<li><b>Battery gauge</b>: filled to the state of energy, with the percentage beside it. <span class="swatch" style="background:#249255"></span>Green at 50% and above, <span class="swatch" style="background:#db9255"></span>amber from 20%, <span class="swatch" style="background:#db2400"></span>red below 20%. It is the charge level, not a share of the house load.</li>
+<li><b>Battery gauge</b>: an upright battery filled from the bottom to the state of energy, with the percentage beneath it. <span class="swatch" style="background:#249255"></span>Green at 50% and above, <span class="swatch" style="background:#db9255"></span>amber from 20%, <span class="swatch" style="background:#db2400"></span>red below 20%. It is the charge level, not a share of the house load.</li>
 <li><b>House</b> demand, from the household entity.</li>
 <li><b>Status line.</b> A green dot and <i>Good time to use power</i> when every reading is live and you are exporting more than 100 W, or charging above 100 W with the battery at 95% or more. Otherwise <i>All readings live</i>, or the reason readings are missing (see <a href="#states">states</a>).</li>
 <li><b>Settings</b>: a reminder that tapping the screen opens the device setup page.</li>

@@ -1,6 +1,6 @@
 # Hardware Validation
 
-Firmware `0.6.0`. Build and portable model checks pass, and the firmware runs on the owner's panel with live Home Assistant data. Unchecked items below still need a check on a real CYD.
+Firmware `0.7.0`. Build and portable model checks pass, and the firmware runs on the owner's panel with live Home Assistant data. Unchecked items below still need a check on a real CYD.
 
 ---
 

@@ -8,9 +8,9 @@ It is built by `.github/workflows/firmware.yml`, which calls the shared workflow
 
 ## Status
 
-The first release is `v0.6.0`, from 04-11-2026. CI builds are green and the partitions are standard dual-OTA.
+Releases: `v0.6.0` (first) and `v0.7.0`, both 04-11-2026. CI builds are green and the partitions are standard dual-OTA, unchanged between them.
 
-The firmware has run on the owner's panel since 0.6.0-dev; it was flashed over USB from PlatformIO, not from the installer. The installer smoke test (RUNBOOK 5a) has not been run yet: a fresh install from the live page, Improv **Configure Wi-Fi**, then **Connect** again showing "Connected to CYD-Home-Solar-Monitor 0.6.0".
+The firmware runs on the owner's panel, flashed over USB from PlatformIO, not from the installer. The installer smoke test (RUNBOOK 5a) has not been run yet: a fresh install from the live page, Improv **Configure Wi-Fi**, then **Connect** again showing "Connected to CYD-Home-Solar-Monitor 0.7.0". `v0.7.0` was released with these tests still owed, at the owner's request.
 
 ---
 

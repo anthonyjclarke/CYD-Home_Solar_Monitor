@@ -6,7 +6,7 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 
 ## What it is
 
-`0.7.0`. Energy-flow display (solar / home / grid / battery + SOC) that reads a SolarEdge SE6000 + LG battery **via Home Assistant's REST API** (`/api/states/<entity>`), never the inverter directly. A background FreeRTOS task polls six entities; the main loop renders, handles touch, web UI, OTA and Improv. Running on the owner's panel; open checks in `docs/HARDWARE_VALIDATION.md`.
+`0.8.0-dev` (0.7.0 released). Energy-flow display (solar / home / grid / battery + SOC) that reads a SolarEdge SE6000 + LG battery **via Home Assistant's REST API** (`/api/states/<entity>`), never the inverter directly. A background FreeRTOS task polls six entities; the main loop renders, handles touch, web UI, OTA and Improv. Running on the owner's panel; open checks in `docs/HARDWARE_VALIDATION.md`.
 
 ---
 

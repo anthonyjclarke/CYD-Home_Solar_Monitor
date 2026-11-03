@@ -81,7 +81,7 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <main>
 <header class="hero">
 <h1>CYD Home Solar Monitor</h1>
-<p>Handbook for firmware <code>0.6.0-dev</code>: installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a SolarEdge SE6000 and LG battery, read from Home Assistant.</p>
+<p>Handbook for firmware <code>0.6.0</code>: installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a SolarEdge SE6000 and LG battery, read from Home Assistant.</p>
 </header>
 
 <h2 id="overview">Overview</h2>
@@ -92,6 +92,14 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <figcaption>The default centre-flow layout. All panel images in this handbook are rendered from the firmware's own drawing code with sample data; fonts are approximated on the desktop.</figcaption></figure>
 
 <h2 id="install">Install and flash</h2>
+<h3>From the browser (recommended)</h3>
+<p>Open <a href="https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/">anthonyjclarke.github.io/CYD-Home_Solar_Monitor</a> in desktop Chrome or Edge, plug the CYD in with a USB data cable, choose the board and click <b>Connect</b>.</p>
+<ul>
+<li><b>New board:</b> choose <b>Install</b> and agree to erase, then use <b>Configure Wi-Fi</b> to send your network over USB.</li>
+<li><b>Board already running this firmware:</b> the page offers <b>Update</b>, which keeps Wi-Fi, settings, the token and touch calibration.</li>
+</ul>
+<p>Each <a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor/releases">release</a> also carries <code>*-firmware.bin</code> for the device page's <b>Firmware update</b>, and <code>*-merged.bin</code> for a clean USB install, which erases everything.</p>
+<h3>From PlatformIO</h3>
 <p>Open the project folder in PlatformIO; the only environment is <code>cyd28</code>. A build produces:</p>
 <table><thead><tr><th>File</th><th>Use</th></tr></thead><tbody>
 <tr><td><code>.pio/build/cyd28/firmware.bin</code></td><td>App image: USB updates, browser <b>Firmware update</b>, ArduinoOTA. Keeps all settings.</td></tr>

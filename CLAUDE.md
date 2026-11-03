@@ -6,7 +6,7 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 
 ## What it is
 
-`0.6.0-dev`. Energy-flow display (solar / home / grid / battery + SOC) that reads a SolarEdge SE6000 + LG battery **via Home Assistant's REST API** (`/api/states/<entity>`), never the inverter directly. A background FreeRTOS task polls six entities; the main loop renders, handles touch, web UI, OTA and Improv. Not yet flashed to hardware – see `docs/HARDWARE_VALIDATION.md`.
+`0.6.0`. Energy-flow display (solar / home / grid / battery + SOC) that reads a SolarEdge SE6000 + LG battery **via Home Assistant's REST API** (`/api/states/<entity>`), never the inverter directly. A background FreeRTOS task polls six entities; the main loop renders, handles touch, web UI, OTA and Improv. Running on the owner's panel; open checks in `docs/HARDWARE_VALIDATION.md`.
 
 ---
 
@@ -65,6 +65,13 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 - Timezone is a POSIX string from settings (default `APP_TZ_POSIX`), applied with `setenv`/`tzset` in `applyTimezone()`, not ezTime. The Olson→POSIX table lives in the web page JS only.
 - TLS on the core-0 reader task must be wrapped in `TlsWatchdogPause`: an mbedTLS handshake (≈7.6 s to Open-Meteo) never yields and the IDLE0 task watchdog reboots the device. Plain HTTP doesn't need it.
 - Weather: Open-Meteo over TLS verified with `include/ca_isrg_root_x1.h` (expires 2035). It runs in the reader task after the HA connection closes, so only one TLS session is open at a time. Do not add `setInsecure()`.
+
+## Web installer and releases
+
+- GitHub repo is `CYD-Home_Solar_Monitor` (underscores); `PROJECT_NAME` stays `CYD-Home-Solar-Monitor`. Both are frozen: the manifest `name` must match what Improv reports or the installer stops offering Update.
+- Release images come only from CI on a `v*` tag on `main` matching `FIRMWARE_VERSION` with no suffix. Never put `firmware-merged.bin` in a manifest.
+- Improv is vendored in `lib/ImprovWiFi` – never add it to `lib_deps`. `improvTick()` must run at least every ~1 s.
+- Before the next release, clear *Tests owed* in `docs/WEB_INSTALLER.md`.
 
 ## Style
 

@@ -1,203 +1,104 @@
 # CYD Home Solar Monitor
 
-Version `0.6.0-dev` – a PlatformIO energy-flow display for the 2.8-inch CYD, using the owner's existing SolarEdge Modbus Multi integration in Home Assistant.
+A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-2432S028R). It shows solar generation, house demand, grid import/export and battery power and charge as live, animated flows, read from **Home Assistant**. It was built for a SolarEdge SE6000 inverter with an LG battery, and works with any Home Assistant power sensors that follow the same conventions.
 
-The firmware reads Home Assistant at the configurable default `http://192.168.1.254:8123`. It does not connect to the inverter at `192.168.1.88`. Home Assistant keeps its existing Modbus connection.
+Version `0.6.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
 
-![Centre-flow layout using the supplied sample](docs/images/centre-flow-preview.png)
-
-The full handbook – setup, every setting, an annotated guide to the display and troubleshooting – is in [`docs/index.html`](docs/index.html).
-
-Two panel layouts are available under **Panel layout** in the browser settings: the default light centre-flow layout above, and the original dark cards layout ([preview](docs/images/flow-preview.png)). The previews use the shared TFT drawing code with approximate desktop font rendering. The values are supplied sample data, not a live hardware capture.
+![Centre-flow layout](docs/images/centre-flow-preview.png)
 
 ---
 
-## What it displays
+## Features
 
-The landscape screen shows calculated solar generation, whole-house demand, grid import/export, battery charging/discharging and battery state of energy. The four net flows meet at an inverter hub. Solar and battery are DC readings; household demand and grid are AC readings. Arrows stop when the corresponding value is stale or unavailable.
+- **Two panel layouts.** Centre flow (light, the default) has the four flows meeting at the inverter, with moving arrows showing direction. Cards (dark) shows the same readings as four cards.
+- **Battery at a glance.** A gauge filled to the state of energy turns amber below 50% and red below 20%. The status line says when it's a good time to use power.
+- **Optional extras:** today's solar kWh, tomorrow's solar forecast, and weather from Open-Meteo for a location you choose.
+- **Browser dashboard** at `http://solar.local/`, covering:
+  - live tiles and an animated flow diagram;
+  - a 30-minute trend chart;
+  - every setting, diagnostics and firmware update.
+- **Honest readings.** Stale or missing values grey out and keep their last number instead of dropping to zero, and the status line gives the reason.
+- **Quality of life:**
+  - a boot screen with the IP address, Wi-Fi signal and Home Assistant host;
+  - night dimming;
+  - touch calibration;
+  - POSIX timezone set from the browser.
 
-Solar generation uses inverter DC power plus signed battery DC power, with battery charging positive and discharging negative in the source entities. Negative results are clamped to zero. This follows the single-inverter/battery calculation documented by [SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi/wiki/Template-Sensors-for-Power-and-Energy#single-inverter-single-battery-single-import--export-meter).
-
-Inverter AC output remains a separate diagnostic reading. It is never added to battery power to calculate solar. Household consumption continues to use the existing Home Assistant helper without adding battery charging again. The preview is synthetic: its `500 W` inverter DC and `3904 W` battery charging produce `4404 W` calculated solar; these values are not a new live site measurement.
-
-Included features:
-
-- Configurable Home Assistant entity mapping, intervals and stale threshold.
-- A local browser dashboard, device diagnostics and firmware upload.
-- A clearly labelled demo mode cycling import, export, discharge and night samples.
-- Persisted settings, touch calibration, brightness and scheduled night dimming.
-- Non-blocking initial Wi-Fi provisioning, reconnects and background HA requests.
-- The existing CYD Improv-Serial, ArduinoOTA and browser-installer conventions.
-
-Optional daily solar energy and tomorrow's forecast appear in the top row when their Home Assistant entities are configured. Costs, free-power windows, historical logging and equipment control are deferred.
+The monitor never talks to the inverter. Home Assistant keeps its existing connection (here, SolarEdge Modbus Multi), and the CYD reads entity states from Home Assistant's local REST API every few seconds.
 
 ---
 
-## Build and flash
+## Install
 
-Open this folder in PlatformIO. The default environment is `cyd28`:
+1. Open **[anthonyjclarke.github.io/CYD-Home_Solar_Monitor](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/)** in desktop Chrome or Edge.
+2. Plug the CYD in with a USB **data** cable, pick the board and click **Connect**.
+3. On a new board, choose **Install** and agree to erase. Then use **Configure Wi-Fi** to send your network details over USB.
+4. On a board already running this firmware, the page offers **Update** instead, which keeps Wi-Fi, settings and calibration.
 
-```sh
-pio run
-pio run -t upload --upload-port /dev/cu.YOUR_DEVICE
-pio device monitor -b 115200 --port /dev/cu.YOUR_DEVICE
+Each [release](https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor/releases) also carries `*-firmware.bin`, for the device page's **Firmware update**, and `*-merged.bin`, for a clean USB install, which erases all settings.
+
+Without the browser installer, the panel opens a `CYD-Solar-xxxx` hotspot after 20 seconds with no Wi-Fi. Its password is the device code shown on screen.
+
+---
+
+## Setup
+
+You need a Home Assistant **long-lived access token**: Profile → Security → Long-lived access tokens.
+
+1. Browse to `http://solar.local/`, or tap the panel to see its IP address. There is no login, so keep the device on a trusted home network.
+2. Under **Settings → Home Assistant**, enter the Home Assistant URL and the token, then save.
+3. Under **Settings → Entities**, check the six power sensors.
+4. Optionally:
+   - search for your town under **Location & weather**;
+   - add the daily-solar and forecast sensors;
+   - choose a layout.
+
+| Reading       | Default entity                           | Sign in Home Assistant   |
+|:--------------|:-----------------------------------------|:-------------------------|
+| Inverter AC   | `sensor.solaredge_i1_ac_power`           | diagnostic only          |
+| Household     | `sensor.home_power_usage`                | positive                 |
+| Grid          | `sensor.solaredge_i1_m1_ac_power`        | + export, – import       |
+| Battery       | `sensor.solaredge_i1_b1_dc_power`        | + charge, – discharge    |
+| Battery level | `sensor.solaredge_i1_b1_state_of_energy` | %                        |
+| Inverter DC   | `sensor.solaredge_i1_dc_power`           | positive                 |
+
+Solar is calculated as inverter DC less battery discharge, never from inverter AC, following the [SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi/wiki/Template-Sensors-for-Power-and-Energy#single-inverter-single-battery-single-import--export-meter) single-battery template.
+
+The **[handbook](docs/index.html)** covers the rest in detail:
+- every setting;
+- an annotated guide to the display and its states;
+- how freshness is judged;
+- serial diagnostics;
+- troubleshooting.
+
+Open it from a local clone or the GitHub file view.
+
+---
+
+## Hardware
+
+An ESP32-2432S028R (CYD 2.8″) with an ILI9341 display in landscape, USB on the right, and an XPT2046 touch controller on its own SPI bus. No other wiring is needed.
+
+---
+
+## Building
+
+Open the folder in PlatformIO (env `cyd28`, `espressif32@6.12.0`, Arduino core 2.0.17, C++17):
+
+```bash
+pio run -t upload
 ```
 
-Replace the example serial port with your actual panel's port. These instructions flash a board; no board has been flashed during development.
+`python3 tools/check_host.py` runs the host-side model tests and renders the panel previews in `docs/images/`. `python3 tools/preview_server.py` serves the browser dashboard with synthetic data at `http://127.0.0.1:8765`.
 
-The build pins `espressif32@6.12.0` with Arduino core `2.0.17`, uses C++17 and produces:
-
-| Output                                 | Purpose               |
-| -------------------------------------- | --------------------- |
-| `.pio/build/cyd28/firmware.bin`        | App image / local OTA |
-| `.pio/build/cyd28/firmware-merged.bin` | Clean USB install     |
-| `.pio/build/cyd28/flash_parts.json`    | Browser-installer map |
-
-The merged image starts at `0x0` and overwrites NVS, including Wi-Fi, settings, the device code and calibration. Use the app image for the browser update page. Keep `partitions_custom.csv` unchanged for subsequent releases.
-
-No credentials or filesystem upload are needed to build. The page and fonts ship inside the app. Release images should be built by CI using the included shared CYD workflow; local builds are for development and bench installation.
+No secrets are compiled in: the token and Wi-Fi live in the device's NVS. Release images are built by GitHub Actions on a `v*` tag, using the shared [cyd-web-installer](https://github.com/anthonyjclarke/cyd-web-installer) workflow. Never publish a local build.
 
 ---
 
-## First setup
+## Credits
 
-1. Power the CYD. If its saved Wi-Fi cannot connect during the first 20 seconds, it opens the `CYD-Solar-xxxx` hotspot. The password is the 12-character device code shown on the panel.
-2. Join that hotspot and open its captive portal, or browse to `192.168.4.1`. Choose the home Wi-Fi and enter its password. The portal times out after three minutes, with bounded connection retries before reopening. Improv-Serial can also provision Wi-Fi over USB.
-3. Once connected, open `http://solar.local/` (or tap the panel for its IP address). There is no login: the page is meant for the trusted home LAN only.
-4. In **Connection and display**, check the Home Assistant URL and enter a Home Assistant long-lived access token. Leave the prefilled entity IDs unless they have changed. Save settings.
-5. Optionally set **Solar energy today** and **Solar forecast tomorrow** (see below), choose the **Panel layout** and set the **Battery label** shown beside the state of energy (up to 14 characters; default `LG 9.8 kWh`).
-6. Readings appear after the next acquisition cycle. For an initial visual check without a token, enable **Demo mode** and save. Turn demo mode off when commissioning live data.
+- The service scaffold and installer tooling come from the author's `CYD_Display_Test` and [cyd-web-installer](https://github.com/anthonyjclarke/cyd-web-installer).
+- The display and touch bus handling come from `CYD_AnimatedPixelClock`.
+- Weather is from [Open-Meteo](https://open-meteo.com/).
 
-Create the HA token locally under the user's Home Assistant profile/security settings. The [Home Assistant REST API documentation](https://contributors.home-assistant.io/core/internals/rest-api/) describes authentication. Do not paste the token into chat or commit it. A blank token field preserves the saved token; **Clear saved Home Assistant token** removes it.
-
-The firmware makes state-read requests only, although the HA token itself is not inherently limited to reads. The token is stored in device NVS, not returned by the device API and not logged. The default device web interface and local HA URL use HTTP on the trusted LAN. For an HTTPS HA endpoint, paste its trusted PEM CA certificate into the advanced settings; certificate verification is required, with no insecure fallback. HTTPS needs a synchronised clock. Do not forward this device's ports to the internet.
-
----
-
-## Entity defaults and units
-
-### Solar, inverter and household
-
-`sensor.solaredge_i1_dc_power` is the sixth configured source, providing inverter DC power. The owner confirmed this entity with a `905.5 Watt` sample. The firmware combines each acquired DC value with battery power from the same acquisition cycle; it does not combine that sample with an older screenshot.
-
-`sensor.solaredge_i1_ac_power` provides inverter AC power in W/kW and remains in the browser diagnostics. `sensor.home_power_usage` provides household power in W/kW; it remains the authoritative household helper rather than being recomputed from independently requested readings.
-
-### Grid
-
-`sensor.solaredge_i1_m1_ac_power` provides signed grid power. Its source convention is positive for export and negative for import. The internal/API convention is positive for import and negative for export. The supplied non-negative import/export helpers are not needed by this version; it uses the signed meter directly.
-
-### Battery
-
-`sensor.solaredge_i1_b1_dc_power` provides signed battery DC power. Its source convention is positive for charge and negative for discharge. Internally, positive means discharge and negative means charge. `sensor.solaredge_i1_b1_state_of_energy` provides percentage in `%`.
-
-Power entities must report `W`, `kW` or a supported `Watt`/`Watts` spelling; energy totals such as `kWh`, non-numeric states, out-of-range percentages and unavailable values are rejected. Invalid reads retain previous numbers in grey with unavailable status. They never silently become zero.
-
----
-
-### Location, timezone and weather (optional)
-
-Under **Location, timezone and weather**, search for a town or suburb. The search runs from your browser using Open-Meteo geocoding and fills in latitude, longitude, place name and timezone. Known timezones fill the **POSIX TZ rule** the device uses (it has no timezone database); for anything not in the built-in list, type the POSIX rule yourself. The timezone drives the clock and night dimming and applies as soon as settings are saved.
-
-With a location set, the device fetches current conditions and tomorrow's forecast from Open-Meteo every 30 minutes (every five minutes after a failure), sending only the coordinates. HTTPS is verified against the embedded ISRG Root X1 certificate, valid to 2035. Clear latitude and longitude to turn weather off. On the centre layout, tomorrow's sky icon sits beside the kWh forecast, or beside tomorrow's maximum temperature when no kWh forecast entity is set. The current temperature follows the clock. The cards layout shows current conditions beside the badge.
-
-### Daily total and forecast (optional)
-
-Both fields take a `sensor.` entity reporting `kWh`, `Wh` or `MWh`, and are read once a minute over the same connection as the live readings. Leave a field blank to hide it; the centre layout then shows the clock instead of today's total.
-
-**Solar energy today** needs a sensor that resets at midnight. The simplest is a Home Assistant **Utility Meter** helper with a daily cycle, sourced from the solar production sensor already used by the Energy dashboard. **Solar forecast tomorrow** can come from the Forecast.Solar integration (for example `sensor.energy_production_tomorrow`) or Solcast. Neither is installed or configured by this firmware; check the actual entity IDs in Home Assistant.
-
-Totals are shown while they have been received within the last ten minutes. Upstream report time is not used for them, because a daily meter legitimately stays unchanged overnight.
-
----
-
-## Touch, brightness and diagnostics
-
-A short tap opens/closes the device setup page. From that page, hold for two seconds to enter four-corner touch calibration, then release and tap each cross once. Calibration is saved in NVS; a 45-second inactivity timeout exits the process. Implausible raw readings are rejected using the working AnimatedPixelClock pattern.
-
-Night dimming defaults to `19:00–07:00` in `Australia/Sydney`, including daylight saving, once NTP synchronises. After a minute without touch, brightness is reduced to a fifth; touch restores the configured level for another minute. The touch that wakes a dimmed panel is consumed and does not also open the setup page. This version dims rather than switches the panel fully off.
-
-The browser diagnostics show each reading's validity, receive age and upstream reporting time. The firmware uses HA's `last_reported` when available, not `last_changed`. Report age is judged per integration, not per entity: HA does not refresh `last_reported` for every unchanged state (an idle, full battery was observed holding a 10-minute-old report time while the inverter entities updated every few seconds). A reading counts as fresh while the newest report time across all configured sources (the heartbeat) is recent; an unavailable entity is still rejected, and a stalled integration still goes stale. If the upstream report time or device clock is unavailable, it explicitly labels source age unknown; successful HTTP reads alone do not prove fresh inverter measurements. A configurable initial stale threshold of 180 seconds accommodates slower upstream reporting. Timestamp skew across entity reads is also flagged. Solar requires both DC and battery inputs to be valid and fresh. If their report timestamps or receive times differ by more than the greater of 10 seconds or twice the configured read interval, solar is marked unavailable instead of mixing those samples. If one input has an unknown report time, the other input is still checked for stale reporting.
-
-HA requests run on a separate task with bounded connection/read timeouts and failure backoff. Each cycle reads all six entities over one keep-alive connection, which keeps the readings close together in time. Display, touch and Improv processing run independently. The whole snapshot is published after the acquisition cycle, although individual HA entities can still originate from different source times.
-
-### Serial diagnostics
-
-Firmware `0.6.0-dev` prints diagnostics at `115200` baud with uptime timestamps. After installing the app update, open the PlatformIO serial monitor:
-
-```sh
-pio device monitor -b 115200
-```
-
-`[BOOT]`, `[BOARD]`, `[CFG]` and `[MAP]` identify the firmware, reset reason, hardware and active entity mappings. `[WIFI]` and `[CLOCK]` record connection/provisioning changes and NTP synchronisation.
-
-Each published live poll produces a `[POLL]` summary and six `[READ]` lines with entity ID, HTTP status, request duration, numeric source value/unit, normalised value, validity, freshness, receive age and upstream report time. A negative HTTP code indicates a transport failure, `401` indicates HA authentication failure, and `404` generally indicates an incorrect entity ID. HTTP `0` means no HTTP response was obtained; the error field explains the stage. Arbitrary response strings and bodies are not printed.
-
-`[SOLAR]` shows the DC and signed charging inputs, stored solar value, timestamp skew and rejection reason. If `valid=0`, a numeric field can be a retained previous reading rather than a newly accepted value. `report_pair_known=0` means skew between report timestamps cannot be verified. `[BALANCE]` checks inverter AC plus signed grid import against household demand when all three inputs are fresh; it does not mix battery DC into that AC balance.
-
-`[WEATHER]` lines report each weather fetch and the configured location. `[TOTAL]` lines report each configured daily-total and forecast read once a minute. `[DATA]` reports changes in validity/freshness masks, in bit order AC, home, grid, battery, SOC, DC and solar. A fully valid/fresh set is `0x7F`. `[HEALTH]` reports free/minimum heap, Wi-Fi signal and clock status every 30 seconds. Live poll blocks follow the configured poll/backoff interval, demo blocks are limited to once per five seconds, and a missing-token warning appears once on entering that mode.
-
-The default debug level is `3` (info), set by `APP_DEFAULT_DEBUG_LEVEL` in `include/config.h`; `0` disables application logs, `1` retains errors and `2` retains errors/warnings. Diagnostic blocks are written from the main loop, not the acquisition task, so they cannot be inserted by that task into an Improv response. HA tokens, Wi-Fi passwords, device access codes, certificates and response bodies are not logged. The configured HA address is restricted to its origin in the log, omitting userinfo, paths and queries.
-
----
-
-## Hardware reference
-
-The hardware configuration follows the working `CYD_AnimatedPixelClock` 2.8-inch environment: ESP32-2432S028R, ILI9341, landscape rotation `1`, USB to the right, with PWM backlight on GPIO `21`.
-
-| Signal          | GPIO / setting                 |
-| --------------- | ------------------------------ |
-| TFT SPI bus     | HSPI, explicit `USE_HSPI_PORT` |
-| TFT MOSI / MISO | `13` / `12`                    |
-| TFT SCLK / CS   | `14` / `15`                    |
-| TFT DC / reset  | `2` / `-1`                     |
-| Touch SPI bus   | Dedicated VSPI                 |
-| Touch CLK/MISO  | `25` / `39`                    |
-| Touch MOSI/CS   | `32` / `33`                    |
-| Touch IRQ       | `36`                           |
-
-TFT writes run at 55 MHz and touch at 2.5 MHz. TFT_eSPI's shared-bus `TOUCH_CS` setting is intentionally absent; XPT2046 is driven separately. Its resulting compile-time touch warning is expected. The screen uses a 76.8 KB, 8-bit sprite for coherent redraws; runtime heap use also includes network and TLS allocations.
-
----
-
-## Firmware updates
-
-Use the browser **Firmware update** section (no login; trusted LAN only) with the app `firmware.bin`. The device pauses HA acquisition while an update is in progress and restarts after a successful upload. ArduinoOTA also uses the device code as its password and becomes available even when Wi-Fi connects after boot.
-
-This version provides manual local updates. Signed automatic downloads and validated rollback are not implemented. Dual app slots alone do not provide those behaviours.
-
-### Updating an existing 0.1.0 device
-
-Upload `.pio/build/cyd28/firmware.bin` through the existing device's firmware update page, then reload the browser page after the restart. Do not upload the merged image or erase the board for this upgrade.
-
-The loader accepts the previous five-entity settings record, preserves the saved URL, token, five entity mappings and display settings, and supplies `sensor.solaredge_i1_dc_power` as the new sixth mapping. The next settings save writes schema 2. The partition layout and project identity are unchanged; actual preservation should be confirmed on the installed panel as part of commissioning.
-
----
-
-## Verification
-
-Run the portable decoding, sign, timestamp, freshness and rollover checks with:
-
-```sh
-python3 tools/check_host.py
-```
-
-The same command generates six SVG previews from the actual TFT layout code. Desktop font rendering is approximate; on-panel verification is still required.
-
-For a synthetic browser preview, run:
-
-```sh
-python3 tools/preview_server.py
-```
-
-Open `http://127.0.0.1:8765`. This loopback fixture does not contact Home Assistant or the inverter and does not accept real credentials. It validates the embedded page's rendering and client behaviour, not the ESP32 HTTP server or hardware.
-
-The PlatformIO build and host checks passed during development. Remaining checks are listed in [HARDWARE_VALIDATION.md](docs/HARDWARE_VALIDATION.md). Live polling, runtime heap behaviour, touch alignment, provisioning and firmware upload need a real panel with locally configured credentials.
-
----
-
-## Design and reuse
-
-The service scaffold, Improv library, merge script and installer conventions come from `CYD_Display_Test` and `cyd-web-installer`. The display/touch bus split and raw-reading guards follow `CYD_AnimatedPixelClock`. NVS configuration and local dashboard patterns follow the other existing CYD projects. Source projects have not been modified.
-
-See [BUILD_PLAN.md](docs/BUILD_PLAN.md) for equipment details and [RAYHUB_REVIEW_AND_BUILD_BRIEF.md](docs/RAYHUB_REVIEW_AND_BUILD_BRIEF.md) for the original product research.
-
+MIT licensed – see [LICENSE](LICENSE).

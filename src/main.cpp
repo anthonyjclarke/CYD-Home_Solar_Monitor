@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_ota_ops.h>
 #include "app/app.h"
 #include "backlight_service.h"
 #include "debug.h"
@@ -35,6 +36,7 @@ void setup() {
     cyd::ota::begin(cyd::storage::settings().deviceName);
     app::begin();
     diagnostics::begin();
+    DBG_INFO("Running from %s", esp_ota_get_running_partition()->label);
     DBG_INFO("%s %s ready", PROJECT_NAME,FIRMWARE_VERSION);
 }
 void loop() {

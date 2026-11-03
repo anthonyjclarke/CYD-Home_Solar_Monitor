@@ -42,7 +42,7 @@ int main(int argc,char**argv) {
     SvgCanvas c;
     const char* head="<svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>\n";
     if(argc>1&&std::string(argv[1])=="boot") {  // boot <layout>: sample start-up screen after Wi-Fi connects.
-        ui::BootView b;b.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Centre;b.version="v0.6.0-dev";
+        ui::BootView b;b.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Centre;b.version="v0.6.0";
         b.rows[0]={"Wi-Fi","Connected - HomeNetwork",ui::BootOk};b.rows[1]={"IP address","192.168.1.95",ui::BootInfo};
         b.rows[2]={"Web page","http://solar.local/",ui::BootInfo};b.rows[3]={"Signal","-37 dBm (excellent)",ui::BootInfo};
         b.rows[4]={"Home Asst","192.168.1.254:8123",ui::BootInfo};b.rows[5]={"Clock","17:08 AEDT - synced",ui::BootOk};

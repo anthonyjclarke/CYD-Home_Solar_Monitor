@@ -1,6 +1,8 @@
 # Changelog
 
-## [0.6.0-dev] 03-11-2026
+## [0.6.0] 04-11-2026
+
+First public release, with a browser installer at https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/.
 
 ### Changed
 
@@ -12,6 +14,7 @@
 
 ### Added
 
+- Web installer: CI builds release images on a `v*` tag and publishes the ESP Web Tools page; Improv-Serial answers on every boot so the installer offers Update (settings kept) on a provisioned panel. Boot log reports the running app slot (`Running from app0`).
 - Animated energy-flow diagram: solar, grid, battery and house around the inverter, with moving dots and arrowheads showing direction, faster at higher power, and a battery icon filled to the state of energy.
 - "At a glance" tiles with direction pills, a battery-level bar, solar today, tomorrow and current weather.
 - "Last 30 minutes" chart of solar, house, grid and battery, collected in the browser (no device storage).

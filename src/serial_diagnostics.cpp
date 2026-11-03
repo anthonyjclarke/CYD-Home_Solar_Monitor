@@ -59,6 +59,10 @@ void logConfig() {
              c.caCertificate.isEmpty()?"missing":"set");
     for(int i=0;i<energy::SourceCount;++i)
         DBG_INFO("[MAP] %s=%s",metricName(static_cast<energy::Metric>(i)),c.entities[i].c_str());
+    DBG_INFO("[MAP] today_kwh=%s forecast_kwh=%s",c.totalEntities[energy::Today].isEmpty()?"<none>":c.totalEntities[energy::Today].c_str(),
+             c.totalEntities[energy::Tomorrow].isEmpty()?"<none>":c.totalEntities[energy::Tomorrow].c_str());
+    if(std::isnan(c.latitude)) DBG_INFO("[WEATHER] off (no location) tz=%s",c.tzPosix.c_str());
+    else DBG_INFO("[WEATHER] place=%s lat=%.4f lon=%.4f tz=%s",c.place.c_str(),c.latitude,c.longitude,c.tzPosix.c_str());
     DBG_INFO("[SIGNS] normalized grid=+import/-export; battery=+discharge/-charge; solar=DC-battery");
 }
 
@@ -67,10 +71,11 @@ void logCycle(const source::DiagnosticSnapshot& state,uint32_t now,uint64_t epoc
     const uint32_t limit=energy::skewLimitSeconds(c.pollSeconds);
     unsigned valid=0;
     for(int i=0;i<energy::SourceCount;++i) valid+=s.readings[i].valid;
-    DBG_INFO("[POLL] cycle=%lu rev=%lu mode=%s duration=%lums next=%lums valid=%u/%u epoch_ms=%llu",
+    DBG_INFO("[POLL] cycle=%lu rev=%lu mode=%s duration=%lums next=%lums valid=%u/%u epoch_ms=%llu heartbeat_age=%lldms",
              static_cast<unsigned long>(trace.id),static_cast<unsigned long>(s.revision),modeName(trace.mode),
              static_cast<unsigned long>(trace.elapsedMs),static_cast<unsigned long>(trace.nextPollMs),
-             valid,unsigned(energy::SourceCount),static_cast<unsigned long long>(epoch));
+             valid,unsigned(energy::SourceCount),static_cast<unsigned long long>(epoch),
+             epoch && s.heartbeatMs ? static_cast<long long>(epoch)-static_cast<long long>(s.heartbeatMs) : -1LL);
     if(trace.mode==source::SourceMode::TokenMissing) {
         DBG_WARN("[HA] No token configured; use the device's local settings page");return;
     }
@@ -88,7 +93,7 @@ void logCycle(const source::DiagnosticSnapshot& state,uint32_t now,uint64_t epoc
         snprintf(line,sizeof(line),"[READ] %s entity=%s http=%d ms=%lu raw=%s normalized=%+.3f%s valid=%u fresh=%u received_age=%s report_age=%s report_ms=%llu error=%s reason=%s",
                  metricName(metric),c.entities[i].c_str(),req.httpStatus,static_cast<unsigned long>(req.elapsedMs),raw,
                  r.value,metric==energy::Soc?"%":"W",unsigned(r.valid),unsigned(fresh),received,reported,
-                 static_cast<unsigned long long>(r.reportedMs),readError(req.error),readingReason(r,now,epoch,c.staleSeconds));
+                 static_cast<unsigned long long>(r.reportedMs),readError(req.error),snapshotReason(s,metric,now,epoch,c.staleSeconds));
         if(trace.mode==source::SourceMode::Live && req.error!=source::ReadError::None) DBG_WARN("%s",line);
         else DBG_INFO("%s",line);
     }
@@ -97,7 +102,7 @@ void logCycle(const source::DiagnosticSnapshot& state,uint32_t now,uint64_t epoc
     const uint64_t reportSkew=dc.reportedMs>battery.reportedMs?dc.reportedMs-battery.reportedMs:battery.reportedMs-dc.reportedMs;
     const uint32_t dcAge=now-dc.receivedMs,batteryAge=now-battery.receivedMs;
     const uint32_t receiveSkew=dcAge>batteryAge?dcAge-batteryAge:batteryAge-dcAge;
-    DBG_INFO("[SOLAR] formula=max(DC+raw_charge,0) DC=%.3fW raw_charge=%+.3fW stored_solar=%.3fW valid=%u fresh=%u coherent=%u receive_skew=%lums report_skew=%llums report_pair_known=%u limit=%lus reason=%s",
+    DBG_INFO("[SOLAR] formula=max(DC+raw_charge,0) DC=%.3fW raw_charge=%+.3fW stored_solar=%.3fW valid=%u fresh=%u coherent=%u receive_skew=%lums raw_report_skew=%llums report_pair_known=%u limit=%lus reason=%s",
              dc.value,-battery.value,solar.value,unsigned(solar.valid),
              unsigned(energy::metricFresh(s,energy::Solar,now,epoch,c.staleSeconds,limit)),
              unsigned(energy::solarSourcesCoherent(s,now,limit)),static_cast<unsigned long>(receiveSkew),
@@ -111,6 +116,27 @@ void logCycle(const source::DiagnosticSnapshot& state,uint32_t now,uint64_t epoc
                  s.readings[energy::Inverter].value,s.readings[energy::Grid].value,expected,
                  s.readings[energy::Home].value,s.readings[energy::Home].value-expected,static_cast<unsigned long>(s.skewSeconds));
     } else DBG_INFO("[BALANCE] Not checked: AC/home/grid input invalid or stale");
+    if(trace.totalsRead) {
+        const char* names[]={"today","forecast"};
+        for(int t=0;t<energy::TotalCount;++t) {
+            if(c.totalEntities[t].isEmpty()) continue;
+            const auto& r=s.totals[t];const auto& req=trace.totals[t];
+            if(req.error!=source::ReadError::None)
+                DBG_WARN("[TOTAL] %s entity=%s http=%d ms=%lu state=%s unit=%s error=%s",names[t],c.totalEntities[t].c_str(),
+                         req.httpStatus,static_cast<unsigned long>(req.elapsedMs),req.state,req.unit,readError(req.error));
+            else DBG_INFO("[TOTAL] %s entity=%s http=%d ms=%lu value=%.3fkWh",names[t],c.totalEntities[t].c_str(),
+                          req.httpStatus,static_cast<unsigned long>(req.elapsedMs),r.value);
+        }
+    }
+    // Clock/Wi-Fi waits are retried each cycle and would only add noise.
+    if(trace.weatherRead && trace.weather.error!=source::ReadError::Clock && trace.weather.error!=source::ReadError::Wifi) {
+        const auto& w=s.weather;const auto& req=trace.weather;
+        if(req.error==source::ReadError::None)
+            DBG_INFO("[WEATHER] place=%s http=%d ms=%lu now=%.1fC code=%d tomorrow_max=%.1fC code=%d",c.place.c_str(),req.httpStatus,
+                     static_cast<unsigned long>(req.elapsedMs),w.nowC,w.nowCode,w.tomorrowMaxC,w.tomorrowCode);
+        else DBG_WARN("[WEATHER] place=%s http=%d ms=%lu error=%s; retry in %us",c.place.c_str(),req.httpStatus,
+                      static_cast<unsigned long>(req.elapsedMs),readError(req.error),unsigned(weather::retrySeconds));
+    }
     DBG_INFO("[SOURCE] %s",s.message);
 }
 }  // namespace

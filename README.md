@@ -1,12 +1,14 @@
 # CYD Home Solar Monitor
 
-Version `0.2.2-dev` – a PlatformIO energy-flow display for the 2.8-inch CYD, using the owner's existing SolarEdge Modbus Multi integration in Home Assistant.
+Version `0.5.0-dev` – a PlatformIO energy-flow display for the 2.8-inch CYD, using the owner's existing SolarEdge Modbus Multi integration in Home Assistant.
 
 The firmware reads Home Assistant at the configurable default `http://192.168.1.254:8123`. It does not connect to the inverter at `192.168.1.88`. Home Assistant keeps its existing Modbus connection.
 
-![Development preview using the supplied sample](docs/images/flow-preview.png)
+![Centre-flow layout using the supplied sample](docs/images/centre-flow-preview.png)
 
-The preview uses the shared TFT drawing code with approximate desktop font rendering. The values are supplied sample data, not a live hardware capture.
+The full handbook – setup, every setting, an annotated guide to the display and troubleshooting – is in [`docs/index.html`](docs/index.html).
+
+Two panel layouts are available under **Panel layout** in the browser settings: the default light centre-flow layout above, and the original dark cards layout ([preview](docs/images/flow-preview.png)). The previews use the shared TFT drawing code with approximate desktop font rendering. The values are supplied sample data, not a live hardware capture.
 
 ---
 
@@ -27,7 +29,7 @@ Included features:
 - Non-blocking initial Wi-Fi provisioning, reconnects and background HA requests.
 - The existing CYD Improv-Serial, ArduinoOTA and browser-installer conventions.
 
-Costs, forecasts, historical logging and equipment control are deferred.
+Optional daily solar energy and tomorrow's forecast appear in the top row when their Home Assistant entities are configured. Costs, free-power windows, historical logging and equipment control are deferred.
 
 ---
 
@@ -61,9 +63,9 @@ No credentials or filesystem upload are needed to build. The page and fonts ship
 
 1. Power the CYD. If its saved Wi-Fi cannot connect during the first 20 seconds, it opens the `CYD-Solar-xxxx` hotspot. The password is the 12-character device code shown on the panel.
 2. Join that hotspot and open its captive portal, or browse to `192.168.4.1`. Choose the home Wi-Fi and enter its password. The portal times out after three minutes, with bounded connection retries before reopening. Improv-Serial can also provision Wi-Fi over USB.
-3. Once connected, tap the flow screen to view the device IP and access code. Open that IP in a browser. Sign in as `admin`, using the displayed code as the password.
+3. Once connected, open `http://solar.local/` (or tap the panel for its IP address). There is no login: the page is meant for the trusted home LAN only.
 4. In **Connection and display**, check the Home Assistant URL and enter a Home Assistant long-lived access token. Leave the prefilled entity IDs unless they have changed. Save settings.
-5. Optionally set the **Battery label** shown beside the state of energy (up to 14 characters; default `LG 9.8 kWh`).
+5. Optionally set **Solar energy today** and **Solar forecast tomorrow** (see below), choose the **Panel layout** and set the **Battery label** shown beside the state of energy (up to 14 characters; default `LG 9.8 kWh`).
 6. Readings appear after the next acquisition cycle. For an initial visual check without a token, enable **Demo mode** and save. Turn demo mode off when commissioning live data.
 
 Create the HA token locally under the user's Home Assistant profile/security settings. The [Home Assistant REST API documentation](https://contributors.home-assistant.io/core/internals/rest-api/) describes authentication. Do not paste the token into chat or commit it. A blank token field preserves the saved token; **Clear saved Home Assistant token** removes it.
@@ -92,19 +94,35 @@ Power entities must report `W`, `kW` or a supported `Watt`/`Watts` spelling; ene
 
 ---
 
+### Location, timezone and weather (optional)
+
+Under **Location, timezone and weather**, search for a town or suburb. The search runs from your browser using Open-Meteo geocoding and fills in latitude, longitude, place name and timezone. Known timezones fill the **POSIX TZ rule** the device uses (it has no timezone database); for anything not in the built-in list, type the POSIX rule yourself. The timezone drives the clock and night dimming and applies as soon as settings are saved.
+
+With a location set, the device fetches current conditions and tomorrow's forecast from Open-Meteo every 30 minutes (every five minutes after a failure), sending only the coordinates. HTTPS is verified against the embedded ISRG Root X1 certificate, valid to 2035. Clear latitude and longitude to turn weather off. On the centre layout, tomorrow's sky icon sits beside the kWh forecast, or beside tomorrow's maximum temperature when no kWh forecast entity is set. The current temperature follows the clock. The cards layout shows current conditions beside the badge.
+
+### Daily total and forecast (optional)
+
+Both fields take a `sensor.` entity reporting `kWh`, `Wh` or `MWh`, and are read once a minute over the same connection as the live readings. Leave a field blank to hide it; the centre layout then shows the clock instead of today's total.
+
+**Solar energy today** needs a sensor that resets at midnight. The simplest is a Home Assistant **Utility Meter** helper with a daily cycle, sourced from the solar production sensor already used by the Energy dashboard. **Solar forecast tomorrow** can come from the Forecast.Solar integration (for example `sensor.energy_production_tomorrow`) or Solcast. Neither is installed or configured by this firmware; check the actual entity IDs in Home Assistant.
+
+Totals are shown while they have been received within the last ten minutes. Upstream report time is not used for them, because a daily meter legitimately stays unchanged overnight.
+
+---
+
 ## Touch, brightness and diagnostics
 
 A short tap opens/closes the device setup page. From that page, hold for two seconds to enter four-corner touch calibration, then release and tap each cross once. Calibration is saved in NVS; a 45-second inactivity timeout exits the process. Implausible raw readings are rejected using the working AnimatedPixelClock pattern.
 
 Night dimming defaults to `19:00–07:00` in `Australia/Sydney`, including daylight saving, once NTP synchronises. After a minute without touch, brightness is reduced to a fifth; touch restores the configured level for another minute. The touch that wakes a dimmed panel is consumed and does not also open the setup page. This version dims rather than switches the panel fully off.
 
-The browser diagnostics show each reading's validity, receive age and upstream reporting time. The firmware uses HA's `last_reported` when available, not `last_changed`. If the upstream report time or device clock is unavailable, it explicitly labels source age unknown; successful HTTP reads alone do not prove fresh inverter measurements. A configurable initial stale threshold of 180 seconds accommodates slower upstream reporting. Timestamp skew across entity reads is also flagged. Solar requires both DC and battery inputs to be valid and fresh. If their report timestamps or receive times differ by more than the greater of 10 seconds or twice the configured read interval, solar is marked unavailable instead of mixing those samples. If one input has an unknown report time, the other input is still checked for stale reporting.
+The browser diagnostics show each reading's validity, receive age and upstream reporting time. The firmware uses HA's `last_reported` when available, not `last_changed`. Report age is judged per integration, not per entity: HA does not refresh `last_reported` for every unchanged state (an idle, full battery was observed holding a 10-minute-old report time while the inverter entities updated every few seconds). A reading counts as fresh while the newest report time across all configured sources (the heartbeat) is recent; an unavailable entity is still rejected, and a stalled integration still goes stale. If the upstream report time or device clock is unavailable, it explicitly labels source age unknown; successful HTTP reads alone do not prove fresh inverter measurements. A configurable initial stale threshold of 180 seconds accommodates slower upstream reporting. Timestamp skew across entity reads is also flagged. Solar requires both DC and battery inputs to be valid and fresh. If their report timestamps or receive times differ by more than the greater of 10 seconds or twice the configured read interval, solar is marked unavailable instead of mixing those samples. If one input has an unknown report time, the other input is still checked for stale reporting.
 
 HA requests run on a separate task with bounded connection/read timeouts and failure backoff. Each cycle reads all six entities over one keep-alive connection, which keeps the readings close together in time. Display, touch and Improv processing run independently. The whole snapshot is published after the acquisition cycle, although individual HA entities can still originate from different source times.
 
 ### Serial diagnostics
 
-Firmware `0.2.2-dev` prints diagnostics at `115200` baud with uptime timestamps. After installing the app update, open the PlatformIO serial monitor:
+Firmware `0.5.0-dev` prints diagnostics at `115200` baud with uptime timestamps. After installing the app update, open the PlatformIO serial monitor:
 
 ```sh
 pio device monitor -b 115200
@@ -116,7 +134,7 @@ Each published live poll produces a `[POLL]` summary and six `[READ]` lines with
 
 `[SOLAR]` shows the DC and signed charging inputs, stored solar value, timestamp skew and rejection reason. If `valid=0`, a numeric field can be a retained previous reading rather than a newly accepted value. `report_pair_known=0` means skew between report timestamps cannot be verified. `[BALANCE]` checks inverter AC plus signed grid import against household demand when all three inputs are fresh; it does not mix battery DC into that AC balance.
 
-`[DATA]` reports changes in validity/freshness masks, in bit order AC, home, grid, battery, SOC, DC and solar. A fully valid/fresh set is `0x7F`. `[HEALTH]` reports free/minimum heap, Wi-Fi signal and clock status every 30 seconds. Live poll blocks follow the configured poll/backoff interval, demo blocks are limited to once per five seconds, and a missing-token warning appears once on entering that mode.
+`[WEATHER]` lines report each weather fetch and the configured location. `[TOTAL]` lines report each configured daily-total and forecast read once a minute. `[DATA]` reports changes in validity/freshness masks, in bit order AC, home, grid, battery, SOC, DC and solar. A fully valid/fresh set is `0x7F`. `[HEALTH]` reports free/minimum heap, Wi-Fi signal and clock status every 30 seconds. Live poll blocks follow the configured poll/backoff interval, demo blocks are limited to once per five seconds, and a missing-token warning appears once on entering that mode.
 
 The default debug level is `3` (info), set by `APP_DEFAULT_DEBUG_LEVEL` in `include/config.h`; `0` disables application logs, `1` retains errors and `2` retains errors/warnings. Diagnostic blocks are written from the main loop, not the acquisition task, so they cannot be inserted by that task into an Improv response. HA tokens, Wi-Fi passwords, device access codes, certificates and response bodies are not logged. The configured HA address is restricted to its origin in the log, omitting userinfo, paths and queries.
 
@@ -143,7 +161,7 @@ TFT writes run at 55 MHz and touch at 2.5 MHz. TFT_eSPI's shared-bus `TOUCH_CS` 
 
 ## Firmware updates
 
-Use the authenticated browser **Firmware update** section with the app `firmware.bin`. The device pauses HA acquisition while an update is in progress and restarts after a successful upload. ArduinoOTA also uses the device code as its password and becomes available even when Wi-Fi connects after boot.
+Use the browser **Firmware update** section (no login; trusted LAN only) with the app `firmware.bin`. The device pauses HA acquisition while an update is in progress and restarts after a successful upload. ArduinoOTA also uses the device code as its password and becomes available even when Wi-Fi connects after boot.
 
 This version provides manual local updates. Signed automatic downloads and validated rollback are not implemented. Dual app slots alone do not provide those behaviours.
 

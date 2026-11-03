@@ -6,7 +6,7 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 
 ## What it is
 
-`0.2.2-dev`. Energy-flow display (solar / home / grid / battery + SOC) that reads a SolarEdge SE6000 + LG battery **via Home Assistant's REST API** (`/api/states/<entity>`), never the inverter directly. A background FreeRTOS task polls six entities; the main loop renders, handles touch, web UI, OTA and Improv. Not yet flashed to hardware – see `docs/HARDWARE_VALIDATION.md`.
+`0.5.0-dev`. Energy-flow display (solar / home / grid / battery + SOC) that reads a SolarEdge SE6000 + LG battery **via Home Assistant's REST API** (`/api/states/<entity>`), never the inverter directly. A background FreeRTOS task polls six entities; the main loop renders, handles touch, web UI, OTA and Improv. Not yet flashed to hardware – see `docs/HARDWARE_VALIDATION.md`.
 
 ---
 
@@ -18,7 +18,8 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 - Touch rejects `z < 350`, `z >= 4000` and rail coordinates (phantom-tap guard copied from `CYD_AnimatedPixelClock`).
 - RGB LED is held off (active LOW, R4/G16/B17). Backlight is LEDC channel `0`; apps must not reuse it.
 - Frame buffer is a 320×240 **8-bit (RGB332)** sprite. Every palette colour in `flow_layout.cpp` must be an exact RGB332 level (R/G steps of 255/7, B steps of 85); a `static_assert` enforces it. Off-level colours shift hue on hardware.
-- Fonts are built-in GLCD 1/2/4 (known deviation from the VLW rule).
+- Fonts are built-in GLCD 1/2/4/6 (known deviation from the VLW rule); font 6 has digits and `.-:` only. Preview widths come from TFT_eSPI tables copied into `tools/render_preview.cpp`. Smooth fonts would anti-alias into off-palette RGB332 colours; they need 16-bit sprites, not the shared 8-bit buffer.
+- Two layouts share `ui::drawFlow()`: `Cards` (dark) and `Centre` (light, white is the nearest RGB332 off-white). Both palettes live in `flow_layout.cpp` under the same `static_assert`.
 
 ---
 
@@ -28,15 +29,18 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 - Solar = `max(inverter_DC − battery_internal, 0)`. **Never** derive solar from inverter AC; AC is diagnostic only.
 - Never add battery DC into the AC household balance; `sensor.home_power_usage` is authoritative.
 - Invalid/stale readings keep the last number (grey) – never silently become 0.
-- Freshness uses HA `last_reported`, not `last_changed`. Unknown report time is labelled, not assumed fresh.
+- Freshness uses HA `last_reported`, not `last_changed`, judged via `energy::effective()` against the snapshot `heartbeatMs` (newest valid report). HA does **not** refresh `last_reported` for unchanged battery states – never revert to per-entity report age. Unknown report time is labelled, not assumed fresh.
 - Solar is invalid if DC/battery timestamps differ by more than `energy::skewLimitSeconds(poll)`. Use `energy::metricUsable()` for live/stale decisions – never re-derive it.
+- Daily totals (`energy::Total`) are separate from `Metric` and the six-entity array – do not add them to `SourceCount`. Their freshness is receive-age only (`totalUsable`), never `last_reported`.
 - `energy::Metric` indices 0–4 are persisted order – append only (`InverterDc` = 5). `Solar` is derived, not a source.
 - `energy_model.h`, `diagnostic_helpers.h` and `flow_layout.cpp` must stay Arduino-free – they compile on the host in `tools/check_host.py`.
 
 ## Security rules
 
 - HA token, Wi-Fi password, device access code, CA cert and HTTP bodies are never logged or returned by the API. Serial logs only the URL origin.
-- Web mutations need Basic auth (`admin` / device code) **and** header `X-CYD-Request: 1`.
+- Web UI has **no login** by the owner's decision (trusted LAN). Mutations still require header `X-CYD-Request: 1` (CSRF guard) – keep it. OTA and the setup AP still use the device code.
+- mDNS name `APP_MDNS_NAME` ("solar") is set via `ArduinoOTA.setHostname()`; ArduinoOTA owns `MDNS.begin()`, so don't call it again.
+- Font 2 draws `` ` `` as a degree sign (`TFT_ESPI_GRAVE_IS_DEGREE` is set inside TFT_eSPI's `Font16.c`).
 - HTTPS to HA requires a pasted PEM CA – no `setInsecure()` fallback.
 - HA reads share one keep-alive `HTTPClient` per cycle. Do not re-enable `useHTTP10()` (it disables reuse); read bodies with `getString()` (handles chunking) and call `Connection::close()` on any failure after the request is sent.
 
@@ -50,14 +54,15 @@ ESP32-2432S028R (CYD 2.8″), ILI9341, landscape rotation `1` (USB right), no PS
 | `solar-touch`   | `limits` (4×`uint16_t` raw x0,x1,y0,y1)       |
 | `cyd-core`      | `boot_count`, `device_name`, `debug_level`    |
 
-`settings` is one JSON blob, `schema: 2` (six entities; optional `battery` label added in 0.2.2 without a schema bump). Loader still accepts `schema: 1` with five entities and appends the DC default – keep that migration.
+`settings` is one JSON blob, `schema: 2` (six entities; optional `battery` label, `layout` (0 cards, 1 centre), `today`/`forecast` kWh entity IDs, `lat`/`lon`/`place`, `tz` (POSIX) and `tzName` added without a schema bump). Loader still accepts `schema: 1` with five entities and appends the DC default – keep that migration.
 
 ## Build / release
 
 - `firmware.bin` for browser/ArduinoOTA updates; `firmware-merged.bin` (from `tools/merge_bin.py`) erases NVS – USB clean install only.
 - Partition layout must not change between releases (installer + OTA compatibility).
 - CI uses `anthonyjclarke/cyd-web-installer` reusable workflow; `python3 tools/check_host.py` runs first and regenerates `docs/images/*.svg`.
-- Timezone is a POSIX string (`APP_TZ_POSIX` in `config.h`, applied with `configTzTime`), not ezTime – intentional.
+- Timezone is a POSIX string from settings (default `APP_TZ_POSIX`), applied with `setenv`/`tzset` in `applyTimezone()`, not ezTime. The Olson→POSIX table lives in the web page JS only.
+- Weather: Open-Meteo over TLS verified with `include/ca_isrg_root_x1.h` (expires 2035). It runs in the reader task after the HA connection closes, so only one TLS session is open at a time. Do not add `setInsecure()`.
 
 ## Style
 

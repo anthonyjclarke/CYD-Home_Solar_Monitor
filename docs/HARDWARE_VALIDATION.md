@@ -1,6 +1,6 @@
 # Hardware Validation
 
-Firmware `0.2.2-dev`. Build and portable model checks have passed; all unchecked items below require a real CYD and/or locally entered Home Assistant credentials. No physical board was flashed during development.
+Firmware `0.5.0-dev`. Build and portable model checks have passed; all unchecked items below require a real CYD and/or locally entered Home Assistant credentials. No physical board was flashed during development.
 
 ---
 
@@ -24,6 +24,8 @@ The browser fixture uses synthetic data. Its success does not validate device au
 
 - [ ] Fresh USB flash starts with readable, correctly coloured 320 × 240 output.
 - [ ] Panel colours match `docs/images/flow-preview.png` (navy cards, not green); the palette is RGB332-exact.
+- [ ] Centre-flow layout matches `docs/images/centre-flow-preview.png`; chevrons move toward/away from the hub correctly for import/export and charge/supply.
+- [ ] Switching **Panel layout** in the browser changes the panel immediately and persists across restart.
 - [ ] Setup page refreshes once per second without visible flashing.
 - [ ] At night, the touch that wakes a dimmed panel does not open the setup page.
 - [ ] Touch works under continuous TFT redraws; calibration targets map correctly.
@@ -52,9 +54,18 @@ The browser fixture uses synthetic data. Its success does not validate device au
 - [ ] Unavailable entities, wrong units and missing IDs stop the affected arrows without fabricating zeroes.
 - [ ] Revoked token produces authentication failure without leaking token/body data.
 - [ ] HA shutdown/restart recovers without rebooting the CYD.
-- [ ] A reachable HA with stale upstream entities is flagged using report time.
+- [x] Idle full battery (unchanged 0 W / 100%) stays live; serial shows `reason=fresh-unchanged` and solar is calculated.
+- [ ] A reachable HA with stale upstream entities is flagged using report time (whole integration stalled: `heartbeat_age` exceeds the stale threshold).
 - [ ] Unknown source reporting time is labelled rather than assumed current.
 - [ ] Source timestamp skew and real upstream reporting cadence are understood.
+- [ ] Place search fills latitude, longitude, timezone and POSIX rule; saving changes the clock immediately.
+- [ ] `[WEATHER]` shows HTTP 200 within a minute of saving a location, then about every 30 minutes; icons match conditions.
+- [ ] Weather survives an HA outage and clears when the location is cleared.
+- [ ] Free heap stays healthy across weather TLS fetches (`[HEALTH] min_heap`).
+- [ ] Battery gauge fill and colour match state of energy (green ≥ 50%, amber ≥ 20%, red below).
+- [ ] Daily solar total matches the HA Energy dashboard and resets at local midnight.
+- [ ] Forecast value matches the HA forecast entity; `[TOTAL]` lines appear about once a minute.
+- [ ] Blank, invalid or unavailable total entities hide the value (clock shown) without affecting live flows.
 - [ ] Home Assistant's existing Modbus monitoring continues normally.
 
 ---
@@ -65,7 +76,8 @@ The browser fixture uses synthetic data. Its success does not validate device au
 - [ ] Updating a 0.1.0 device preserves its token, URL and first five entity mappings and supplies the new DC default.
 - [ ] Saving migrated settings retains all six mappings after a subsequent restart.
 - [ ] Blank token preserves the saved value; explicit clear removes it.
-- [ ] Browser configuration and firmware writes require the device code and request header.
+- [ ] `http://solar.local/` opens from a Mac/iPhone; browser changes work without a login and are refused without the `X-CYD-Request` header.
+- [ ] Font 6 values, chevrons and battery gauge match `docs/images/centre-flow-preview.png`; no text overlaps on the panel.
 - [ ] Night dimming follows Sydney time; touch restores brightness for a minute.
 - [ ] Wi-Fi reset preserves HA settings and returns to setup after restart.
 - [ ] Browser app update succeeds and preserves settings/calibration.

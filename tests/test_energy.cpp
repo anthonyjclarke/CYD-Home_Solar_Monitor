@@ -101,6 +101,35 @@ int main() {
     assert(metricUsable(live,Home,false,1100,0,180,5)); // Demo needs no network.
     live.demo=false;
     assert(!metricUsable(live,Home,false,1100,0,180,5) && metricUsable(live,Home,true,1100,0,180,5));
+    float kwh=0;
+    assert(parseEnergy("25.6","kWh",kwh) && kwh==25.6f);
+    assert(parseEnergy("25600","Wh",kwh) && kwh==25.6f);
+    assert(!parseEnergy("-1","kWh",kwh) && !parseEnergy("5","W",kwh) && !parseEnergy("unknown","kWh",kwh));
+    auto totals=demoSnapshot(1000,0);
+    assert(totalUsable(totals,Today,false,1100)); // Demo needs no network.
+    totals.demo=false;
+    assert(!totalUsable(totals,Today,false,1100) && totalUsable(totals,Tomorrow,true,1100));
+    assert(!totalUsable(totals,Today,true,1000+601000)); // Not refreshed for ten minutes.
+    // Idle full battery: HA kept its report time 11 minutes old while the
+    // inverter entities kept reporting. Unchanged must not mean stale.
+    auto idle=demoSnapshot(1000,0);idle.demo=false;
+    for(int i=0;i<SourceCount;++i) idle.readings[i].reportedMs=t;
+    idle.readings[Battery]={0,true,1000,t-655000};idle.readings[Soc]={100,true,1000,t-655000};
+    idle.heartbeatMs=newestReport(idle);assert(idle.heartbeatMs==t);
+    deriveSolar(idle,1100,10);
+    assert(idle.readings[Solar].valid && idle.readings[Solar].value==idle.readings[InverterDc].value);
+    assert(metricFresh(idle,Battery,1100,t+5000,180,10) && metricFresh(idle,Soc,1100,t+5000,180,10));
+    assert(metricFresh(idle,Solar,1100,t+5000,180,10));
+    assert(std::strcmp(diagnostics::snapshotReason(idle,Battery,1100,t+5000,180),"fresh-unchanged")==0);
+    assert(std::strcmp(diagnostics::snapshotReason(idle,InverterDc,1100,t+5000,180),"fresh")==0);
+    // The whole integration stalled: the heartbeat itself is old, so all go stale.
+    assert(!metricFresh(idle,Battery,1100,t+181000,180,10) && !metricFresh(idle,InverterDc,1100,t+181000,180,10));
+    assert(weather::skyFor(0)==weather::Clear && weather::skyFor(2)==weather::PartCloud && weather::skyFor(3)==weather::Cloud);
+    assert(weather::skyFor(45)==weather::Fog && weather::skyFor(53)==weather::Drizzle && weather::skyFor(61)==weather::Rain);
+    assert(weather::skyFor(81)==weather::Rain && weather::skyFor(73)==weather::Snow && weather::skyFor(96)==weather::Storm);
+    assert(weather::skyFor(-1)==weather::Unknown);
+    weather::Report report{true,1000,20,1,24,61};
+    assert(weather::usable(report,1000+weather::staleSeconds*1000UL) && !weather::usable(report,2000+weather::staleSeconds*1000UL));
     // Diagnostics describe failures without echoing arbitrary HA strings.
     bool numeric=false;
     assert(std::strcmp(diagnostics::stateKind("905.5",value,numeric),"numeric")==0 && numeric && value==905.5f);

@@ -104,9 +104,9 @@ Render-check every change with `tools/check_host.py`, but judge colours on the p
 | Stage | Scope                                          | Version |
 |:------|:-----------------------------------------------|:--------|
 | 1     | Findings 1–5 and tidy-ups – **done in code** | `0.2.2` |
-| 2     | Daily totals, prices, status line, free window | `0.3.0` |
-| 3     | Visual redesign: icons, VLW fonts, SOC gauge   | `0.4.0` |
-| 4     | Forecast entity and ring view                  | `0.5.0` |
+| 2     | Daily totals, prices, status line, free window – **totals and status line done in `0.3.0`** | `0.3.0` |
+| 3     | Visual redesign: icons, VLW fonts, SOC gauge – **centre layout and SOC bar done in `0.2.3`** | `0.4.0` |
+| 4     | Forecast entity and ring view – **forecast entity done in `0.3.0`** | `0.5.0` |
 | 5     | QR setup, Off night mode, update checks        | `0.6.0` |
 
 Stage 1 is implemented in `0.2.2-dev` except finding 2, which uses connection reuse rather than `/api/template`. Commission it on hardware before building on it: the colour issue and real HA cadence will affect every later UI decision.

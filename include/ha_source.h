@@ -20,6 +20,10 @@ struct CycleTrace {
     uint32_t nextPollMs = 0;
     SourceMode mode = SourceMode::Live;
     RequestTrace requests[energy::SourceCount];
+    bool totalsRead = false;  // Totals are read once a minute, not every cycle.
+    RequestTrace totals[energy::TotalCount];
+    bool weatherRead = false;  // Weather is fetched every 30 minutes.
+    RequestTrace weather;
 };
 struct DiagnosticSnapshot {
     energy::Snapshot data;

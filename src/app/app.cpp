@@ -35,6 +35,7 @@ public:
         buffer.setTextDatum(align == ui::Left ? TL_DATUM : align == ui::Right ? TR_DATUM : TC_DATUM);
         buffer.setTextColor(rgb565(color)); buffer.drawString(s,x,y,font);
     }
+    int textWidth(int font,const char* s) override { return buffer.textWidth(s,font); }
 } canvas;
 
 // Drawn into the frame sprite and pushed whole, so the 1 Hz refresh does not flash.
@@ -43,8 +44,8 @@ void paintInfo() {
     const auto& wifi = cyd::network::status();
     t.fillSprite(TFT_BLACK); t.setTextDatum(TL_DATUM); t.setTextColor(TFT_WHITE,TFT_BLACK);
     t.drawString(wifi.connected ? "DEVICE / SETUP" : "CONNECT TO WIFI",10,8,2);
-    t.drawString(wifi.connected ? "http://" + wifi.ip + "/" : wifi.apName,10,37,2);
-    t.drawString(wifi.connected ? "Browser user: admin" : "AP password / device code:",10,62,2);
+    t.drawString(wifi.connected ? "http://" APP_MDNS_NAME ".local/" : wifi.apName,10,37,2);
+    t.drawString(wifi.connected ? "or http://" + wifi.ip + "/   OTA code:" : "AP password / device code:",10,62,2);
     t.setTextColor(TFT_YELLOW,TFT_BLACK);
     t.drawString(monitor::accessCode(),10,84,4);
     t.setTextColor(TFT_WHITE,TFT_BLACK);
@@ -141,11 +142,18 @@ void update(uint32_t now) {
     for (auto metric:energy::displayMetrics) {
         all &= view.usable[metric]; reportKnown &= view.data.readings[metric].reportedMs!=0;
     }
-    const char* status=view.data.demo ? "DEMO / tap for setup" : !view.wifi ? "WiFi disconnected" : !all ? "Waiting / stale or unavailable" : view.data.skewSeconds>energy::skewLimitSeconds(cfg.pollSeconds) ? "Source times differ" : !reportKnown ? "HA connected / source age unknown" : "Live / tap for device settings";
+    const char* status=view.data.demo ? "DEMO / tap for setup" : !view.wifi ? "WiFi disconnected" : !all ? "Waiting / stale or unavailable" : !reportKnown ? "HA connected / source age unknown" : "Live / tap for device settings";
     view.status=status;
     String ip=cyd::network::status().ip;
     view.address=ip.c_str();
     view.batteryLabel=cfg.batteryLabel.c_str();
+    view.layout=static_cast<ui::Layout>(cfg.layout);
+    for (int t=0;t<energy::TotalCount;++t)
+        view.totalLive[t]=energy::totalUsable(view.data,static_cast<energy::Total>(t),view.wifi,now);
+    view.weatherLive=(view.data.demo || view.wifi) && weather::usable(view.data.weather,now);
+    char clockText[8]="";
+    if (clock) strftime(clockText,sizeof(clockText),"%H:%M",&local);
+    view.time=clockText;
     ui::drawFlow(canvas,view); buffer.pushSprite(0,0);
 }
 }  // namespace app

@@ -1,13 +1,16 @@
 #pragma once
 
 #define PROJECT_NAME "CYD-Home-Solar-Monitor"
-#define FIRMWARE_VERSION "0.2.2-dev"
+#define FIRMWARE_VERSION "0.5.0-dev"
 #define IMPROV_SETUP_ENABLED 1
 #define IMPROV_DEVICE_PREFIX "CYD-Solar"
 #define APP_DEFAULT_DEBUG_LEVEL 3
 #define APP_DEFAULT_BRIGHTNESS 180
 #define APP_OTA_PORT 3232
-// Australia/Sydney as a POSIX rule (applied with configTzTime, not ezTime).
+// mDNS name: the device answers at http://solar.local/ (ArduinoOTA advertises it too).
+#define APP_MDNS_NAME "solar"
+// Default timezone until one is chosen in the browser settings: Australia/Sydney
+// as a POSIX rule (applied with setenv/tzset, not ezTime).
 #define APP_TZ_POSIX "AEST-10AEDT,M10.1.0,M4.1.0/3"
 #define APP_TZ_NAME "Australia/Sydney"
 #define APP_NTP_SERVER_1 "pool.ntp.org"
@@ -34,6 +37,7 @@
 #define LOAD_GLCD
 #define LOAD_FONT2
 #define LOAD_FONT4
+#define LOAD_FONT6  // 48 px numerals for the main readings.
 
 #define CYD_BOARD_KEY "cyd28"
 #define CYD_BOARD_NAME "ESP32-2432S028R"

@@ -15,13 +15,18 @@ with tempfile.TemporaryDirectory(prefix="cyd-solar-check-") as directory:
     subprocess.run(common + [str(root / "tools/render_preview.cpp"), str(root / "src/ui/flow_layout.cpp"), "-o", str(renderer)], check=True)
     output = root / "docs/images"
     output.mkdir(parents=True, exist_ok=True)
-    for scene, name in enumerate(["flow-preview", "export-preview", "discharge-preview", "night-preview", "stale-preview", "setup-preview"]):
-        with (output / f"{name}.svg").open("w") as image:
-            subprocess.run([str(renderer), str(scene)], stdout=image, check=True)
-    print("Rendered six states from the shared TFT drawing code in docs/images/.")
+    # Layout 0 = cards (original names), layout 1 = centre flow (centre- prefix).
+    for layout, prefix in enumerate(["", "centre-"]):
+        for scene, name in enumerate(["flow-preview", "export-preview", "discharge-preview", "night-preview", "stale-preview", "setup-preview"]):
+            with (output / f"{prefix}{name}.svg").open("w") as image:
+                subprocess.run([str(renderer), str(scene), str(layout)], stdout=image, check=True)
+    with (output / "centre-weather-preview.svg").open("w") as image:
+        subprocess.run([str(renderer), "1", "1", "weather-only"], stdout=image, check=True)
+    print("Rendered six states of both layouts, plus a weather-only top row, in docs/images/.")
     converter = shutil.which("rsvg-convert")
     if not converter and Path("/opt/homebrew/bin/rsvg-convert").exists():
         converter = "/opt/homebrew/bin/rsvg-convert"
     if converter:
-        subprocess.run([converter, "-o", str(output / "flow-preview.png"), str(output / "flow-preview.svg")], check=True)
-        print("Rendered the main preview PNG with rsvg-convert.")
+        for name in ["flow-preview", "centre-flow-preview", "centre-export-preview", "centre-weather-preview"]:
+            subprocess.run([converter, "-o", str(output / f"{name}.png"), str(output / f"{name}.svg")], check=True)
+        print("Rendered preview PNGs with rsvg-convert.")

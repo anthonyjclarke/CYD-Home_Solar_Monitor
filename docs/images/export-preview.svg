@@ -1,6 +1,16 @@
 <svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>
 <rect x='0' y='0' width='320' height='240' rx='0' fill='#000000'/>
-<text x='8' y='18' font-size='13' text-anchor='start' fill='#ffffff'>HOME ENERGY</text>
+<text x='8' y='18' font-size='13' text-anchor='start' fill='#ffffff'>31.2 kWh SOLAR TODAY</text>
+<text x='260' y='19' font-size='13' text-anchor='end' fill='#ffffff'>24&#176;</text>
+<rect x='221' y='10' width='9' height='9' rx='4' fill='#ffb655'/>
+<path d='M225 8 L225 7' fill='none' stroke='#ffb655'/>
+<path d='M225 20 L225 21' fill='none' stroke='#ffb655'/>
+<path d='M219 14 L218 14' fill='none' stroke='#ffb655'/>
+<path d='M231 14 L232 14' fill='none' stroke='#ffb655'/>
+<path d='M221 10 L221 10' fill='none' stroke='#ffb655'/>
+<path d='M229 10 L229 10' fill='none' stroke='#ffb655'/>
+<path d='M221 18 L221 18' fill='none' stroke='#ffb655'/>
+<path d='M229 18 L229 18' fill='none' stroke='#ffb655'/>
 <rect x='267' y='5' width='45' height='21' rx='5' fill='#6d4900'/>
 <text x='289' y='19' font-size='13' text-anchor='middle' fill='#ffb655'>DEMO</text>
 <rect x='8' y='33' width='144' height='76' rx='8' fill='#002455'/>
@@ -9,18 +19,23 @@
 <rect x='168' y='139' width='144' height='76' rx='8' fill='#002455'/>
 <rect x='17' y='44' width='3' height='11' rx='1' fill='#ffb655'/>
 <text x='25' y='53' font-size='13' text-anchor='start' fill='#ffb655'>SOLAR</text>
-<text x='17' y='86' font-size='25' text-anchor='start' fill='#ffffff'>6.10 kW</text>
-<text x='17' y='101' font-size='9' text-anchor='start' fill='#9292aa'>Calculated / DC</text>
+<text x='17' y='98' font-size='44' text-anchor='start' fill='#ffffff'>6.10</text>
+<text x='116' y='93' font-size='13' text-anchor='start' fill='#9292aa'>kW</text>
 <rect x='177' y='44' width='3' height='11' rx='1' fill='#49dbaa'/>
 <text x='185' y='53' font-size='13' text-anchor='start' fill='#49dbaa'>HOME</text>
-<text x='177' y='86' font-size='25' text-anchor='start' fill='#ffffff'>1.20 kW</text>
-<text x='177' y='101' font-size='9' text-anchor='start' fill='#9292aa'>Home demand / AC</text>
-<text x='17' y='158' font-size='13' text-anchor='start' fill='#b6db55'>CHARGING / DC</text>
-<text x='17' y='190' font-size='25' text-anchor='start' fill='#ffffff'>1.80 kW</text>
-<text x='17' y='207' font-size='9' text-anchor='start' fill='#9292aa'>LG 9.8 kWh  63.2%</text>
+<text x='177' y='98' font-size='44' text-anchor='start' fill='#ffffff'>1.20</text>
+<text x='276' y='93' font-size='13' text-anchor='start' fill='#9292aa'>kW</text>
+<text x='17' y='158' font-size='13' text-anchor='start' fill='#b6db55'>CHARGING</text>
+<text x='17' y='202' font-size='44' text-anchor='start' fill='#ffffff'>1.80</text>
+<text x='116' y='197' font-size='13' text-anchor='start' fill='#9292aa'>kW</text>
+<text x='17' y='212' font-size='9' text-anchor='start' fill='#9292aa'>LG 9.8 kWh  63.2%</text>
+<rect x='118' y='145' width='24' height='12' rx='2' fill='#9292aa'/>
+<rect x='142' y='148' width='3' height='6' rx='0' fill='#9292aa'/>
+<rect x='119' y='146' width='22' height='10' rx='1' fill='#002455'/>
+<rect x='120' y='147' width='13' height='8' rx='1' fill='#b6db55'/>
 <text x='177' y='158' font-size='13' text-anchor='start' fill='#6db6ff'>GRID EXPORT</text>
-<text x='177' y='190' font-size='25' text-anchor='start' fill='#ffffff'>3.00 kW</text>
-<text x='177' y='207' font-size='9' text-anchor='start' fill='#9292aa'>Whole-property meter</text>
+<text x='177' y='202' font-size='44' text-anchor='start' fill='#ffffff'>3.00</text>
+<text x='276' y='197' font-size='13' text-anchor='start' fill='#9292aa'>kW</text>
 <path d='M80 110 L80 118' fill='none' stroke='#ffb655'/>
 <path d='M80 118 L143 118' fill='none' stroke='#ffb655'/>
 <path d='M143 118 L138 121' fill='none' stroke='#ffb655'/>

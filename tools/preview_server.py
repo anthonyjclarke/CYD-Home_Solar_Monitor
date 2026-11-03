@@ -9,7 +9,7 @@ PAGE = (ROOT / "src/web/web_page.h").read_text().split('R"HTML(', 1)[1].rsplit('
 CONFIG = {
     "url": "http://192.168.1.254:8123", "tokenSaved": False, "poll": 5,
     "stale": 180, "brightness": 180, "nightStart": 19, "nightEnd": 7,
-    "nightDim": True, "demo": True, "ca": "", "battery": "LG 9.8 kWh",
+    "nightDim": True, "demo": True, "ca": "", "battery": "LG 9.8 kWh", "layout": 1, "today": "sensor.solar_energy_today", "lat": -33.8679, "lon": 151.2073, "place": "Sydney, New South Wales", "tzName": "Australia/Sydney", "tz": "AEST-10AEDT,M10.1.0,M4.1.0/3", "forecast": "sensor.energy_production_tomorrow",
     "entities": ["sensor.solaredge_i1_ac_power", "sensor.home_power_usage",
                  "sensor.solaredge_i1_m1_ac_power", "sensor.solaredge_i1_b1_dc_power",
                  "sensor.solaredge_i1_b1_state_of_energy", "sensor.solaredge_i1_dc_power"],
@@ -39,8 +39,8 @@ class Handler(BaseHTTPRequestHandler):
                                  "valid": True, "fresh": True, "hasValue": True,
                                  "unit": "%" if i == 4 else "W", "receivedAgeSeconds": 1})
             return self.send({"demo": True, "complete": True, "reportTimeKnown": False,
-                              "skewSeconds": 0, "skewLimitSeconds": 10, "battery": CONFIG["battery"], "message": "Browser fixture / synthetic data",
-                              "project": "CYD-Home-Solar-Monitor", "version": "0.2.2-dev",
+                              "skewSeconds": 0, "weather": {"configured": True, "place": CONFIG["place"], "valid": True, "fresh": True, "nowC": 23.5, "nowCode": 2, "tomorrowMaxC": 24, "tomorrowCode": 61, "ageSeconds": 60}, "localTime": "2026-11-03 14:32 AEDT", "totals": {"today": {"entity": CONFIG["today"], "value": 25.6, "valid": True, "fresh": True}, "tomorrow": {"entity": CONFIG["forecast"], "value": 21, "valid": True, "fresh": True}}, "skewLimitSeconds": 10, "battery": CONFIG["battery"], "message": "Browser fixture / synthetic data",
+                              "project": "CYD-Home-Solar-Monitor", "version": "0.5.0-dev",
                               "ip": "127.0.0.1", "uptimeSeconds": 120, "freeHeap": 100000,
                               "readings": readings})
         if self.path.startswith("/images/"):

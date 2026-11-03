@@ -1,0 +1,130 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>
+<rect x='0' y='0' width='320' height='240' rx='0' fill='#ffffff'/>
+<text x='12' y='29' font-size='25' text-anchor='start' fill='#242455'>18.90</text>
+<text x='79' y='25' font-size='13' text-anchor='start' fill='#6d6d55'>kWh today</text>
+<text x='308' y='25' font-size='13' text-anchor='end' fill='#926d00'>~21 kWh</text>
+<text x='247' y='25' font-size='13' text-anchor='end' fill='#6d6d55'>Tomorrow</text>
+<rect x='165' y='15' width='16' height='6' rx='3' fill='#9292aa'/>
+<rect x='167' y='12' width='8' height='8' rx='4' fill='#9292aa'/>
+<rect x='172' y='10' width='9' height='9' rx='4' fill='#9292aa'/>
+<path d='M168 23 L166 27' fill='none' stroke='#2449aa'/>
+<path d='M173 23 L171 27' fill='none' stroke='#2449aa'/>
+<path d='M178 23 L176 27' fill='none' stroke='#2449aa'/>
+<text x='125' y='66' font-size='44' text-anchor='start' fill='#926d00'>0</text>
+<text x='156' y='53' font-size='25' text-anchor='start' fill='#6d6d55'>W</text>
+<text x='156' y='67' font-size='13' text-anchor='start' fill='#6d6d55'>SOLAR</text>
+<text x='90' y='212' font-size='44' text-anchor='start' fill='#242455'>1.80</text>
+<text x='190' y='199' font-size='25' text-anchor='start' fill='#6d6d55'>kW</text>
+<text x='190' y='213' font-size='13' text-anchor='start' fill='#6d6d55'>HOUSE</text>
+<text x='6' y='110' font-size='44' text-anchor='start' fill='#2449aa'>0</text>
+<text x='37' y='97' font-size='25' text-anchor='start' fill='#6d6d55'>W</text>
+<text x='179' y='110' font-size='44' text-anchor='start' fill='#249255'>1.90</text>
+<text x='279' y='97' font-size='25' text-anchor='start' fill='#6d6d55'>kW</text>
+<text x='6' y='153' font-size='25' text-anchor='start' fill='#2449aa'>Grid idle</text>
+<text x='314' y='153' font-size='25' text-anchor='end' fill='#249255'>Supplying</text>
+<rect x='246' y='162' width='62' height='24' rx='2' fill='#242455'/>
+<rect x='308' y='168' width='3' height='12' rx='0' fill='#242455'/>
+<rect x='247' y='163' width='60' height='22' rx='1' fill='#ffffff'/>
+<rect x='248' y='164' width='33' height='20' rx='1' fill='#249255'/>
+<text x='311' y='213' font-size='25' text-anchor='end' fill='#242455'>57%</text>
+<path d='M160 76 L160 114' fill='none' stroke='#b6b6aa'/>
+<path d='M6 122 L152 122' fill='none' stroke='#b6b6aa'/>
+<path d='M168 122 L314 122' fill='none' stroke='#b6b6aa'/>
+<path d='M182 116 L176 122' fill='none' stroke='#249255'/>
+<path d='M182 128 L176 122' fill='none' stroke='#249255'/>
+<path d='M183 116 L177 122' fill='none' stroke='#249255'/>
+<path d='M183 128 L177 122' fill='none' stroke='#249255'/>
+<path d='M184 116 L178 122' fill='none' stroke='#249255'/>
+<path d='M184 128 L178 122' fill='none' stroke='#249255'/>
+<path d='M195 116 L189 122' fill='none' stroke='#249255'/>
+<path d='M195 128 L189 122' fill='none' stroke='#249255'/>
+<path d='M196 116 L190 122' fill='none' stroke='#249255'/>
+<path d='M196 128 L190 122' fill='none' stroke='#249255'/>
+<path d='M197 116 L191 122' fill='none' stroke='#249255'/>
+<path d='M197 128 L191 122' fill='none' stroke='#249255'/>
+<path d='M208 116 L202 122' fill='none' stroke='#249255'/>
+<path d='M208 128 L202 122' fill='none' stroke='#249255'/>
+<path d='M209 116 L203 122' fill='none' stroke='#249255'/>
+<path d='M209 128 L203 122' fill='none' stroke='#249255'/>
+<path d='M210 116 L204 122' fill='none' stroke='#249255'/>
+<path d='M210 128 L204 122' fill='none' stroke='#249255'/>
+<path d='M221 116 L215 122' fill='none' stroke='#249255'/>
+<path d='M221 128 L215 122' fill='none' stroke='#249255'/>
+<path d='M222 116 L216 122' fill='none' stroke='#249255'/>
+<path d='M222 128 L216 122' fill='none' stroke='#249255'/>
+<path d='M223 116 L217 122' fill='none' stroke='#249255'/>
+<path d='M223 128 L217 122' fill='none' stroke='#249255'/>
+<path d='M234 116 L228 122' fill='none' stroke='#249255'/>
+<path d='M234 128 L228 122' fill='none' stroke='#249255'/>
+<path d='M235 116 L229 122' fill='none' stroke='#249255'/>
+<path d='M235 128 L229 122' fill='none' stroke='#249255'/>
+<path d='M236 116 L230 122' fill='none' stroke='#249255'/>
+<path d='M236 128 L230 122' fill='none' stroke='#249255'/>
+<path d='M247 116 L241 122' fill='none' stroke='#249255'/>
+<path d='M247 128 L241 122' fill='none' stroke='#249255'/>
+<path d='M248 116 L242 122' fill='none' stroke='#249255'/>
+<path d='M248 128 L242 122' fill='none' stroke='#249255'/>
+<path d='M249 116 L243 122' fill='none' stroke='#249255'/>
+<path d='M249 128 L243 122' fill='none' stroke='#249255'/>
+<path d='M260 116 L254 122' fill='none' stroke='#249255'/>
+<path d='M260 128 L254 122' fill='none' stroke='#249255'/>
+<path d='M261 116 L255 122' fill='none' stroke='#249255'/>
+<path d='M261 128 L255 122' fill='none' stroke='#249255'/>
+<path d='M262 116 L256 122' fill='none' stroke='#249255'/>
+<path d='M262 128 L256 122' fill='none' stroke='#249255'/>
+<path d='M273 116 L267 122' fill='none' stroke='#249255'/>
+<path d='M273 128 L267 122' fill='none' stroke='#249255'/>
+<path d='M274 116 L268 122' fill='none' stroke='#249255'/>
+<path d='M274 128 L268 122' fill='none' stroke='#249255'/>
+<path d='M275 116 L269 122' fill='none' stroke='#249255'/>
+<path d='M275 128 L269 122' fill='none' stroke='#249255'/>
+<path d='M286 116 L280 122' fill='none' stroke='#249255'/>
+<path d='M286 128 L280 122' fill='none' stroke='#249255'/>
+<path d='M287 116 L281 122' fill='none' stroke='#249255'/>
+<path d='M287 128 L281 122' fill='none' stroke='#249255'/>
+<path d='M288 116 L282 122' fill='none' stroke='#249255'/>
+<path d='M288 128 L282 122' fill='none' stroke='#249255'/>
+<path d='M299 116 L293 122' fill='none' stroke='#249255'/>
+<path d='M299 128 L293 122' fill='none' stroke='#249255'/>
+<path d='M300 116 L294 122' fill='none' stroke='#249255'/>
+<path d='M300 128 L294 122' fill='none' stroke='#249255'/>
+<path d='M301 116 L295 122' fill='none' stroke='#249255'/>
+<path d='M301 128 L295 122' fill='none' stroke='#249255'/>
+<path d='M312 116 L306 122' fill='none' stroke='#249255'/>
+<path d='M312 128 L306 122' fill='none' stroke='#249255'/>
+<path d='M313 116 L307 122' fill='none' stroke='#249255'/>
+<path d='M313 128 L307 122' fill='none' stroke='#249255'/>
+<path d='M314 116 L308 122' fill='none' stroke='#249255'/>
+<path d='M314 128 L308 122' fill='none' stroke='#249255'/>
+<path d='M160 130 L160 168' fill='none' stroke='#b6b6aa'/>
+<path d='M154 134 L160 140' fill='none' stroke='#242455'/>
+<path d='M166 134 L160 140' fill='none' stroke='#242455'/>
+<path d='M154 133 L160 139' fill='none' stroke='#242455'/>
+<path d='M166 133 L160 139' fill='none' stroke='#242455'/>
+<path d='M154 132 L160 138' fill='none' stroke='#242455'/>
+<path d='M166 132 L160 138' fill='none' stroke='#242455'/>
+<path d='M154 147 L160 153' fill='none' stroke='#242455'/>
+<path d='M166 147 L160 153' fill='none' stroke='#242455'/>
+<path d='M154 146 L160 152' fill='none' stroke='#242455'/>
+<path d='M166 146 L160 152' fill='none' stroke='#242455'/>
+<path d='M154 145 L160 151' fill='none' stroke='#242455'/>
+<path d='M166 145 L160 151' fill='none' stroke='#242455'/>
+<path d='M154 160 L160 166' fill='none' stroke='#242455'/>
+<path d='M166 160 L160 166' fill='none' stroke='#242455'/>
+<path d='M154 159 L160 165' fill='none' stroke='#242455'/>
+<path d='M166 159 L160 165' fill='none' stroke='#242455'/>
+<path d='M154 158 L160 164' fill='none' stroke='#242455'/>
+<path d='M166 158 L160 164' fill='none' stroke='#242455'/>
+<rect x='154' y='116' width='13' height='13' rx='6' fill='#9292aa'/>
+<rect x='6' y='228' width='9' height='9' rx='4' fill='#9292aa'/>
+<text x='21' y='235' font-size='13' text-anchor='start' fill='#6d6d55'>DEMO / tap for setup</text>
+<text x='314' y='235' font-size='13' text-anchor='end' fill='#6d6d55'>Settings</text>
+<rect x='252' y='224' width='3' height='14' rx='0' fill='#6d6d55'/>
+<rect x='246' y='230' width='14' height='3' rx='0' fill='#6d6d55'/>
+<path d='M248 226 L258 236' fill='none' stroke='#6d6d55'/>
+<path d='M248 227 L257 236' fill='none' stroke='#6d6d55'/>
+<path d='M248 236 L258 226' fill='none' stroke='#6d6d55'/>
+<path d='M248 235 L257 226' fill='none' stroke='#6d6d55'/>
+<rect x='248' y='226' width='11' height='11' rx='5' fill='#6d6d55'/>
+<rect x='251' y='229' width='5' height='5' rx='2' fill='#ffffff'/>
+</svg>

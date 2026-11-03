@@ -1,5 +1,74 @@
 # Changelog
 
+## [0.5.0-dev] 03-11-2026
+
+### Added
+
+- mDNS: the device answers at `http://solar.local/`, shared with the ArduinoOTA responder.
+- `docs/index.html` handbook: install, first setup, Home Assistant setup, an annotated display guide, state gallery, full settings reference, freshness rules, serial diagnostics, troubleshooting and security notes, with web UI screenshots.
+
+### Changed
+
+- Centre layout re-laid for the full canvas: 48 px font 6 values on all four arms, full-length bolder chevrons, larger state text and a large battery gauge with its percentage.
+- Cards layout uses font 6 values and drops the engineering subtitles.
+- Removed the browser login (trusted LAN only). Changes still require the `X-CYD-Request` header to block cross-site requests; ArduinoOTA and the setup hotspot keep the device code.
+- Preview renderer uses TFT_eSPI's real glyph widths for fonts 2, 4 and 6.
+
+---
+
+## [0.4.0-dev] 03-11-2026
+
+### Added
+
+- Weather from Open-Meteo for a configured location: current temperature and conditions, and tomorrow's maximum and conditions, fetched every 30 minutes over HTTPS verified against ISRG Root X1.
+- Drawn weather icons (clear, partly cloudy, cloudy, fog, drizzle, rain, snow, storm) on both layouts.
+- Browser **Location, timezone and weather** settings: place search (Open-Meteo geocoding, run in the browser), latitude/longitude, and a POSIX timezone filled from a built-in Olson table or entered manually.
+- Battery gauge icon filled to state of energy, coloured by level, on both layouts.
+- `[WEATHER]` serial diagnostics; browser shows local time and current/tomorrow weather.
+
+### Changed
+
+- Timezone is a setting applied immediately on save, instead of the fixed Australia/Sydney default.
+- The centre layout shows state of energy beside the gauge on its own row, separate from "Charging"/"Supplying".
+- Reader task stack raised to 16 KB for TLS.
+
+---
+
+## [0.3.1-dev] 03-11-2026
+
+### Fixed
+
+- Battery, state of energy and solar no longer go grey when the battery is idle and full. HA left the battery entities' `last_reported` unchanged for over ten minutes while the inverter kept reporting, so per-entity report age wrongly marked them stale and solar was rejected for timestamp skew.
+
+### Changed
+
+- Report age is now judged from the snapshot heartbeat (newest report among valid sources). Unavailable entities and a stalled integration are still rejected.
+- Serial `[READ]` reasons include `fresh-unchanged`; `[POLL]` logs `heartbeat_age`; `[SOLAR]` labels the raw report skew.
+- Removed the "Source times differ" panel and browser warnings; raw skew remains in diagnostics.
+
+---
+
+## [0.3.0-dev] 03-11-2026
+
+### Added
+
+- Optional **Solar energy today** and **Solar forecast tomorrow** kWh entities, read once a minute on the existing connection.
+- Centre layout top row shows today's kWh (falling back to the clock) and "Tomorrow ~N kWh"; the cards layout title shows today's kWh.
+- Browser dashboard shows both totals; `/api/status` reports them under `totals`.
+- `[TOTAL]` serial diagnostics and host tests for kWh parsing and total freshness.
+
+---
+
+## [0.2.3-dev] 03-11-2026
+
+### Added
+
+- Light centre-flow panel layout: solar above, grid and battery either side and house below a central hub, with animated chevrons, a battery level bar, the clock and a plain-English status line ("Good time to use power" while exporting or charging a full battery).
+- **Panel layout** browser setting to choose centre flow (default) or the original dark cards; saved settings without it get the centre layout.
+- Preview renders of both layouts from `tools/check_host.py`.
+
+---
+
 ## [0.2.2-dev] 03-11-2026
 
 ### Fixed

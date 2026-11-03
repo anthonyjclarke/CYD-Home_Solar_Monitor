@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CYD Solar Monitor Handbook</title>
+<style>
+:root{
+  --bg:#f7f6f2;--surface:#ffffff;--ink:#1d2330;--muted:#5d6472;--line:#e3e1da;--accent:#2449aa;
+  --solar:#926d00;--battery:#1f8a4c;--grid:#2449aa;--warn:#b0571c;--code-bg:#efede7;--marker:#c2410c;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b111b;--surface:#121b29;--ink:#e8edf4;--muted:#9aa7b8;--line:#253246;--accent:#77baff;
+  --solar:#ffbe57;--battery:#7fd49a;--grid:#77baff;--warn:#f0a35e;--code-bg:#1a2536;--marker:#f97316;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b111b;--surface:#121b29;--ink:#e8edf4;--muted:#9aa7b8;--line:#253246;--accent:#77baff;
+  --solar:#ffbe57;--battery:#7fd49a;--grid:#77baff;--warn:#f0a35e;--code-bg:#1a2536;--marker:#f97316;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accent)}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);max-width:1180px;margin:0 auto}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:28px 18px;border-right:1px solid var(--line)}
+nav b{display:block;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+nav a{display:block;color:var(--ink);text-decoration:none;font-size:14px;padding:4px 8px;border-radius:6px}
+nav a:hover{background:var(--code-bg)}
+main{padding:36px 40px 80px;min-width:0}
+header.hero h1{font-size:34px;line-height:1.2;margin:0 0 8px}
+header.hero p{color:var(--muted);max-width:720px;margin:0}
+h2{font-size:24px;margin:56px 0 12px;padding-top:12px;border-top:1px solid var(--line)}
+h3{font-size:18px;margin:28px 0 8px}
+p,li{max-width:780px}
+code,kbd{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code-bg);padding:1px 5px;border-radius:4px;word-break:break-word}
+pre{background:var(--code-bg);padding:14px 16px;border-radius:8px;overflow:auto;font:13px/1.5 ui-monospace,Menlo,monospace}
+table{border-collapse:collapse;width:100%;margin:12px 0 20px;font-size:14px;display:block;overflow-x:auto}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--surface);padding:10px 16px;border-radius:0 8px 8px 0;margin:16px 0;max-width:780px}
+.warn{border-left-color:var(--warn)}
+figure{margin:18px 0 26px}
+figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
+.panel{background:#000;padding:10px;border-radius:14px;display:inline-block;max-width:100%}
+.panel img{display:block;width:100%;max-width:480px;height:auto;border-radius:4px}
+.shot img{width:100%;max-width:800px;border:1px solid var(--line);border-radius:10px;display:block}
+.annotated{position:relative;display:block;width:100%;max-width:640px}
+.annotated img{display:block;width:100%;border-radius:4px}
+.annotated .m{position:absolute;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;
+  background:var(--marker);color:#fff;font:700 12px/22px system-ui;text-align:center;box-shadow:0 0 0 2px #fff}
+.legend{columns:2 300px;padding-left:22px;max-width:none}
+.legend li{break-inside:avoid;margin-bottom:6px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.gallery figure{margin:0}
+.gallery .panel{padding:6px}
+.swatch{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0}
+.flow span{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px}
+.flow i{color:var(--muted);font-style:normal}
+@media (max-width:860px){.layout{display:block}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:16px}
+  nav a{display:inline-block}main{padding:24px 16px 60px}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav aria-label="Contents">
+<b>Handbook</b>
+<a href="#overview">Overview</a>
+<a href="#install">Install and flash</a>
+<a href="#first-setup">First setup</a>
+<a href="#ha">Home Assistant setup</a>
+<a href="#display">The display</a>
+<a href="#states">Display states</a>
+<a href="#cards">Cards layout</a>
+<a href="#touch">Touch, setup page, dimming</a>
+<a href="#browser">Browser dashboard</a>
+<a href="#settings">Settings reference</a>
+<a href="#data">How readings are judged</a>
+<a href="#serial">Serial diagnostics</a>
+<a href="#troubleshooting">Troubleshooting</a>
+<a href="#security">Security and privacy</a>
+</nav>
+<main>
+<header class="hero">
+<h1>CYD Home Solar Monitor</h1>
+<p>Handbook for firmware <code>0.5.0-dev</code>: installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a SolarEdge SE6000 and LG battery, read from Home Assistant.</p>
+</header>
+
+<h2 id="overview">Overview</h2>
+<p>The monitor never talks to the inverter. Home Assistant keeps its existing SolarEdge Modbus Multi connection, and the CYD reads selected sensor states from Home Assistant's local REST API every few seconds. Weather comes from Open-Meteo for a location you choose.</p>
+<div class="flow"><span>SolarEdge SE6000 + LG battery</span><i>Modbus TCP →</i><span>Home Assistant</span><i>REST, every 5 s →</i><span>CYD display</span><i>← every 30 min</i><span>Open-Meteo weather</span></div>
+<p>Six Home Assistant entities are read every cycle: inverter AC power, household power, the signed grid meter, signed battery DC power, battery state of energy and inverter DC power. Solar generation is calculated from inverter DC and battery power. Two optional kWh entities (today's solar energy and tomorrow's solar forecast) are read once a minute.</p>
+<figure><span class="panel"><img src="images/centre-flow-preview.svg" alt="Centre-flow layout showing solar, grid, battery and house power"></span>
+<figcaption>The default centre-flow layout. All panel images in this handbook are rendered from the firmware's own drawing code with sample data; fonts are approximated on the desktop.</figcaption></figure>
+
+<h2 id="install">Install and flash</h2>
+<p>Open the project folder in PlatformIO; the only environment is <code>cyd28</code>. A build produces:</p>
+<table><thead><tr><th>File</th><th>Use</th></tr></thead><tbody>
+<tr><td><code>.pio/build/cyd28/firmware.bin</code></td><td>App image: USB updates, browser <b>Firmware update</b>, ArduinoOTA. Keeps all settings.</td></tr>
+<tr><td><code>.pio/build/cyd28/firmware-merged.bin</code></td><td>Clean USB install from address <code>0x0</code>. <b>Erases</b> Wi-Fi, settings, token, device code and touch calibration.</td></tr>
+<tr><td><code>.pio/build/cyd28/flash_parts.json</code></td><td>Map used by the shared browser installer.</td></tr>
+</tbody></table>
+<pre>pio run -t upload --upload-port /dev/cu.usbserial-10
+pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
+<p>Run these from the project folder, or add <code>-d &lt;project path&gt;</code>. Over the network, upload <code>firmware.bin</code> from the browser page, or use ArduinoOTA at <code>solar.local</code> on port <code>3232</code> with the device code (shown on the panel's setup page) as the password.</p>
+
+<h2 id="first-setup">First setup</h2>
+<ol>
+<li><b>Wi-Fi.</b> Power the CYD. If it has no working Wi-Fi after 20 seconds it opens a hotspot named <code>CYD-Solar-xxxx</code>. Its password is the 12-character device code shown on the panel. Join it, open the captive portal (or <code>192.168.4.1</code>), and choose your network. The portal times out after three minutes and reopens after bounded retries. When installing from the browser installer, Wi-Fi can instead be sent over USB (Improv-Serial).</li>
+<li><b>Open the device page.</b> Browse to <a href="http://solar.local/">http://solar.local/</a>. If your device can't resolve <code>.local</code> names (some older Android phones), tap the panel to see its IP address and use that. There is no login.</li>
+<li><b>Connect Home Assistant.</b> Under <b>Connection and display</b>, check the Home Assistant URL (default <code>http://192.168.1.254:8123</code>), paste a long-lived access token, and save. The default entity IDs match the owner's installation.</li>
+<li><b>Optional extras.</b> Set the daily solar and forecast entities, search for your location to enable weather and set the timezone, choose a panel layout, and adjust night dimming.</li>
+<li><b>Check.</b> Readings appear after the next cycle. To preview the screen without Home Assistant, tick <b>Demo mode</b>; untick it when commissioning.</li>
+</ol>
+
+<h2 id="ha">Home Assistant setup</h2>
+<h3>Access token</h3>
+<p>In Home Assistant, open your user profile, then <b>Security → Long-lived access tokens → Create token</b>. Paste it into the device page only. The device never shows it again, never logs it, and leaving the field blank on later saves keeps the saved token; tick <b>Clear saved Home Assistant token</b> to remove it. The firmware only reads states, but a token is not limited to reads by Home Assistant itself.</p>
+<h3>Power entities (required)</h3>
+<table><thead><tr><th>Reading</th><th>Default entity</th><th>Units and sign</th></tr></thead><tbody>
+<tr><td>Inverter AC</td><td><code>sensor.solaredge_i1_ac_power</code></td><td>W/kW; diagnostic only, never used for solar</td></tr>
+<tr><td>Household</td><td><code>sensor.home_power_usage</code></td><td>W/kW; must not be negative</td></tr>
+<tr><td>Grid</td><td><code>sensor.solaredge_i1_m1_ac_power</code></td><td>W/kW; + export, − import</td></tr>
+<tr><td>Battery</td><td><code>sensor.solaredge_i1_b1_dc_power</code></td><td>W/kW; + charge, − discharge</td></tr>
+<tr><td>Battery level</td><td><code>sensor.solaredge_i1_b1_state_of_energy</code></td><td>% (0–100)</td></tr>
+<tr><td>Inverter DC</td><td><code>sensor.solaredge_i1_dc_power</code></td><td>W/kW (<code>Watt</code>/<code>Watts</code> also accepted)</td></tr>
+</tbody></table>
+<h3>Daily solar energy (optional)</h3>
+<p>The top-left "kWh today" figure needs a sensor that resets at midnight. In Home Assistant, go to <b>Settings → Devices &amp; services → Helpers → Create helper → Utility Meter</b>. Use the solar production energy sensor your Energy dashboard already uses as the input, with a <b>daily</b> meter reset cycle. Enter the new sensor (for example <code>sensor.solar_energy_today</code>) in <b>Solar energy today</b>.</p>
+<h3>Solar forecast (optional)</h3>
+<p>Install the <b>Forecast.Solar</b> or <b>Solcast</b> integration and enter its "tomorrow" energy sensor in <b>Solar forecast tomorrow</b>. With Forecast.Solar this is usually <code>sensor.energy_production_tomorrow</code>; check the actual ID in Home Assistant. Without it, the panel shows tomorrow's maximum temperature instead.</p>
+
+<h2 id="display">The display</h2>
+<p>The centre-flow layout puts the four power flows on arms meeting at a central hub: solar above, house below, grid to the left and battery to the right. Arrows (chevrons) move in the direction power flows.</p>
+<figure>
+<div class="annotated">
+<img src="images/centre-flow-preview.svg" alt="Annotated centre-flow layout">
+<span class="m" style="left:4%;top:6%">1</span>
+<span class="m" style="left:47%;top:6%">2</span>
+<span class="m" style="left:33%;top:14%">3</span>
+<span class="m" style="left:75%;top:28%">4</span>
+<span class="m" style="left:54%;top:41%">5</span>
+<span class="m" style="left:3%;top:35%">6</span>
+<span class="m" style="left:42%;top:45%">7</span>
+<span class="m" style="left:50%;top:58%">8</span>
+<span class="m" style="left:97%;top:35%">9</span>
+<span class="m" style="left:60%;top:56%">10</span>
+<span class="m" style="left:3%;top:59%">11</span>
+<span class="m" style="left:97%;top:59%">12</span>
+<span class="m" style="left:75%;top:70%">13</span>
+<span class="m" style="left:79%;top:86%">14</span>
+<span class="m" style="left:54%;top:66%">15</span>
+<span class="m" style="left:27%;top:82%">16</span>
+<span class="m" style="left:2%;top:96%">17</span>
+<span class="m" style="left:73%;top:96%">18</span>
+</div>
+<figcaption>Numbered areas of the centre-flow layout (sample: importing from the grid while charging the battery).</figcaption>
+</figure>
+<ol class="legend">
+<li><b>Today's solar energy</b> in kWh, from the optional daily entity. Without it, the clock is shown here, followed by the current temperature when weather is on.</li>
+<li><b>Tomorrow.</b> A weather icon for tomorrow's conditions, then the solar forecast (<code>~21 kWh</code>) or, without a forecast entity, tomorrow's maximum temperature. Shows <code>DEMO</code> or <code>OFFLINE</code> when neither is available.</li>
+<li><b>Solar generation</b>, calculated as inverter DC power plus battery charging power, never below zero. Shown in watts below 1 kW, otherwise kW to two decimals.</li>
+<li><b>Unit and caption.</b> The unit for the value (W or kW) with the arm's name beneath.</li>
+<li><b>Solar arrows</b> run down into the hub while solar exceeds 30 W.</li>
+<li><b>Grid power</b>, always shown as a positive number; the words under the arm give the direction.</li>
+<li><b>Grid arrows</b> point into the hub when importing and away from it when exporting.</li>
+<li><b>Hub</b>: the inverter, where the four flows balance.</li>
+<li><b>Battery power</b>, shown as a positive number.</li>
+<li><b>Battery arrows</b> point away from the hub when charging and into it when the battery is supplying the house.</li>
+<li><b>Grid state</b>: <i>Importing</i>, <i>Exporting</i>, <i>Grid idle</i> (within ±30 W) or <i>Grid: no data</i>.</li>
+<li><b>Battery state</b>: <i>Charging</i>, <i>Supplying</i> (discharging into the inverter to cover what the house needs), <i>Idle</i> or <i>No data</i>.</li>
+<li><b>Battery gauge</b>: filled to the state of energy. <span class="swatch" style="background:#249255"></span>green at 50% and above, <span class="swatch" style="background:#db9255"></span>amber from 20%, <span class="swatch" style="background:#db2400"></span>red below 20%.</li>
+<li><b>State of energy</b> as a percentage. This is the battery's charge level, not a share of the house load.</li>
+<li><b>House arrows</b> run from the hub down to the house while demand exceeds 30 W.</li>
+<li><b>House demand</b>, from the household entity.</li>
+<li><b>Status line.</b> A green dot and <i>Good time to use power</i> when every reading is live and you are exporting more than 100 W, or charging above 100 W with the battery at 95% or more. Otherwise <i>All readings live</i>, or the reason readings are missing (see <a href="#states">states</a>).</li>
+<li><b>Settings</b>: a reminder that tapping the screen opens the device setup page.</li>
+</ol>
+<div class="note"><b>Greyed values.</b> A value turns light grey and its arrows stop when the reading is missing, stale, or Wi-Fi is down. The last good number stays on screen rather than dropping to zero, so a grey <code>1.53</code> means "last known", not "now".</div>
+
+<h2 id="states">Display states</h2>
+<div class="gallery">
+<figure><span class="panel"><img src="images/centre-flow-preview.svg" alt=""></span><figcaption><b>Importing and charging.</b> Solar charges the battery while the grid covers the house.</figcaption></figure>
+<figure><span class="panel"><img src="images/centre-export-preview.svg" alt=""></span><figcaption><b>Exporting.</b> Grid arrows point away from the hub; spare solar is going to the grid.</figcaption></figure>
+<figure><span class="panel"><img src="images/centre-discharge-preview.svg" alt=""></span><figcaption><b>Battery supplying.</b> No solar; the battery covers the house and battery arrows point into the hub.</figcaption></figure>
+<figure><span class="panel"><img src="images/centre-night-preview.svg" alt=""></span><figcaption><b>Night.</b> Only the grid supplies the house; idle arms show a faint track without arrows.</figcaption></figure>
+<figure><span class="panel"><img src="images/centre-stale-preview.svg" alt=""></span><figcaption><b>Offline or stale.</b> Values grey out and keep their last numbers; the status line gives the reason.</figcaption></figure>
+<figure><span class="panel"><img src="images/centre-setup-preview.svg" alt=""></span><figcaption><b>Not configured.</b> No readings yet; the status line asks for a Home Assistant token.</figcaption></figure>
+<figure><span class="panel"><img src="images/centre-weather-preview.svg" alt=""></span><figcaption><b>Weather only.</b> Without the optional kWh entities, the clock and current temperature appear top-left and tomorrow's maximum top-right.</figcaption></figure>
+</div>
+<h3>Status line messages</h3>
+<table><thead><tr><th>Message</th><th>Meaning</th></tr></thead><tbody>
+<tr><td>Good time to use power</td><td>All readings live, and exporting &gt; 100 W or charging &gt; 100 W at ≥ 95% battery.</td></tr>
+<tr><td>All readings live</td><td>Everything is current.</td></tr>
+<tr><td>Live / tap for device settings</td><td>(Cards layout) everything is current.</td></tr>
+<tr><td>HA connected / source age unknown</td><td>Readings arrive, but Home Assistant gave no report time or the clock isn't set yet.</td></tr>
+<tr><td>Waiting / stale or unavailable</td><td>At least one displayed reading is missing, invalid or too old.</td></tr>
+<tr><td>WiFi disconnected</td><td>The CYD has lost Wi-Fi; it reconnects on its own.</td></tr>
+<tr><td>DEMO / tap for setup</td><td>Demo mode is on; values are synthetic.</td></tr>
+</tbody></table>
+<h3>Weather icons</h3>
+<p>Icons are drawn from Open-Meteo's WMO weather codes: clear (sun), partly cloudy (sun behind cloud), cloudy, fog (horizontal bars), drizzle (cloud with dots), rain (cloud with slanted lines), snow (cloud with flakes) and storm (cloud with lightning).</p>
+
+<h2 id="cards">Cards layout</h2>
+<p>The original dark layout is still available under <b>Panel layout → Cards (dark)</b>. It shows the same readings in four cards around an inverter box, with today's solar energy in the title and current weather beside the badge.</p>
+<figure><span class="panel"><img src="images/flow-preview.svg" alt="Cards layout"></span>
+<figcaption>Cards layout. The badge reads <code>HA</code> when all readings are live, <code>WAIT</code> when some are not, <code>OFFLINE</code> without Wi-Fi and <code>DEMO</code> in demo mode. The battery card shows its gauge in the title row and the battery label with percentage at the bottom.</figcaption></figure>
+
+<h2 id="touch">Touch, setup page and dimming</h2>
+<table><thead><tr><th>Action</th><th>Result</th></tr></thead><tbody>
+<tr><td>Short tap (anywhere)</td><td>Opens the device setup page; tap again to return.</td></tr>
+<tr><td>Hold 2 s on the setup page</td><td>Starts touch calibration: release, then tap each of four crosses once. Saved to the device; a 45-second pause cancels.</td></tr>
+<tr><td>Tap while dimmed at night</td><td>Only wakes the screen to full brightness for a minute; it doesn't also open the setup page.</td></tr>
+</tbody></table>
+<p>The setup page shows <code>http://solar.local/</code>, the IP address, the device code (the OTA and setup-hotspot password), the Home Assistant URL and the firmware version. Without Wi-Fi it shows the hotspot name and password instead.</p>
+<p><b>Night dimming</b> runs from <i>Night starts</i> to <i>Night ends</i> (default 19:00–07:00) in the configured timezone, once the clock has synchronised. After a minute without touch the backlight drops to a fifth of the configured brightness.</p>
+
+<h2 id="browser">Browser dashboard</h2>
+<p>Open <code>http://solar.local/</code> from any device on the home network. The page refreshes every three seconds.</p>
+<figure class="shot"><img src="images/webui-dashboard.jpg" alt="Browser dashboard"><figcaption>Dashboard tiles mirror the panel. Below them: daily totals and weather, then the source status. The badge reads <code>HA CONNECTED</code>, <code>WAITING</code>, <code>DEMO</code> or <code>DISCONNECTED</code>.</figcaption></figure>
+<p>The <b>Device</b> section shows the firmware version, IP, local time, uptime and free memory, and has <b>Restart device</b> and <b>Reset Wi-Fi</b> (clears Wi-Fi only; Home Assistant settings stay). <b>Measurement diagnostics</b> expands to the raw readings with validity, freshness and ages. <b>Firmware update</b> takes the app <code>firmware.bin</code> only; the device pauses Home Assistant reads while uploading and restarts when done.</p>
+
+<h2 id="settings">Settings reference</h2>
+<figure class="shot"><img src="images/webui-settings.jpg" alt="Connection and display settings"><figcaption>Connection and display settings.</figcaption></figure>
+<table><thead><tr><th>Setting</th><th>Default</th><th>Range and notes</th></tr></thead><tbody>
+<tr><td>Home Assistant base URL</td><td><code>http://192.168.1.254:8123</code></td><td><code>http://</code> or <code>https://</code>, no path, query or user name. HTTPS needs the CA certificate below.</td></tr>
+<tr><td>Home Assistant access token</td><td>none</td><td>Write-only. Blank keeps the saved token.</td></tr>
+<tr><td>Read interval</td><td>5 s</td><td>2–300 s. Failures back off up to 60 s.</td></tr>
+<tr><td>Stale after</td><td>180 s</td><td>15–3600 s, and at least 3 × the read interval.</td></tr>
+<tr><td>Brightness</td><td>180</td><td>10–255.</td></tr>
+<tr><td>Demo mode</td><td>off</td><td>Cycles four synthetic scenes every 20 s; no Home Assistant needed.</td></tr>
+<tr><td>Dim overnight</td><td>on</td><td>Uses Night starts / Night ends (hours 0–23). Equal hours disable it.</td></tr>
+<tr><td>Solar energy today</td><td>blank</td><td>Optional <code>sensor.</code> in kWh/Wh/MWh, read every 60 s, shown while received within 10 min.</td></tr>
+<tr><td>Solar forecast tomorrow</td><td>blank</td><td>Optional <code>sensor.</code> in kWh; same timing.</td></tr>
+<tr><td>Panel layout</td><td>Centre flow (light)</td><td>Or Cards (dark). Applies immediately.</td></tr>
+<tr><td>Battery label</td><td><code>LG 9.8 kWh</code></td><td>Up to 14 characters; shown on the cards layout and in the browser.</td></tr>
+</tbody></table>
+<figure class="shot"><img src="images/webui-location.jpg" alt="Location, timezone and weather settings"><figcaption>Location, timezone and weather.</figcaption></figure>
+<table><thead><tr><th>Setting</th><th>Notes</th></tr></thead><tbody>
+<tr><td>Find a town or suburb</td><td>Searches Open-Meteo geocoding from your browser and lists matches. Choosing one fills the fields below.</td></tr>
+<tr><td>Latitude / Longitude</td><td>Both blank turns weather off. Only these coordinates are sent to Open-Meteo.</td></tr>
+<tr><td>Place name</td><td>Up to 48 characters; shown in the browser and serial log.</td></tr>
+<tr><td>Timezone</td><td>Olson name such as <code>Australia/Sydney</code>; used to fill the POSIX rule.</td></tr>
+<tr><td>POSIX TZ rule</td><td>What the device actually uses, e.g. <code>AEST-10AEDT,M10.1.0,M4.1.0/3</code>. About 40 common zones fill automatically; for others, type the rule. Applies on save.</td></tr>
+</tbody></table>
+<figure class="shot"><img src="images/webui-entities.jpg" alt="Entity mapping and HTTPS certificate"><figcaption>Entity mapping and HTTPS certificate (collapsed by default).</figcaption></figure>
+<p>Entity IDs must be <code>sensor.</code> followed by lower-case letters, digits and underscores. The CA certificate is only needed for an <code>https://</code> Home Assistant URL; paste the PEM certificate of the authority that signed Home Assistant's certificate. Certificate checks are never skipped.</p>
+
+<h2 id="data">How readings are judged</h2>
+<h3>Signs and solar</h3>
+<p>Internally, grid is positive for import and battery is positive for discharge; the Home Assistant sources use the opposite signs and are converted on read. Solar is <code>max(inverter DC + battery charging, 0)</code>, the single-inverter, single-battery formula documented by SolarEdge Modbus Multi. Inverter AC is never used for solar, and battery DC is never added to the AC household balance.</p>
+<h3>Freshness</h3>
+<ul>
+<li>A reading must have been received within <b>Stale after</b> seconds.</li>
+<li>Upstream age uses Home Assistant's <code>last_reported</code>, judged for the integration as a whole: a reading is fresh while the newest report among all six sources is recent. Home Assistant doesn't refresh <code>last_reported</code> for every unchanged value. For example, an idle, full battery can keep a ten-minute-old report time while the inverter keeps reporting, and that is still a current reading.</li>
+<li>Values reported as <code>unknown</code> or <code>unavailable</code>, non-numeric values, or wrong units are rejected immediately.</li>
+<li>Solar needs fresh DC and battery readings received within <code>max(10 s, 2 × read interval)</code> of each other.</li>
+<li>Daily totals are shown while received within 10 minutes; weather while under 3 hours old.</li>
+</ul>
+
+<h2 id="serial">Serial diagnostics</h2>
+<p>At 115200 baud the firmware logs timestamped, tagged lines. Tokens, Wi-Fi passwords, the device code, certificates and response bodies are never printed.</p>
+<table><thead><tr><th>Tag</th><th>Content</th></tr></thead><tbody>
+<tr><td><code>[BOOT]</code> <code>[BOARD]</code></td><td>Firmware, reset reason, heap, board.</td></tr>
+<tr><td><code>[CFG]</code> <code>[MAP]</code> <code>[SIGNS]</code></td><td>Active settings and entity mapping (URL origin only).</td></tr>
+<tr><td><code>[WIFI]</code> <code>[CLOCK]</code> <code>[MDNS]</code></td><td>Connection, NTP/timezone, and the <code>solar.local</code> announcement.</td></tr>
+<tr><td><code>[POLL]</code></td><td>One per cycle: duration, valid count, <code>heartbeat_age</code> (age of the newest upstream report).</td></tr>
+<tr><td><code>[READ]</code></td><td>One per entity: HTTP status, time, raw and normalised value, and a reason (below).</td></tr>
+<tr><td><code>[SOLAR]</code> <code>[BALANCE]</code></td><td>Solar inputs and validity; AC + grid versus household cross-check.</td></tr>
+<tr><td><code>[TOTAL]</code> <code>[WEATHER]</code></td><td>Daily total / forecast reads; weather fetches and location.</td></tr>
+<tr><td><code>[SOURCE]</code> <code>[DATA]</code> <code>[HEALTH]</code></td><td>Status message, validity bit-mask changes, and heap/RSSI every 30 s.</td></tr>
+</tbody></table>
+<table><thead><tr><th>Read reason</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>fresh</code></td><td>Current.</td></tr>
+<tr><td><code>fresh-unchanged</code></td><td>Value unchanged for a while but the integration is still reporting: current.</td></tr>
+<tr><td><code>source-age-unknown</code></td><td>No report time or no clock yet; shown, but age can't be verified.</td></tr>
+<tr><td><code>receive-stale</code></td><td>Not received recently (network or Home Assistant problem).</td></tr>
+<tr><td><code>report-stale</code></td><td>The whole integration hasn't reported recently.</td></tr>
+<tr><td><code>report-in-future</code></td><td>Report time is more than a minute ahead of the device clock.</td></tr>
+<tr><td><code>invalid</code></td><td>Rejected value; see the <code>error=</code> field.</td></tr>
+</tbody></table>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table><thead><tr><th>Symptom</th><th>Check</th></tr></thead><tbody>
+<tr><td><code>http=401</code> on every read</td><td>Token wrong or revoked: paste a new one.</td></tr>
+<tr><td><code>http=404</code> on one read</td><td>Entity ID wrong: compare with Home Assistant's Developer tools → States.</td></tr>
+<tr><td><code>error=invalid-state-or-unit</code></td><td>Entity is unavailable, or reports an unexpected unit (power must be W/kW, battery level %, totals kWh/Wh/MWh).</td></tr>
+<tr><td>Negative HTTP code</td><td>No connection to Home Assistant: check the URL, port and that Home Assistant is running.</td></tr>
+<tr><td>Solar shows <code>--</code> or grey</td><td>Read the <code>[SOLAR] reason=</code>: DC or battery invalid, stale, or received too far apart.</td></tr>
+<tr><td><code>solar.local</code> doesn't open</td><td>The client may not support mDNS; tap the panel and use the IP address.</td></tr>
+<tr><td><code>[WEATHER] error=http-or-transport</code></td><td>No internet, or the TLS check failed; it retries every five minutes.</td></tr>
+<tr><td>Clock wrong by hours</td><td>Check the POSIX TZ rule in the location settings.</td></tr>
+<tr><td>Taps land in the wrong place</td><td>Recalibrate: tap to open setup, hold for two seconds.</td></tr>
+</tbody></table>
+
+<h2 id="security">Security and privacy</h2>
+<div class="note warn"><b>No login.</b> The device page has no password, by design for a trusted home LAN. Anyone who can reach it on your network can change settings, replace the Home Assistant token, restart the device or upload firmware. Don't expose it to the internet or to a guest network.</div>
+<ul>
+<li>Changes require an <code>X-CYD-Request</code> header that browsers won't send from other websites without permission, so a malicious web page can't reconfigure the device through your browser.</li>
+<li>The Home Assistant token is stored on the device, is never returned to the browser and is never logged.</li>
+<li>ArduinoOTA and the Wi-Fi setup hotspot still use the device code as their password.</li>
+<li>Weather requests send only latitude and longitude to Open-Meteo over HTTPS verified against ISRG Root X1 (valid to 2035). Place search runs in your browser, not on the device.</li>
+</ul>
+</main>
+</div>
+</body>
+</html>

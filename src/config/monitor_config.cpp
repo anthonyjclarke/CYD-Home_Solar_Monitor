@@ -8,6 +8,14 @@ namespace { Config current; String code; }
 const Config& config() { return current; }
 const String& accessCode() { return code; }
 
+bool validTimezone(const String& tz) {
+    // POSIX TZ rule, e.g. AEST-10AEDT,M10.1.0,M4.1.0/3 or <+0530>-5:30.
+    if (tz.length() < 3 || tz.length() > 60 || (!isAlpha(tz[0]) && tz[0] != '<')) return false;
+    for (char ch : tz) if (!(isAlphaNumeric(ch) || ch == ',' || ch == '.' || ch == '/' || ch == ':' ||
+                             ch == '+' || ch == '-' || ch == '<' || ch == '>')) return false;
+    return true;
+}
+
 void loadConfig() {
     Preferences p;
     p.begin("solar-monitor", false);
@@ -41,6 +49,23 @@ void loadConfig() {
     c.nightStart = start; c.nightEnd = end;
     c.nightDim = d["nightDim"] | true; c.demo = d["demo"] | false;
     // Optional field added in 0.2.2; older records keep the default label.
+    // Optional field added in 0.2.3; older records get the centre layout.
+    const int layout = d["layout"] | 1;
+    if (layout >= 0 && layout <= 1) c.layout = layout;
+    // Optional total entities added in 0.3.0; validated on save by the web API.
+    const char* totalKeys[] = {"today", "forecast"};
+    for (int t = 0; t < energy::TotalCount; ++t)
+        if (d[totalKeys[t]].is<const char*>() && d[totalKeys[t]].as<String>().length() <= 100) c.totalEntities[t] = d[totalKeys[t]].as<String>();
+    // Location and timezone added in 0.4.0. Missing fields keep the defaults.
+    if (d["lat"].is<float>() && d["lon"].is<float>()) {
+        const float lat = d["lat"], lon = d["lon"];
+        if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) { c.latitude = lat; c.longitude = lon; }
+    }
+    if (d["place"].is<const char*>() && d["place"].as<String>().length() <= 48) c.place = d["place"].as<String>();
+    if (d["tz"].is<const char*>() && validTimezone(d["tz"].as<String>())) {
+        c.tzPosix = d["tz"].as<String>();
+        c.tzName = d["tzName"] | "";
+    }
     if (d["battery"].is<const char*>() && d["battery"].as<String>().length() <= 14) c.batteryLabel = d["battery"].as<String>();
     current = c;
     DBG_INFO("[CFG] Loaded settings%s",legacy?"; migrated five mappings and added DC default":" (schema 2)");
@@ -52,7 +77,10 @@ bool saveConfig(const Config& next) {
     for (const auto& entity : next.entities) d["entities"].add(entity);
     d["poll"] = next.pollSeconds; d["stale"] = next.staleSeconds; d["brightness"] = next.brightness;
     d["nightStart"] = next.nightStart; d["nightEnd"] = next.nightEnd;
-    d["nightDim"] = next.nightDim; d["demo"] = next.demo; d["battery"] = next.batteryLabel;
+    d["nightDim"] = next.nightDim; d["demo"] = next.demo; d["battery"] = next.batteryLabel; d["layout"] = next.layout;
+    if (!std::isnan(next.latitude)) { d["lat"] = next.latitude; d["lon"] = next.longitude; }
+    d["place"] = next.place; d["tz"] = next.tzPosix; d["tzName"] = next.tzName;
+    d["today"] = next.totalEntities[energy::Today]; d["forecast"] = next.totalEntities[energy::Tomorrow];
     String body;
     if (!serializeJson(d, body)) return false;
     Preferences p;

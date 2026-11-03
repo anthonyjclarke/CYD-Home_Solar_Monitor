@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cctype>
+#include "weather.h"
 
 namespace energy {
 // Keep the first five source indices stable for saved 0.1.x configurations.
@@ -16,11 +17,19 @@ struct Reading {
     uint32_t receivedMs = 0;
     uint64_t reportedMs = 0;
 };
+// Optional daily totals in kWh, read from HA on a slower cadence. They are not
+// power sources and are not part of the persisted six-entity mapping.
+enum Total : uint8_t { Today, Tomorrow, TotalCount };
 struct Snapshot {
     Reading readings[Count];
+    Reading totals[TotalCount];
     uint32_t cycleMs = 0;
     uint32_t revision = 0;
-    uint32_t skewSeconds = 0;
+    uint32_t skewSeconds = 0;  // Raw spread of report times; diagnostic only.
+    // Newest upstream report time among this cycle's valid sources: proof the
+    // integration is still writing states.
+    uint64_t heartbeatMs = 0;
+    weather::Report weather;
     bool demo = false;
     char message[80] = "Configure Home Assistant";
 };
@@ -47,6 +56,31 @@ inline bool parseValue(const char* state, const char* unit, Metric metric, float
     }
     value = static_cast<float>(n);
     return true;
+}
+
+// Energy totals: kWh, Wh or MWh, normalised to kWh. A daily meter or a
+// forecast can never be negative or implausibly large for a home.
+inline bool parseEnergy(const char* state, const char* unit, float& kwh) {
+    if (!state || !unit || !*state) return false;
+    char* end = nullptr;
+    double n = std::strtod(state, &end);
+    if (end == state) return false;
+    while (*end && std::isspace(static_cast<unsigned char>(*end))) ++end;
+    if (*end || !std::isfinite(n)) return false;
+    if (!std::strcmp(unit, "Wh")) n /= 1000;
+    else if (!std::strcmp(unit, "MWh")) n *= 1000;
+    else if (std::strcmp(unit, "kWh")) return false;
+    if (n < 0 || n > 10000) return false;
+    kwh = static_cast<float>(n);
+    return true;
+}
+
+// Totals change slowly (a daily meter is flat overnight), so upstream report
+// time is not used; only the device's receive age decides whether to show them.
+constexpr uint32_t totalStaleSeconds = 600;
+inline bool totalUsable(const Snapshot& s, Total total, bool online, uint32_t now) {
+    const Reading& r = s.totals[total];
+    return (s.demo || online) && r.valid && static_cast<uint32_t>(now - r.receivedMs) <= totalStaleSeconds * 1000UL;
 }
 
 inline int64_t civilDays(int y, unsigned m, unsigned d) {
@@ -100,9 +134,28 @@ inline bool fresh(const Reading& r, uint32_t nowMs, uint64_t epochMs, uint32_t s
     return true;
 }
 
+// HA does not refresh last_reported for every unchanged state (observed: an
+// idle, full battery kept a 10-minute-old report time while the inverter
+// entities from the same integration updated every few seconds). An unchanged
+// value is current while the integration is alive, so report age is judged
+// from the snapshot heartbeat. Entities going unavailable are still rejected
+// by parseValue; a whole stalled integration still goes stale.
+inline Reading effective(const Snapshot& s, const Reading& r) {
+    Reading out = r;
+    if (r.reportedMs && s.heartbeatMs > r.reportedMs) out.reportedMs = s.heartbeatMs;
+    return out;
+}
+
+inline uint64_t newestReport(const Snapshot& s) {
+    uint64_t newest = 0;
+    for (int i = 0; i < SourceCount; ++i)
+        if (s.readings[i].valid && s.readings[i].reportedMs > newest) newest = s.readings[i].reportedMs;
+    return newest;
+}
+
 inline bool solarSourcesCoherent(const Snapshot& s, uint32_t now, uint32_t maxSkewSeconds) {
-    const auto& dc = s.readings[InverterDc];
-    const auto& battery = s.readings[Battery];
+    const auto dc = effective(s, s.readings[InverterDc]);
+    const auto battery = effective(s, s.readings[Battery]);
     const uint32_t dcAge = now - dc.receivedMs, batteryAge = now - battery.receivedMs;
     if ((dcAge > batteryAge ? dcAge - batteryAge : batteryAge - dcAge) > maxSkewSeconds * 1000UL) return false;
     if (dc.reportedMs && battery.reportedMs) {
@@ -113,8 +166,8 @@ inline bool solarSourcesCoherent(const Snapshot& s, uint32_t now, uint32_t maxSk
 }
 
 inline void deriveSolar(Snapshot& s, uint32_t now, uint32_t maxSkewSeconds) {
-    const auto& dc = s.readings[InverterDc];
-    const auto& battery = s.readings[Battery];
+    const auto dc = effective(s, s.readings[InverterDc]);
+    const auto battery = effective(s, s.readings[Battery]);
     auto& solar = s.readings[Solar];
     solar.valid = false; // Preserve only the previous number if inputs fail.
     if (!dc.valid || !battery.valid || !solarSourcesCoherent(s, now, maxSkewSeconds)) return;
@@ -131,10 +184,10 @@ inline void deriveSolar(Snapshot& s, uint32_t now, uint32_t maxSkewSeconds) {
 
 inline bool metricFresh(const Snapshot& s, Metric metric, uint32_t now, uint64_t epoch,
                         uint32_t staleSeconds, uint32_t maxSkewSeconds) {
-    if (!fresh(s.readings[metric], now, epoch, staleSeconds)) return false;
+    if (!fresh(effective(s, s.readings[metric]), now, epoch, staleSeconds)) return false;
     if (metric != Solar) return true;
-    return fresh(s.readings[InverterDc], now, epoch, staleSeconds) &&
-           fresh(s.readings[Battery], now, epoch, staleSeconds) && solarSourcesCoherent(s, now, maxSkewSeconds);
+    return fresh(effective(s, s.readings[InverterDc]), now, epoch, staleSeconds) &&
+           fresh(effective(s, s.readings[Battery]), now, epoch, staleSeconds) && solarSourcesCoherent(s, now, maxSkewSeconds);
 }
 
 // Largest DC/battery timestamp gap accepted for solar: two polls, at least 10 s.
@@ -156,6 +209,11 @@ inline Snapshot demoSnapshot(uint32_t now, unsigned scene) {
         {0,840,840,0,28.5f,0}
     };
     for (int i = 0; i < SourceCount; ++i) s.readings[i] = {scenes[scene % 4][i], true, now, 0};
+    const float today[] = {25.6f, 31.2f, 18.9f, 22.4f};
+    s.totals[Today] = {today[scene % 4], true, now, 0};
+    s.totals[Tomorrow] = {21.0f, true, now, 0};
+    const int sky[] = {2, 0, 3, 61};
+    s.weather = {true, now, 23.5f, sky[scene % 4], 24.0f, sky[(scene + 1) % 4]};
     deriveSolar(s, now, 10);
     s.demo = true; s.cycleMs = now;
     std::snprintf(s.message, sizeof(s.message), "Demo / sample data");

@@ -1,6 +1,8 @@
 #pragma once
 #include <Arduino.h>
 #include "energy_model.h"
+#include "config.h"
+#include <cmath>
 
 namespace monitor {
 struct Config {
@@ -19,11 +21,22 @@ struct Config {
     bool nightDim = true;
     bool demo = false;
     String batteryLabel = "LG 9.8 kWh";  // Panel space allows 14 characters.
+    uint8_t layout = 1;
+    // Optional kWh entities (blank = not shown): a daily solar meter and
+    // tomorrow's solar forecast, e.g. from Forecast.Solar or Solcast.
+    String totalEntities[energy::TotalCount];
+    // Location for weather (NaN = not set) and the local timezone as a POSIX
+    // rule; tzName is the Olson name it was chosen from, for display only.
+    float latitude = NAN, longitude = NAN;
+    String place;
+    String tzName = APP_TZ_NAME;
+    String tzPosix = APP_TZ_POSIX;                  // ui::Layout: 0 cards, 1 centre flow.
     String caCertificate;
 };
 void loadConfig();
 const Config& config();
 bool saveConfig(const Config& next);
 const String& accessCode();
+bool validTimezone(const String& tz);
 }  // namespace monitor
 

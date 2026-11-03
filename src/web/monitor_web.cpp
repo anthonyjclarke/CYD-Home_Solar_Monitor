@@ -17,13 +17,12 @@ bool started=false, uploading=false, uploadOK=false, uploadAuth=false;
 uint32_t rebootAt=0;
 String updateError;
 
-bool auth() {
-    if (server.authenticate("admin",monitor::accessCode().c_str())) return true;
-    server.requestAuthentication(BASIC_AUTH,"CYD Home Energy","Use the device code shown on the panel");
-    return false;
-}
+// No login: the device is only used on the trusted home LAN. Changes still
+// need the custom X-CYD-Request header, which a page on another site cannot
+// send without a CORS preflight this server never approves, so a malicious
+// web page cannot reconfigure the device or upload firmware through the
+// user's browser.
 bool mutation() {
-    if (!auth()) return false;
     if (server.header("X-CYD-Request") != "1") {
         server.send(403,"application/json","{\"error\":\"Missing device request header\"}"); return false;
     }
@@ -50,11 +49,13 @@ bool validUrl(const String& s) {
 }
 
 void getConfig() {
-    if (!auth()) return;
     const auto& c=monitor::config();JsonDocument d;
     d["url"]=c.url; d["tokenSaved"]=!c.token.isEmpty(); d["ca"]=c.caCertificate;
     d["poll"]=c.pollSeconds; d["stale"]=c.staleSeconds; d["brightness"]=c.brightness;
-    d["nightStart"]=c.nightStart; d["nightEnd"]=c.nightEnd; d["nightDim"]=c.nightDim; d["demo"]=c.demo; d["battery"]=c.batteryLabel;
+    d["nightStart"]=c.nightStart; d["nightEnd"]=c.nightEnd; d["nightDim"]=c.nightDim; d["demo"]=c.demo; d["battery"]=c.batteryLabel; d["layout"]=c.layout;
+    d["today"]=c.totalEntities[energy::Today]; d["forecast"]=c.totalEntities[energy::Tomorrow];
+    if (std::isnan(c.latitude)) { d["lat"]=nullptr; d["lon"]=nullptr; } else { d["lat"]=c.latitude; d["lon"]=c.longitude; }
+    d["place"]=c.place; d["tzName"]=c.tzName; d["tz"]=c.tzPosix;
     for (const auto& entity:c.entities) d["entities"].add(entity);
     json(d);
 }
@@ -90,6 +91,38 @@ void saveConfig() {
     if (!d["demo"].is<bool>() || !d["nightDim"].is<bool>()) { error("Expected boolean display settings");return; }
     c.pollSeconds=poll;c.staleSeconds=stale;c.brightness=bright;c.nightStart=start;c.nightEnd=end;
     c.demo=d["demo"].as<bool>();c.nightDim=d["nightDim"].as<bool>();
+    const char* totalKeys[]={"today","forecast"};
+    for (int t=0;t<energy::TotalCount;++t) {
+        if (d[totalKeys[t]].isNull()) continue;
+        String entity=d[totalKeys[t]].as<String>();entity.trim();
+        if (!d[totalKeys[t]].is<String>() || (!entity.isEmpty() && !validEntity(entity))) { error("Daily total and forecast must be blank or sensor.entity_name IDs");return; }
+        c.totalEntities[t]=entity;
+    }
+    // Location: both coordinates, or both null to turn weather off.
+    if (d["lat"].isNull() && d["lon"].isNull()) { c.latitude=NAN; c.longitude=NAN; }
+    else if (d["lat"].is<float>() && d["lon"].is<float>()) {
+        const float lat=d["lat"],lon=d["lon"];
+        if (lat<-90 || lat>90 || lon<-180 || lon>180) { error("Latitude must be -90 to 90 and longitude -180 to 180");return; }
+        c.latitude=lat;c.longitude=lon;
+    } else { error("Enter both latitude and longitude, or neither");return; }
+    if (!d["place"].isNull()) {
+        String place=d["place"].as<String>();place.trim();
+        if (place.length()>48) { error("Place name must be 48 characters or fewer");return; }
+        for (char ch:place) if (ch<32 || ch==127) { error("Place name must be plain text");return; }
+        c.place=place;
+    }
+    if (!d["tz"].isNull()) {
+        String tz=d["tz"].as<String>();tz.trim();
+        String tzName=d["tzName"] | "";tzName.trim();
+        if (!monitor::validTimezone(tz)) { error("Timezone must be a POSIX TZ rule, e.g. AEST-10AEDT,M10.1.0,M4.1.0/3");return; }
+        if (tzName.length()>40) { error("Timezone name too long");return; }
+        for (char ch:tzName) if (!(isAlphaNumeric(ch) || ch=='/' || ch=='_' || ch=='-' || ch=='+')) { error("Invalid timezone name");return; }
+        c.tzPosix=tz;c.tzName=tzName;
+    }
+    if (!d["layout"].isNull()) {
+        if (!d["layout"].is<int>() || d["layout"].as<int>()<0 || d["layout"].as<int>()>1) { error("Unknown panel layout");return; }
+        c.layout=d["layout"].as<int>();
+    }
     if (!d["battery"].isNull()) {
         String label=d["battery"].as<String>();label.trim();
         if (!d["battery"].is<String>() || label.length()>14) { error("Battery label must be 14 characters or fewer");return; }
@@ -101,7 +134,6 @@ void saveConfig() {
 }
 
 void getStatus() {
-    if (!auth()) return;
     const auto s=source::snapshot();const auto& c=monitor::config();
     const uint32_t now=millis();const time_t epoch=time(nullptr);const bool clock=epoch>1700000000;
     bool complete=true,reported=clock;JsonDocument d;
@@ -126,13 +158,31 @@ void getStatus() {
         complete &= energy::metricUsable(s,metric,WiFi.isConnected(),now,clock ? uint64_t(epoch)*1000 : 0,c.staleSeconds,c.pollSeconds);
         reported &= s.readings[metric].reportedMs!=0;
     }
+    const char* totalNames[]={"today","tomorrow"};
+    for (int t=0;t<energy::TotalCount;++t) {
+        const auto& r=s.totals[t];auto out=d["totals"][totalNames[t]].to<JsonObject>();
+        out["entity"]=c.totalEntities[t];out["value"]=r.value;out["valid"]=r.valid;
+        out["fresh"]=energy::totalUsable(s,static_cast<energy::Total>(t),WiFi.isConnected(),now);
+        out["receivedAgeSeconds"]=r.receivedMs ? uint32_t(now-r.receivedMs)/1000 : 0;
+    }
+    auto w=d["weather"].to<JsonObject>();
+    w["configured"]=!std::isnan(c.latitude);w["place"]=c.place;
+    w["valid"]=s.weather.valid;w["fresh"]=weather::usable(s.weather,now);
+    w["nowC"]=s.weather.nowC;w["nowCode"]=s.weather.nowCode;
+    w["tomorrowMaxC"]=s.weather.tomorrowMaxC;w["tomorrowCode"]=s.weather.tomorrowCode;
+    w["ageSeconds"]=s.weather.receivedMs ? uint32_t(now-s.weather.receivedMs)/1000 : 0;
+    {
+        char local[24]="";tm t{};
+        if (clock && localtime_r(&epoch,&t)) strftime(local,sizeof(local),"%Y-%m-%d %H:%M %Z",&t);
+        d["localTime"]=local;
+    }
     d["complete"]=complete;d["battery"]=c.batteryLabel;d["skewLimitSeconds"]=energy::skewLimitSeconds(c.pollSeconds);d["reportTimeKnown"]=reported;json(d);
 }
 
 void uploadChunk() {
     HTTPUpload& upload=server.upload();
     if (upload.status==UPLOAD_FILE_START) {
-        uploadAuth=server.authenticate("admin",monitor::accessCode().c_str()) && server.header("X-CYD-Request")=="1";
+        uploadAuth=server.header("X-CYD-Request")=="1";
         uploadOK=false;updateError="";
         if (!uploadAuth) return;
         uploading=true;source::pause(true);
@@ -150,7 +200,6 @@ void uploadChunk() {
 void begin() {
     const char* headers[]={"X-CYD-Request"};server.collectHeaders(headers,1);
     server.on("/",HTTP_GET,[]{
-        if(!auth())return;
         server.sendHeader("Cache-Control","no-store");
         server.sendHeader("X-Content-Type-Options","nosniff");
         server.sendHeader("X-Frame-Options","DENY");

@@ -48,9 +48,19 @@ inline const char* readingReason(const energy::Reading& r,uint32_t now,uint64_t 
 inline const char* solarReason(const energy::Snapshot& s,uint32_t now,uint64_t epoch,uint32_t stale,uint32_t maxSkew) {
     if (!s.readings[energy::InverterDc].valid) return "dc-invalid";
     if (!s.readings[energy::Battery].valid) return "battery-invalid";
-    if (!energy::fresh(s.readings[energy::InverterDc],now,epoch,stale)) return "dc-not-fresh";
-    if (!energy::fresh(s.readings[energy::Battery],now,epoch,stale)) return "battery-not-fresh";
+    if (!energy::fresh(energy::effective(s,s.readings[energy::InverterDc]),now,epoch,stale)) return "dc-not-fresh";
+    if (!energy::fresh(energy::effective(s,s.readings[energy::Battery]),now,epoch,stale)) return "battery-not-fresh";
     if (!energy::solarSourcesCoherent(s,now,maxSkew)) return "input-timestamp-skew";
-    return readingReason(s.readings[energy::Solar],now,epoch,stale);
+    return readingReason(energy::effective(s,s.readings[energy::Solar]),now,epoch,stale);
+}
+
+// Reason using the heartbeat-adjusted report time; "fresh-unchanged" marks a
+// value whose own report time is old but whose integration is still reporting.
+inline const char* snapshotReason(const energy::Snapshot& s,energy::Metric m,uint32_t now,uint64_t epoch,uint32_t stale) {
+    const auto& raw=s.readings[m];
+    const char* reason=readingReason(energy::effective(s,raw),now,epoch,stale);
+    if (!std::strcmp(reason,"fresh") && epoch && raw.reportedMs && epoch>raw.reportedMs &&
+        epoch-raw.reportedMs>stale*1000ULL) return "fresh-unchanged";
+    return reason;
 }
 }  // namespace diagnostics

@@ -1,0 +1,9 @@
+.pio/
+.pio-core/
+.vscode/
+__pycache__/
+.DS_Store
+include/secrets.h
+_site/
+*.local.json
+

@@ -34,6 +34,6 @@
 <path d='M240 130 L177 130' fill='none' stroke='#6d6daa'/>
 <rect x='144' y='112' width='32' height='24' rx='4' fill='#242455'/>
 <text x='160' y='127' font-size='9' text-anchor='middle' fill='#9292aa'>INV</text>
-<text x='8' y='231' font-size='9' text-anchor='start' fill='#9292aa'>Configure Home Assistant</text>
+<text x='8' y='231' font-size='9' text-anchor='start' fill='#9292aa'>Waiting / stale or unavailable</text>
 <text x='312' y='231' font-size='9' text-anchor='end' fill='#9292aa'>192.168.1.50</text>
 </svg>

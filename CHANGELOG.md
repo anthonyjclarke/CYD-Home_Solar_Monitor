@@ -7,6 +7,8 @@
 - Web UI rebuilt in the SpendAnalysis style: warm paper palette with matching dark mode, amber accent for controls only, green/red for meaning, mono uppercase micro-labels, cream cards, grouped sidebar (Live · Settings · Device) and a CRT "Device status" panel.
 - Settings split into Home Assistant, Display, Location & weather and Entities sections; Save on any section saves all, and an invalid field elsewhere switches to its section.
 - Diagnostics shown as a table, with the raw status JSON behind a disclosure.
+- Handbook display section: annotated with the clock-and-weather top row (the common setup) and cut from 17 markers to 9; arrows explained once instead of per arm, battery gauge and percentage combined. The kWh top row is shown separately.
+- Handbook previews are drawn as live readings rather than demo, so the status line shows "All readings live" / "Good time to use power" as on a working panel.
 
 ### Added
 
@@ -21,6 +23,7 @@
 - Boot loop since 0.4.0: the Open-Meteo TLS handshake (ECDSA chain, about 7.6 s on the device) blocked core 0 without yielding, so the task watchdog aborted about 19 s after boot. Core 0's idle task is now taken off the watchdog only while a TLS session is open (weather, and HTTPS Home Assistant). Verified on hardware: weather `http=200`, no resets, all readings fresh.
 - First readings now reach the panel about 2 s after boot instead of about 19 s: a Home Assistant read attempted before Wi-Fi is up no longer triggers a 10 s backoff, and the first weather fetch waits until readings have been published.
 - Weather TLS handshake limit raised from 8 s to 20 s (`APP_TLS_HANDSHAKE_S`); measured handshakes on the device take 4–9 s, so 8 s failed intermittently.
+- Handbook: the not-configured preview and caption claimed the panel asks for a token; the panel shows "Waiting / stale or unavailable" and the token prompt is in the browser. The solar formula now reads DC less battery discharge.
 - Reverted the 0.5.0 panel re-layout: font 6 values made the panel hard to read and dropped the SOLAR/GRID/BATTERY/HOUSE labels and card subtitles. Both layouts are back to the labelled 0.4.0 design.
 
 ---

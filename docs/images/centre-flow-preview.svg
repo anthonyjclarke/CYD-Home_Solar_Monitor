@@ -98,7 +98,7 @@
 <path d='M164 134 L160 138' fill='none' stroke='#242455'/>
 <rect x='156' y='104' width='9' height='9' rx='4' fill='#9292aa'/>
 <rect x='12' y='218' width='9' height='9' rx='4' fill='#9292aa'/>
-<text x='27' y='225' font-size='13' text-anchor='start' fill='#6d6d55'>DEMO / tap for setup</text>
+<text x='27' y='225' font-size='13' text-anchor='start' fill='#6d6d55'>All readings live</text>
 <text x='308' y='225' font-size='13' text-anchor='end' fill='#6d6d55'>Settings</text>
 <rect x='246' y='214' width='3' height='14' rx='0' fill='#6d6d55'/>
 <rect x='240' y='220' width='14' height='3' rx='0' fill='#6d6d55'/>

@@ -55,9 +55,10 @@ int main(int argc,char**argv) {
     for(bool& b:v.totalLive)b=true;
     v.weatherLive=true;
     if(argc>3)for(bool& b:v.totalLive)b=false;  // No HA totals: clock and weather only.
-    v.status="DEMO / tap for setup";v.address="192.168.1.50";v.batteryLabel="LG 9.8 kWh";
+    // Sample values come from the demo scenes, but are drawn as live readings.
+    v.data.demo=false;v.status="Live / tap for device settings";v.address="192.168.1.50";v.batteryLabel="LG 9.8 kWh";
     if(scene==4){for(bool& b:v.usable)b=false;for(bool& b:v.totalLive)b=false;v.weatherLive=false;v.data.demo=false;v.wifi=false;v.status="WiFi disconnected";}
-    if(scene==5){v.weatherLive=false;v.data=energy::Snapshot();for(bool& b:v.usable)b=false;for(bool& b:v.totalLive)b=false;v.status="Configure Home Assistant";}
+    if(scene==5){v.weatherLive=false;v.data=energy::Snapshot();for(bool& b:v.usable)b=false;for(bool& b:v.totalLive)b=false;v.status="Waiting / stale or unavailable";}
     std::cout<<head;
     ui::drawFlow(c,v);std::cout<<"</svg>\n";
 }

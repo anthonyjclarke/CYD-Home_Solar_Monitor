@@ -143,49 +143,36 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <p>The bar along the bottom shows how long the screen stays up. It closes <b>6 seconds after Wi-Fi connects</b>, so the IP address can be read, or after <b>15 seconds</b> if Wi-Fi hasn't connected (the panel then shows the Wi-Fi setup page). A tap closes it at once. Readings are fetched in the background meanwhile, so the energy display is usually live as soon as it appears. Both times are <code>APP_BOOT_HOLD_MS</code> and <code>APP_BOOT_MAX_MS</code> in <code>include/config.h</code>.</p>
 
 <h2 id="display">The display</h2>
-<p>The centre-flow layout puts the four power flows on arms meeting at a central hub: solar above, house below, grid to the left and battery to the right. Arrows (chevrons) move in the direction power flows.</p>
+<p>The centre-flow layout puts the four power flows on arms meeting at a central dot, the inverter: solar above, house below, grid to the left and battery to the right. Each power figure is shown as a positive number, in watts below 1 kW and kW to two decimals above.</p>
+<p><b>Arrows.</b> Chevrons march along an arm in the direction power is flowing, in that reading's colour, while it is above 30 W. Solar always flows in and the house always flows out; grid arrows point in when importing and out when exporting; battery arrows point out when charging and in when the battery is supplying the house. Below 30 W, or when a reading isn't live, only a faint grey track is left.</p>
 <figure>
 <div class="annotated">
-<img src="images/centre-flow-preview.svg" alt="Annotated centre-flow layout">
-<span class="m" style="left:2%;top:6%">1</span>
-<span class="m" style="left:49%;top:6%">2</span>
-<span class="m" style="left:37%;top:24%">3</span>
-<span class="m" style="left:55%;top:37%">4</span>
-<span class="m" style="left:2%;top:33%">5</span>
-<span class="m" style="left:40%;top:40%">6</span>
-<span class="m" style="left:46%;top:52%">7</span>
-<span class="m" style="left:98%;top:33%">8</span>
-<span class="m" style="left:60%;top:40%">9</span>
-<span class="m" style="left:2%;top:55%">10</span>
-<span class="m" style="left:64%;top:55%">11</span>
-<span class="m" style="left:64%;top:65%">12</span>
-<span class="m" style="left:98%;top:62%">13</span>
-<span class="m" style="left:55%;top:55%">14</span>
-<span class="m" style="left:37%;top:74%">15</span>
-<span class="m" style="left:2%;top:91%">16</span>
-<span class="m" style="left:72%;top:91%">17</span>
+<img src="images/centre-weather-preview.svg" alt="Annotated centre-flow layout">
+<span class="m" style="left:34%;top:9%">1</span>
+<span class="m" style="left:58%;top:9%">2</span>
+<span class="m" style="left:60%;top:15%">3</span>
+<span class="m" style="left:17%;top:35%">4</span>
+<span class="m" style="left:74%;top:35%">5</span>
+<span class="m" style="left:64%;top:62%">6</span>
+<span class="m" style="left:40%;top:65%">7</span>
+<span class="m" style="left:55%;top:92%">8</span>
+<span class="m" style="left:72%;top:92%">9</span>
 </div>
-<figcaption>Numbered areas of the centre-flow layout (sample: importing from the grid while charging the battery).</figcaption>
+<figcaption>Centre-flow layout with weather set and no optional kWh entities (sample: exporting while charging the battery).</figcaption>
 </figure>
 <ol class="legend">
-<li><b>Today's solar energy</b> in kWh, from the optional daily entity. Without it, the clock is shown here, followed by the current temperature when weather is on.</li>
-<li><b>Tomorrow.</b> A weather icon for tomorrow's conditions, then the solar forecast (<code>~21 kWh</code>) or, without a forecast entity, tomorrow's maximum temperature. Shows <code>DEMO</code> or <code>OFFLINE</code> when neither is available.</li>
-<li><b>SOLAR</b>: generation, calculated as inverter DC power plus battery charging power, never below zero. Shown in watts below 1 kW, otherwise kW to two decimals.</li>
-<li><b>Solar arrows</b> run down into the hub while solar exceeds 30 W.</li>
-<li><b>GRID</b>: grid power, always shown as a positive number; the words beneath give the direction.</li>
-<li><b>Grid arrows</b> point into the hub when importing and away from it when exporting.</li>
-<li><b>Hub</b>: the inverter, where the four flows balance.</li>
-<li><b>BATTERY</b>: battery power, shown as a positive number.</li>
-<li><b>Battery arrows</b> point away from the hub when charging and into it when the battery is supplying the house.</li>
-<li><b>Grid state</b>: <i>Importing</i>, <i>Exporting</i>, <i>Idle</i> (within ±30 W) or <i>No data</i>.</li>
-<li><b>Battery state</b>: <i>Charging</i>, <i>Supplying</i> (discharging into the inverter to cover what the house needs), <i>Idle</i> or <i>No data</i>.</li>
-<li><b>Battery gauge</b>: filled to the state of energy. <span class="swatch" style="background:#249255"></span>green at 50% and above, <span class="swatch" style="background:#db9255"></span>amber from 20%, <span class="swatch" style="background:#db2400"></span>red below 20%.</li>
-<li><b>State of energy</b> as a percentage. This is the battery's charge level, not a share of the house load.</li>
-<li><b>House arrows</b> run from the hub down to the house while demand exceeds 30 W.</li>
-<li><b>HOUSE</b>: house demand, from the household entity.</li>
+<li><b>Clock and current temperature.</b> The temperature appears once a location is set. With the optional <i>Solar energy today</i> entity, today's solar kWh replaces both (see below).</li>
+<li><b>Tomorrow</b>: a weather icon and tomorrow's maximum temperature, or the solar forecast (<code>~21 kWh</code>) when a forecast entity is set. Shows <code>OFFLINE</code> when Wi-Fi is down and there is nothing to show here.</li>
+<li><b>Solar</b> generation: inverter DC power less any battery discharge, never below zero.</li>
+<li><b>Grid</b> power, with <i>Importing</i>, <i>Exporting</i>, <i>Idle</i> (within ±30 W) or <i>No data</i> beneath.</li>
+<li><b>Battery</b> power, with <i>Charging</i>, <i>Supplying</i> (covering what the house needs), <i>Idle</i> or <i>No data</i> beneath.</li>
+<li><b>Battery gauge</b>: filled to the state of energy, with the percentage beside it. <span class="swatch" style="background:#249255"></span>Green at 50% and above, <span class="swatch" style="background:#db9255"></span>amber from 20%, <span class="swatch" style="background:#db2400"></span>red below 20%. It is the charge level, not a share of the house load.</li>
+<li><b>House</b> demand, from the household entity.</li>
 <li><b>Status line.</b> A green dot and <i>Good time to use power</i> when every reading is live and you are exporting more than 100 W, or charging above 100 W with the battery at 95% or more. Otherwise <i>All readings live</i>, or the reason readings are missing (see <a href="#states">states</a>).</li>
 <li><b>Settings</b>: a reminder that tapping the screen opens the device setup page.</li>
 </ol>
+<figure><span class="panel"><img src="images/centre-flow-preview.svg" alt="Top row with today's solar energy and tomorrow's solar forecast"></span>
+<figcaption><b>With the optional kWh entities.</b> Today's solar energy replaces the clock top-left, and tomorrow's solar forecast replaces the maximum temperature top-right. Set them under <a href="#ha">Home Assistant setup</a>.</figcaption></figure>
 <div class="note"><b>Greyed values.</b> A value turns light grey and its arrows stop when the reading is missing, stale, or Wi-Fi is down. The last good number stays on screen rather than dropping to zero, so a grey <code>1.53</code> means "last known", not "now".</div>
 
 <h2 id="states">Display states</h2>
@@ -195,7 +182,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <figure><span class="panel"><img src="images/centre-discharge-preview.svg" alt=""></span><figcaption><b>Battery supplying.</b> No solar; the battery covers the house and battery arrows point into the hub.</figcaption></figure>
 <figure><span class="panel"><img src="images/centre-night-preview.svg" alt=""></span><figcaption><b>Night.</b> Only the grid supplies the house; idle arms show a faint track without arrows.</figcaption></figure>
 <figure><span class="panel"><img src="images/centre-stale-preview.svg" alt=""></span><figcaption><b>Offline or stale.</b> Values grey out and keep their last numbers; the status line gives the reason.</figcaption></figure>
-<figure><span class="panel"><img src="images/centre-setup-preview.svg" alt=""></span><figcaption><b>Not configured.</b> No readings yet; the status line asks for a Home Assistant token.</figcaption></figure>
+<figure><span class="panel"><img src="images/centre-setup-preview.svg" alt=""></span><figcaption><b>Not configured.</b> No readings yet, so every value shows <code>--</code>. The browser's Device status panel says <i>Configure Home Assistant token</i>.</figcaption></figure>
 <figure><span class="panel"><img src="images/centre-weather-preview.svg" alt=""></span><figcaption><b>Weather only.</b> Without the optional kWh entities, the clock and current temperature appear top-left and tomorrow's maximum top-right.</figcaption></figure>
 </div>
 <h3>Status line messages</h3>
@@ -261,7 +248,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 
 <h2 id="data">How readings are judged</h2>
 <h3>Signs and solar</h3>
-<p>Internally, grid is positive for import and battery is positive for discharge; the Home Assistant sources use the opposite signs and are converted on read. Solar is <code>max(inverter DC + battery charging, 0)</code>, the single-inverter, single-battery formula documented by SolarEdge Modbus Multi. Inverter AC is never used for solar, and battery DC is never added to the AC household balance.</p>
+<p>Internally, grid is positive for import and battery is positive for discharge; the Home Assistant sources use the opposite signs and are converted on read. Solar is <code>max(inverter DC − battery discharge, 0)</code> (a charging battery counts as negative discharge, so its power is added back), the single-inverter, single-battery formula documented by SolarEdge Modbus Multi. Inverter AC is never used for solar, and battery DC is never added to the AC household balance.</p>
 <h3>Freshness</h3>
 <ul>
 <li>A reading must have been received within <b>Stale after</b> seconds.</li>

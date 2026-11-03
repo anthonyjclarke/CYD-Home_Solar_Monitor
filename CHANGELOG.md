@@ -12,6 +12,7 @@
   - an upright battery gauge with the percentage beneath.
 - Panel redraw: the whole screen 4 times a second (`APP_FULL_FRAME_MS`); between full frames, only the pipe area is redrawn and pushed at 20 fps (`APP_FLOW_FRAME_MS`). Pushing the full screen at 10–20 fps starved Wi-Fi: TCP connects took 0.4 s and page loads 2.2 s. With the partial redraw, loads are typically 0.3–0.7 s, with occasional slower ones.
 - Wi-Fi modem sleep turned off (`WiFi.setSleep(false)`); the panel is mains-powered. With sleep on, pings to the panel swung between 40 and 450 ms.
+- README "Browser dashboard" section: a full-page capture of the dashboard, plus settings, location and diagnostics screenshots, each with notes on what it's for. Settings, location, entities and diagnostics screenshots retaken to show 0.7.0-dev and the Help link.
 - Web dashboard: banner at the foot linking to the GitHub repository.
 - Sun icon for the browser tab, on the device page and the handbook.
 - Handbook served by the device at `http://solar.local/guide/` (works offline), linked from a new Help group in the sidebar and from the dashboard banner. `tools/embed_docs.py` embeds `docs/index.html` and its images at build time (about 270 KB; app flash now 84%). Served with `Cache-Control: no-cache`, so browsers pick up the new handbook after a firmware update.
@@ -26,6 +27,10 @@
 - Handbook "Choosing a layout" shows both layouts side by side and says where to switch (Settings → Display → Layout); the README shows both too.
 - The web UI hint for "Solar energy today" warns against inverter AC energy on battery systems.
 - References to the author's other projects removed from the README.
+
+### Fixed
+
+- Web dashboard: after a single failed refresh (for example a Wi-Fi blip), the Solar today, Tomorrow and Weather tiles stayed grey until the page was reloaded. They now recover on the next good refresh.
 
 ---
 

@@ -108,7 +108,47 @@ The **[handbook](docs/index.html)** covers the rest in detail:
 - serial diagnostics;
 - troubleshooting.
 
-Open it from a local clone or the GitHub file view.
+The panel serves the same handbook at `http://solar.local/guide/`, so it works without internet. You can also open it from a local clone.
+
+---
+
+## Browser dashboard
+
+Open `http://solar.local/` from any phone, tablet or computer on your home network. The page follows your light or dark setting and refreshes every three seconds. Nothing is stored in the cloud: the page talks only to the panel.
+
+![The whole dashboard: tiles, energy flow, 30-minute chart and footer](docs/images/webui-dashboard-full.jpg)
+
+The dashboard reads from top to bottom.
+
+**At a glance.** Eight tiles give the live picture:
+- solar, house, grid and battery power;
+- the battery level, with a bar coloured like the panel's gauge;
+- solar energy so far today and tomorrow's forecast;
+- the current weather.
+
+The pills say which way power is going: green when you're exporting or charging, red when importing. Down the left, the **Device status** panel shows whether readings are live, plus the address, firmware, uptime and free memory.
+
+**Energy flow.** Each reading joins the inverter by a pipe, and comets travel the way power is flowing. A thicker pipe and faster comets mean more power, and a plain grey pipe means that reading is idle or stale. It's the quickest way to see where your solar is going: into the house, into the battery, or out to the grid.
+
+**Last 30 minutes.** Solar, house, grid and battery are charted against clock time. Above the zero line, the grid is importing and the battery supplying; below it, you're exporting and charging. The chart is collected by your browser while the page is open, so it fills from the right. The panel itself keeps no history.
+
+The footer links to the handbook and to this repository.
+
+![Settings: Home Assistant connection, token and read interval](docs/images/webui-settings.jpg)
+
+**Settings.** Settings are split across four pages, and **Save settings** on any page saves them all:
+- **Home Assistant:** the URL, access token and read interval;
+- **Display:** layout, brightness, battery label, night dimming and demo mode;
+- **Location & weather:** search for your town to set the weather location and timezone;
+- **Entities:** the six power sensors, the optional daily and forecast sensors, and an HTTPS certificate.
+
+![Location and weather: town search filling latitude, longitude and timezone](docs/images/webui-location.jpg)
+
+![Diagnostics: every reading with its entity, value, validity and age](docs/images/webui-diagnostics.jpg)
+
+**Diagnostics.** Every reading is listed with its Home Assistant entity, value, whether it's valid, and how old it is. This is the first place to look when a value on the panel is grey. **Device & firmware** has restart, Wi-Fi reset and firmware upload.
+
+There's no login, by design for a trusted home network, so don't expose the panel to the internet or a guest network.
 
 ---
 

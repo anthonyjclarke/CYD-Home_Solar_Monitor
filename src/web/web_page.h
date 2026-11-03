@@ -287,6 +287,8 @@ if(t.today&&t.today.entity){$('vToday').innerHTML=t.today.fresh?t.today.value.to
 if(t.tomorrow&&t.tomorrow.entity&&t.tomorrow.fresh){$('vTomorrow').innerHTML='~'+Math.round(t.tomorrow.value)+'<small>kWh</small>';pill('sTomorrow',w.fresh?SKY(w.tomorrowCode)+' · '+w.tomorrowMaxC.toFixed(0)+'°':'solar forecast','')}
 else if(w.fresh){$('vTomorrow').innerHTML=w.tomorrowMaxC.toFixed(0)+'<small>°C max</small>';pill('sTomorrow',SKY(w.tomorrowCode),'')}
 if(w.configured){$('kWeather').textContent=w.place?'Now · '+w.place.split(',')[0]:'Weather now';$('vWeather').innerHTML=w.fresh?w.nowC.toFixed(0)+'<small>°C</small>':'&ndash;';pill('sWeather',w.fresh?SKY(w.nowCode):'unavailable','')}
+// These tiles show "–" when unavailable; clear the grey a failed refresh left.
+['tToday','tTomorrow','tWeather'].forEach(t=>$(t).classList.remove('stale'));
 arm('Solar',solar.fresh,solar.value,true);arm('Grid',grid.fresh,grid.value,grid.value>0);arm('Batt',batt.fresh,batt.value,batt.value>0);arm('House',house.fresh,house.value,false);
 node('Solar',solar,solar.fresh?(solar.value>30?'generating':'idle'):'unavailable');node('House',house,house.fresh?'demand':'unavailable');
 node('Grid',grid,!grid.fresh?'unavailable':grid.value>30?'importing':grid.value<-30?'exporting':'idle');

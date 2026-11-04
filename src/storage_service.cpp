@@ -31,17 +31,10 @@ void begin() {
     current.deviceName = defaultDeviceName();
     prefs.putString("device_name", current.deviceName);
   }
-
-  current.debugLevel = prefs.getUChar("debug_level", APP_DEFAULT_DEBUG_LEVEL);
 }
 
 const Settings& settings() {
   return current;
-}
-
-void setDebugLevel(uint8_t level) {
-  current.debugLevel = level;
-  prefs.putUChar("debug_level", level);
 }
 
 }  // namespace cyd::storage

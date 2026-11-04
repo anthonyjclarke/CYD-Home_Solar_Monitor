@@ -1,5 +1,7 @@
 # CYD Home Solar Monitor – Rayhub Review and Build Brief
 
+Historical research dated 3 November 2026; external product claims and linked sources were not revalidated in the 5 November documentation review. Current implementation status is in [REVIEW_AND_ROADMAP.md](REVIEW_AND_ROADMAP.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
+
 Reviewed on 3 November 2026. This is a requirements brief and provisional implementation sequence for a PlatformIO project. The initial research preceded confirmation of the installation. The current requirements, confirmed equipment and implementation sequence are in [BUILD_PLAN.md](BUILD_PLAN.md). The project directory was empty when first reviewed.
 
 ---
@@ -87,6 +89,6 @@ The shared installer can overwrite a shipped filesystem image during updates. Ke
 
 The owner has confirmed one SolarEdge SE6000, a three-phase household supply, Ethernet Modbus TCP at `192.168.1.88`, working Home Assistant monitoring, home/grid readings, an LG battery labelled 9.8 kWh and a landscape CYD. Version 1 prioritises live energy flow; costs are deferred.
 
-The owner subsequently confirmed SolarEdge Modbus Multi and selected Home Assistant readings for version 1. See [BUILD_PLAN.md](BUILD_PLAN.md) for the confirmed firmware versions, selected data route, five required measurements, confirmed entity mapping and working hardware reference and build acceptance criteria. Direct inverter access has not been attempted.
+The owner subsequently confirmed SolarEdge Modbus Multi and selected Home Assistant readings for version 1. See [BUILD_PLAN.md](BUILD_PLAN.md) for the confirmed firmware versions, selected data route, six source entities plus derived solar, confirmed entity mapping and working hardware reference and build acceptance criteria. Direct inverter access has not been attempted.
 
 The owner has now supplied Home Assistant at `192.168.1.254`, the power and battery entity mappings, and `CYD_AnimatedPixelClock` as the working hardware reference. The initial supplied generation entity was inverter AC output. The owner subsequently confirmed `sensor.solaredge_i1_dc_power`; firmware `0.2.0-dev` now uses that DC entity and signed battery DC power to calculate solar generation, retaining AC output in diagnostics.

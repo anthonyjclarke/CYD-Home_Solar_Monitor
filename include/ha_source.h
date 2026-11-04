@@ -3,6 +3,8 @@
 #include "monitor_config.h"
 
 namespace source {
+enum class ReaderState { NotStarted, Running, Failed };
+ReaderState readerState();  // Startup status; main-task initialization owns it.
 enum class ReadError { NotRead, None, Wifi, MissingCa, Clock, Url, Http, TooLarge, Json, Value };
 struct RequestTrace {
     ReadError error = ReadError::NotRead;

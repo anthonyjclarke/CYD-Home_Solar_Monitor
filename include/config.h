@@ -1,7 +1,7 @@
 #pragma once
 
 #define PROJECT_NAME "CYD-Home-Solar-Monitor"
-#define FIRMWARE_VERSION "0.9.0-dev"
+#define FIRMWARE_VERSION "0.9.0"
 #define IMPROV_SETUP_ENABLED 1
 #define IMPROV_DEVICE_PREFIX "CYD-Solar"
 #define APP_DEFAULT_DEBUG_LEVEL 3
@@ -10,7 +10,8 @@
 // mDNS name: the device answers at http://solar.local/ (ArduinoOTA advertises it too).
 #define APP_MDNS_NAME "solar"
 // Boot screen: held this long after Wi-Fi connects so the IP can be read, and
-// at most this long overall if Wi-Fi never connects. A tap skips it.
+// this long if Wi-Fi never connects. A late connection gets the full hold.
+// A tap skips the screen.
 #define APP_BOOT_HOLD_MS 6000
 #define APP_BOOT_MAX_MS 15000
 // Panel redraw: the whole screen 4 times a second, and in between only the

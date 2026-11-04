@@ -8,6 +8,7 @@
 #include <esp_task_wdt.h>
 
 #include "debug.h"
+#include "history_service.h"
 
 #ifndef IMPROV_DEVICE_PREFIX
 #define IMPROV_DEVICE_PREFIX "CYD"
@@ -101,6 +102,7 @@ void improvTick() {
   // flush so they reach the browser, then restart onto the new network.
   DBG_WARN("Improv: new WiFi credentials, restarting");
   Serial.flush();
+  history::checkpoint();
   ESP.restart();
 }
 

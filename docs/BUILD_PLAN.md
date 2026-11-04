@@ -1,6 +1,8 @@
 # CYD Home Solar Monitor – Version 1 Build Plan
 
-Updated 3 November 2026 from the owner's answers and two SolarEdge equipment screenshots. The first firmware implementation is now built and locally verified; see [README.md](../README.md) for setup and [HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md) for remaining commissioning checks. The accompanying [Rayhub review](RAYHUB_REVIEW_AND_BUILD_BRIEF.md) records the product research and template assessment.
+Historical plan dated 3 November 2026, annotated on 5 November 2026. The implementation has since reached source `0.9.0`; use [DEVELOPMENT.md](DEVELOPMENT.md), [AGENTS.md](../AGENTS.md) and [REVIEW_AND_ROADMAP.md](REVIEW_AND_ROADMAP.md) for current behavior. Equipment and sample readings below are historical installation context, not newly verified live data.
+
+Originally updated from the owner's answers and two SolarEdge equipment screenshots. The first firmware implementation is now built and locally verified; see [README.md](../README.md) for setup and [HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md) for remaining commissioning checks. The accompanying [Rayhub review](RAYHUB_REVIEW_AND_BUILD_BRIEF.md) records the product research and template assessment.
 
 ---
 
@@ -34,11 +36,11 @@ Equipment serial numbers are unnecessary for implementation and are not reproduc
 
 ## Version 1 outcome
 
-Build a PlatformIO/Arduino application for a 320 × 240 landscape CYD. The current screen shows calculated solar generation, household demand, grid import/export and battery charge/discharge, with battery percentage. Inverter AC output remains in diagnostics. Version `0.2.0-dev` adds the confirmed inverter DC input to calculate solar from DC measurements. Label the grid direction explicitly and animate arrows only when the corresponding measurement is valid and above a configurable idle threshold.
+Build a PlatformIO/Arduino application for a 320 × 240 landscape CYD. The current screen shows calculated solar generation, household demand, grid import/export and battery charge/discharge, with battery percentage. Inverter AC output remains in diagnostics. Version `0.2.0-dev` adds the confirmed inverter DC input to calculate solar from DC measurements. Label the grid direction explicitly and animate arrows only when the corresponding measurement is valid and above the fixed 30 W idle threshold.
 
-The first milestone covers live power flow. Costs, tariffs, free-power schedules, forecasts, historical graphs and equipment control are deferred. Normal framework services still include Wi-Fi setup, persisted configuration, touch, brightness, diagnostics and local firmware updates.
+The first milestone covers live power flow. The original plan deferred costs, tariffs, free-power schedules, forecasts, historical graphs and equipment control. Optional HA forecast/daily-total entities, Open-Meteo weather and persistent device/browser 24-hour history have since been implemented. Costs and equipment control remain deferred. Normal framework services still include Wi-Fi setup, persisted configuration, touch, brightness, diagnostics and local firmware updates.
 
-The display must distinguish zero power, unavailable measurements, initial connection, stale source data and loss of network connection. Losing communication must not produce an off-grid claim. A tap opens a status page with connection information, source data age and units/sign diagnostics.
+The display must distinguish zero power, unavailable measurements, initial connection, stale source data and loss of network connection. Losing communication must not produce an off-grid claim. The current flow-screen History button opens stored trends; holding longer than two seconds opens device/setup information and the device code. Detailed source ages, units and signs are available in browser/serial diagnostics, not on that panel page.
 
 ---
 
@@ -114,14 +116,14 @@ Carry over the working reference's explicit `USE_HSPI_PORT`: display pins are MO
 
 Reuse compatible NVS/brightness patterns from `../CYD_WordClock` and local configuration/status patterns from `../CYD_PongClock` and `../TheFlightWall_CYD`. Build without local credentials. Fix late Wi-Fi OTA activation and replace scaffold demo behaviours as part of the application adaptation.
 
-| Proposed path                   | Responsibility                 |
+| Implemented path                | Responsibility                 |
 | ------------------------------- | ------------------------------ |
 | `platformio.ini`                | Board and dependency settings  |
 | `include/config.h`              | Identity and hardware defaults |
 | `include/energy_model.h`        | Units, validity and data age   |
 | `src/data/ha_source.cpp`        | Selected entity acquisition    |
 | `src/config/monitor_config.cpp` | Persisted mapping and settings |
-| `src/ui/flow_screen.cpp`        | Flow diagram and touch status  |
+| `src/ui/flow_layout.cpp`        | Flow diagram and touch status  |
 | `src/web/monitor_web.cpp`       | Local setup and diagnostics    |
 | `src/app/app.cpp`               | Acquisition/UI orchestration   |
 | `tools/merge_bin.py`            | Shared installer build output  |
@@ -150,7 +152,7 @@ Add local source configuration and the Home Assistant adapter. Validate numerica
 
 Verify night operation, Wi-Fi loss, Home Assistant restart, stale upstream data, CYD restart and settings persistence. Test late Wi-Fi connection and local OTA. Verify a fresh browser installation and a subsequent settings-preserving update when a board is available. Prepare credential-free build outputs and the established CYD CI configuration; remote publishing requires a separate instruction.
 
-The firmware compiles successfully and the portable model checks pass. The embedded browser page was checked with a synthetic loopback fixture. No Home Assistant changes, live inverter/HA reads, remote publication or board flashing have been performed.
+At the original planning milestone, firmware compilation, portable checks and a synthetic browser fixture had passed without live reads, flashing or publishing. Since then, the project records a running panel with live HA data and releases through `0.8.0`; see `HARDWARE_VALIDATION.md` and `WEB_INSTALLER.md` for the actual observations and unchecked cases. The 0.9.0 source-release sweep performs local checks only; see [RELEASE_0.9.0.md](RELEASE_0.9.0.md).
 
 ---
 

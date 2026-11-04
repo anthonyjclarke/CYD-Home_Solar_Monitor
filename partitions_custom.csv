@@ -4,8 +4,8 @@
 # partition. The `spiffs` subtype name is correct even when the partition is
 # mounted as LittleFS - that is expected, not a mistake.
 #
-# The scaffold keeps settings in NVS and does not mount the data partition;
-# it is there so a project can add LittleFS without repartitioning.
+# Settings remain in NVS; rolling history mounts this existing data partition
+# as LittleFS. Keep all offsets/sizes unchanged for app-only OTA updates.
 #
 # Name,     Type, SubType,  Offset,   Size,    Flags
 nvs,        data, nvs,      0x9000,   0x5000,

@@ -1,5 +1,6 @@
 #pragma once
 #include "energy_model.h"
+#include "boot_status.h"
 
 namespace ui {
 enum Align { Left, Center, Right };
@@ -37,14 +38,15 @@ Box drawFlow(Canvas& canvas, const FlowView& view);
 
 // Boot screen: identity, then one row per start-up step so the IP address and
 // Wi-Fi state can be read before the flow display takes over.
-enum BootState : unsigned char { BootInfo, BootOk, BootWaiting, BootProblem };
+using BootState = boot::State;
+constexpr BootState BootInfo=boot::Info, BootOk=boot::Ok, BootWaiting=boot::Waiting, BootProblem=boot::Problem;
 struct BootRow {
     const char* label = "";
     const char* value = "";
     BootState state = BootInfo;
 };
 struct BootView {
-    static constexpr int rowCount = 6;
+    static constexpr int rowCount = boot::RowCount;
     BootRow rows[rowCount];
     const char* version = "";
     const char* footer = "";

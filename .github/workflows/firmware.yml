@@ -10,7 +10,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      # Install only the pinned JSON headers for the real-handler/config checks.
+      - run: |
+          python -m pip install platformio==6.2.0
+          mkdir -p .pio/libdeps/cyd28
+          pio pkg install --global --library 'bblanchon/ArduinoJson@7.4.2' --storage-dir .pio/libdeps/cyd28
       - run: python3 tools/check_host.py
+      - run: python3 tools/check_docs.py
+      - run: node tests/test_web_history.js
+      - run: node tests/test_web_settings.js
   firmware:
     needs: model-checks
     uses: anthonyjclarke/cyd-web-installer/.github/workflows/cyd-release.yml@main

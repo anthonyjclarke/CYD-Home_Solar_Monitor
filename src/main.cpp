@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <esp_ota_ops.h>
 #include "app/app.h"
 #include "backlight_service.h"
 #include "debug.h"
@@ -13,8 +12,10 @@
 #include "touch_service.h"
 #include "wifi_service.h"
 #include "serial_diagnostics.h"
+#include "history_service.h"
 
-uint8_t debugLevel=APP_DEFAULT_DEBUG_LEVEL;
+// Keep application logs quiet until the saved level has been loaded.
+std::atomic<uint8_t> debugLevel{DBG_LEVEL_OFF};
 
 // Apply the configured POSIX timezone whenever it changes (boot or web save).
 // configTzTime() below only starts SNTP once; TZ itself can change at any time.
@@ -28,16 +29,24 @@ void applyTimezone() {
 
 void setup() {
     Serial.begin(115200); improvBegin();
-    monitor::loadConfig(); cyd::storage::begin(); applyTimezone();
+    monitor::loadConfig(); diagnostics::begin();
+    diagnostics::bootStage("Device storage","initializing");
+    cyd::storage::begin(); applyTimezone();
+    diagnostics::bootStage("Device storage","settings and boot counter loaded");
     // Keep the active-low LED off rather than run the scaffold demo cycle.
     for (int pin : {LED_R_PIN,LED_G_PIN,LED_B_PIN}) { pinMode(pin,OUTPUT); digitalWrite(pin,HIGH); }
+    diagnostics::bootStage("Display","initializing backlight and TFT driver");
     cyd::backlight::begin(); cyd::display::begin();
-    cyd::touch::begin(320,240); cyd::network::begin();
+    diagnostics::bootStage("Display","driver initialized (320x240)");
+    diagnostics::bootStage("Touch","initializing controller and calibration");
+    cyd::touch::begin(320,240);
+    diagnostics::bootStage("Touch","controller initialized");
+    diagnostics::bootStage("Wi-Fi","starting saved-network connection");
+    cyd::network::begin();
     cyd::ota::begin(cyd::storage::settings().deviceName);
+    diagnostics::bootStage("OTA","service prepared; waiting for Wi-Fi");
     app::begin();
-    diagnostics::begin();
-    DBG_INFO("Running from %s", esp_ota_get_running_partition()->label);
-    DBG_INFO("%s %s ready", PROJECT_NAME,FIRMWARE_VERSION);
+    diagnostics::bootStage("Main loop","started; network and source checks continue");
 }
 void loop() {
     static bool timeStarted=false;
@@ -48,7 +57,7 @@ void loop() {
         timeStarted=true;
     }
     applyTimezone();
-    cyd::ota::update(); cyd::touch::update(); web::update(); app::update(millis());
+    cyd::ota::update(); cyd::touch::update(); web::update(); history::update(); app::update(millis());
     diagnostics::update(millis());
     vTaskDelay(1);  // Yield one tick to WiFi/idle tasks; not a timing delay.
 }

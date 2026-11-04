@@ -1,5 +1,8 @@
 #include "app/app.h"
 #include "flow_layout.h"
+#include "history_layout.h"
+#include "history_service.h"
+#include "touch_gesture.h"
 #include "display_service.h"
 #include "touch_service.h"
 #include "wifi_service.h"
@@ -7,16 +10,18 @@
 #include "ha_source.h"
 #include "backlight_service.h"
 #include "monitor_web.h"
-#include "debug.h"
-#include <WiFi.h>
+#include "serial_diagnostics.h"
 #include <ctime>
 #include <algorithm>
 
 namespace app {
 namespace {
 TFT_eSprite buffer(&cyd::display::tft());
-bool buffered = false, details = false, wasPressed = false, swallowTap = false;
-uint32_t lastPaint = 0, lastMotion = 0, lastTouch = 0, pressedAt = 0;
+bool buffered = false, details = false, wasPressed = false, historyShown = false;
+ui::TouchGesture gesture;
+history::Field historyField = history::Solar;
+uint16_t tapX = 0, tapY = 0;
+uint32_t lastPaint = 0, lastMotion = 0, lastTouch = 0;
 bool flowShown = false;  // The last full frame was the flow screen.
 bool booting = true;
 uint32_t bootStart = 0, connectedAt = 0;
@@ -62,48 +67,17 @@ void paintInfo() {
     buffer.pushSprite(0,0);
 }
 
-const char* signalQuality(int rssi) {
-    return rssi >= -55 ? "excellent" : rssi >= -67 ? "good" : rssi >= -75 ? "fair" : "weak";
-}
-
 // Start-up screen: one row per step, repainted every 250 ms so Wi-Fi, IP and
 // clock fill in as they come up. Theme follows the chosen panel layout.
 void paintBoot(uint32_t now) {
-    const auto& wifi = cyd::network::status();
     const auto& cfg = monitor::config();
+    const auto& status = diagnostics::bootStatus();
     ui::BootView v;
     v.layout = static_cast<ui::Layout>(cfg.layout);
     v.version = "v" FIRMWARE_VERSION;
-    char wifiText[48], ipText[24], signal[32], ha[48], clockText[40], footer[48];
-    if (wifi.connected) {
-        snprintf(wifiText, sizeof(wifiText), "Connected - %.26s", wifi.ssid.c_str());
-        v.rows[0] = {"Wi-Fi", wifiText, ui::BootOk};
-        snprintf(ipText, sizeof(ipText), "%s", wifi.ip.c_str());
-        const int rssi = WiFi.RSSI();
-        snprintf(signal, sizeof(signal), "%d dBm (%s)", rssi, signalQuality(rssi));
-    } else {
-        if (wifi.portalActive) snprintf(wifiText, sizeof(wifiText), "Setup hotspot %s", wifi.apName.c_str());
-        else snprintf(wifiText, sizeof(wifiText), "Connecting...");
-        v.rows[0] = {"Wi-Fi", wifiText, wifi.portalActive ? ui::BootProblem : ui::BootWaiting};
-        snprintf(ipText, sizeof(ipText), "-");
-        snprintf(signal, sizeof(signal), "-");
-    }
-    v.rows[1] = {"IP address", ipText, ui::BootInfo};
-    v.rows[2] = {"Web page", "http://" APP_MDNS_NAME ".local/", ui::BootInfo};
-    v.rows[3] = {"Signal", signal, ui::BootInfo};
-    // Host and port only: never the token, and no scheme to save space.
-    String host = cfg.url;
-    host.replace("https://", ""); host.replace("http://", "");
-    if (cfg.demo) snprintf(ha, sizeof(ha), "demo mode (synthetic)");
-    else if (cfg.token.isEmpty()) snprintf(ha, sizeof(ha), "%.20s - no token", host.c_str());
-    else snprintf(ha, sizeof(ha), "%.30s", host.c_str());
-    v.rows[4] = {"Home Asst", ha, !cfg.demo && cfg.token.isEmpty() ? ui::BootProblem : ui::BootInfo};
-    const time_t epoch = time(nullptr);
-    tm local{};
-    if (epoch > 1700000000 && localtime_r(&epoch, &local)) {
-        strftime(clockText, sizeof(clockText), "%H:%M %Z - synced", &local);
-        v.rows[5] = {"Clock", clockText, ui::BootOk};
-    } else v.rows[5] = {"Clock", "waiting for time server", ui::BootWaiting};
+    for (unsigned i=0;i<boot::RowCount;++i)
+        v.rows[i] = {boot::label(i),status.rows[i].value,status.rows[i].state};
+    char footer[48];
     if (connectedAt) {
         const uint32_t left = APP_BOOT_HOLD_MS - std::min<uint32_t>(APP_BOOT_HOLD_MS, now - connectedAt);
         snprintf(footer, sizeof(footer), "Starting display in %u s - tap to skip", unsigned((left + 999) / 1000));
@@ -155,40 +129,63 @@ void sampleCalibration(const cyd::touch::State& touch, uint32_t now) {
 void begin() {
     buffer.setColorDepth(8);
     buffered = buffer.createSprite(320,240) != nullptr;
-    if (!buffered) cyd::display::showBootMessage("Low memory", "Restart device to retry display");
+    diagnostics::bootStage("Display",buffered?"frame buffer ready":"frame buffer allocation failed",!buffered);
+    if (!buffered) {
+        cyd::display::showBootMessage("Low memory", "Restart device to retry display");
+        diagnostics::bootScreenClosed("display buffer unavailable");
+    }
     bootStart = millis();
     if (buffered) paintBoot(bootStart);
+    diagnostics::bootStage("History","mounting LittleFS and checking checkpoints");
+    history::begin();
+    diagnostics::bootStage("Home Assistant","starting background reader");
     source::begin();
+    const bool failed=source::readerState()==source::ReaderState::Failed;
+    diagnostics::bootStage("Home Assistant",failed?"reader task failed":"reader task started",failed);
 }
 
 void update(uint32_t now) {
     const auto& touch = cyd::touch::state();
     const auto& cfg = monitor::config();
-    if (calibrating) { sampleCalibration(touch,now); wasPressed=touch.pressed; return; }
+    if (calibrating) {
+        gesture.update(touch.pressed,now,true);
+        sampleCalibration(touch,now); wasPressed=touch.pressed; return;
+    }
     tm local{}; time_t epoch=time(nullptr); bool clock=epoch>1700000000;
     if (clock) localtime_r(&epoch,&local);
-    bool night=false;
-    if (clock && cfg.nightDim && cfg.nightStart != cfg.nightEnd)
-        night=cfg.nightStart<cfg.nightEnd ? local.tm_hour>=cfg.nightStart && local.tm_hour<cfg.nightEnd : local.tm_hour>=cfg.nightStart || local.tm_hour<cfg.nightEnd;
-    const bool dimmed = night && now-lastTouch>60000;
-    if (touch.pressed && !wasPressed) {
-        // A touch on a dimmed panel only wakes it; it does not also open setup.
-        swallowTap = dimmed; pressedAt=now; lastTouch=now;
-    }
-    if (touch.pressed && details && !swallowTap && now-pressedAt >= 2000) {
-        calibrating=true; target=0; calibrationHeld=true; lastTouch=now; paintCalibration();
-        // Discard the hold that entered calibration; wait for its release.
-        calibrationHeld=false; waitCalibrationRelease=true;
-        wasPressed=true; return;
-    }
-    if (!touch.pressed && wasPressed && !swallowTap && now-pressedAt >= 50 && now-pressedAt < 1500) {
-        // A tap during start-up only skips the boot screen.
-        if (booting) { booting=false; DBG_INFO("[BOOT] Boot screen skipped by touch"); }
-        else details=!details;
-        lastPaint=0; lastTouch=now;
+    const auto phase=night::phase(monitor::nightSchedule(cfg),clock,local.tm_hour*60+local.tm_min);
+    const bool dimmed=night::brightness(phase,cfg.brightness,now,lastTouch)<cfg.brightness;
+    if (touch.pressed && !wasPressed) { tapX=touch.x; tapY=touch.y; lastTouch=now; }
+    const auto event=gesture.update(touch.pressed,now,dimmed);
+    if (touch.pressed) lastTouch=now;
+    if (event==ui::Gesture::Hold) {
+        if (details) {
+            // A separate hold in Settings retains the existing calibration action.
+            calibrating=true; target=0; calibrationHeld=false; waitCalibrationRelease=true;
+            paintCalibration(); wasPressed=true; return;
+        }
+        if (booting) diagnostics::bootScreenClosed("Settings opened by hold");
+        details=true; historyShown=false; booting=false; lastPaint=0;
+    } else if (event==ui::Gesture::Tap) {
+        if (booting) { booting=false; diagnostics::bootScreenClosed("skipped by touch"); }
+        else if (details) details=false;
+        else if (historyShown) {
+            if (tapY<29 && tapX>=260) historyShown=false;
+            else if (tapY>=31 && tapY<58) historyField=history::tabs[std::min<unsigned>(4,tapX/64)];
+            else if (tapY>=209 && (tapX<52 || tapX>=268)) {
+                unsigned i=0;
+                while (i+1<history::FieldCount && history::order[i]!=historyField) ++i;
+                historyField=history::order[(i+history::FieldCount+(tapX<52?-1:1))%history::FieldCount];
+            }
+        } else if (tapY>=209 && tapX>=232) historyShown=true;
+        lastPaint=0;
     }
     wasPressed=touch.pressed;
-    cyd::backlight::setBrightness(night && now-lastTouch>60000 ? std::max(5,int(cfg.brightness)/5) : cfg.brightness);
+    const uint8_t brightness=night::brightness(phase,cfg.brightness,now,lastTouch);
+    cyd::backlight::setBrightness(brightness);
+    // Backlight off leaves touch, sampling, history, networking and OTA active.
+    // A scheduled turn-on or wake touch repaints a complete frame immediately.
+    if (!brightness) { flowShown=false; lastPaint=0; return; }
     if (web::updating() || !buffered) return;
     // Full frames repaint everything; between them, motion frames redraw and
     // push only the pipes, once the flow screen is showing.
@@ -201,10 +198,19 @@ void update(uint32_t now) {
         const bool done = connectedAt ? now - connectedAt >= APP_BOOT_HOLD_MS : now - bootStart >= APP_BOOT_MAX_MS;
         if (!done) { paintBoot(now); return; }
         booting = false;
-        DBG_INFO("[BOOT] Boot screen closed after %lu ms (%s)", static_cast<unsigned long>(now - bootStart),
-                 connectedAt ? "Wi-Fi connected" : "no Wi-Fi yet");
+        diagnostics::bootScreenClosed(connectedAt?"Wi-Fi hold complete":"offline timeout");
     }
-    if (details || (!cyd::network::status().connected && !cfg.demo)) {
+    if (historyShown) {
+        ui::HistoryView h{history::data()};
+        h.epoch=clock?uint32_t(epoch):0; h.field=historyField; h.layout=static_cast<ui::Layout>(cfg.layout);
+        h.storageOK=history::storageHealthy(); h.demo=cfg.demo;
+        ui::drawHistory(canvas,h);
+        if (gesture.heldMs(now)>300) {
+            canvas.rect(0,237,std::min<uint32_t>(320,gesture.heldMs(now)*320/2000),3,0x9292aa);
+        }
+        buffer.pushSprite(0,0); return;
+    }
+    if (details) {
         // Repaint at 1 Hz to avoid flashing the setup page.
         static uint32_t infoPaint=0;
         if (now-infoPaint>=1000 || !infoPaint) { paintInfo(); infoPaint=now; }
@@ -220,7 +226,7 @@ void update(uint32_t now) {
     for (auto metric:energy::displayMetrics) {
         all &= view.usable[metric]; reportKnown &= view.data.readings[metric].reportedMs!=0;
     }
-    const char* status=view.data.demo ? "DEMO / tap for setup" : !view.wifi ? "WiFi disconnected" : !all ? "Waiting / stale or unavailable" : !reportKnown ? "HA connected / source age unknown" : "Live / tap for device settings";
+    const char* status=view.data.demo ? "DEMO / hold for setup" : !view.wifi ? "WiFi disconnected" : !all ? "Waiting / stale or unavailable" : !reportKnown ? "HA connected / source age unknown" : "Live / hold for settings";
     view.status=status;
     String ip=cyd::network::status().ip;
     view.address=ip.c_str();
@@ -233,6 +239,8 @@ void update(uint32_t now) {
     if (clock) strftime(clockText,sizeof(clockText),"%H:%M",&local);
     view.time=clockText;
     const ui::Box box=ui::drawFlow(canvas,view);
+    if (full && gesture.heldMs(now)>300)
+        canvas.rect(0,237,std::min<uint32_t>(320,gesture.heldMs(now)*320/2000),3,0x9292aa);
     if (full) { buffer.pushSprite(0,0); flowShown=true; }
     else if (box.w > 0 && box.h > 0) buffer.pushSprite(box.x,box.y,box.x,box.y,box.w,box.h);
 }

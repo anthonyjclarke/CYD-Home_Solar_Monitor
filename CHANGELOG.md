@@ -1,8 +1,36 @@
 # Changelog
 
-## [0.9.0-dev] 04-11-2026
+## [0.9.0] 05-11-2026
 
-No changes yet.
+Source release prepared and committed locally. Tagging/publication and real-board acceptance remain pending; see [release verification](docs/RELEASE_0.9.0.md).
+
+### Added
+
+- Shared CYD/serial startup diagnostics: seven status rows cover Wi-Fi, IP, web address, signal, actual Home Assistant freshness/coherence, history restore and clock sync. Serial also reports firmware/reset/app slot and each service initialization stage before the TFT is available. Startup output follows the saved log level, prints changes once and ends when ready or after 60 seconds; runtime logging remains limited to its normal cadence.
+- Persistent rolling 24-hour history for all seven energy metrics, optional daily totals and weather fields, using five-minute actual snapshots and alternating CRC32-verified LittleFS checkpoints every 15 minutes on the existing data partition.
+- A 320 × 240 History screen in both themes with metric tabs, other-metric navigation, signed trends, missing-data gaps and sampled statistics. History replaces Settings on the flow screen; a hold longer than two seconds opens Settings, and a separate hold there retains calibration.
+- Streaming `GET /api/history?hours=24`, shared by the panel and WebUI. Browser history now survives reloads; per-metric charts keep units separate and demo samples are excluded.
+- Portable regression checks for retention, stale/unknown/future readings, timestamp correction, checkpoint corruption and interrupted writes, touch gestures and browser history rendering; synthetic history previews and a hardware validation checklist.
+
+### Changed
+
+- Expanded Display → Night mode with dim-only, off-only and staged dim/off/on actions, minute-precision local times, automatic morning turn-on and retained settings. Legacy hour-based schedules migrate to dim-only. Screen-off pauses only backlight/rendering; touch wakes for a minute while acquisition, history, WebUI and OTA stay active. Added model, configuration/API and WebUI regression coverage.
+- Reduced routine serial polling and health output to about once per minute at the default Info level; Verbose retains every-poll diagnostics. Mode/state changes and occasional optional-reading events remain visible.
+- Added Settings → Display → Serial debug with Off, Errors only, Warnings and errors, Info and Verbose. The selection applies immediately, persists in the existing schema-2 JSON and migrates the old scaffold debug key. Added configuration, API, cadence and WebUI regressions, including Off=0 and failed saves.
+
+### Fixed
+
+- Fixed malformed history JSON: ArduinoJson clears its output string, so row separators are now appended to the response packet after serialization. Added host integration coverage using the actual firmware handler and pinned ArduinoJson String writer, including full, missing and mixed samples across chunk boundaries.
+
+### Documentation
+
+- Added repository-specific `AGENTS.md` and `docs/DEVELOPMENT.md` with architecture, build/test commands, persistence/API contracts, board constraints, security/privacy safeguards and contribution guidance.
+- Updated README and embedded handbook for current development/release identity, actual network traffic, certificate exposure, timing and persistent device/browser history; expanded local validation instructions.
+- Reconciled the roadmap with implemented features, marked original research/build plans as historical, and retained unchecked hardware/installer cases separately from desktop results.
+- Consolidated Claude guidance onto the shared agent guide and recorded the 5 November scan, follow-up code observations and validation in `docs/DOCUMENTATION_REVIEW.md`.
+- Documented 24-hour history with screenshots in the README and handbook: all five panel history views (solar, battery, dark, other metric, empty) and the browser's combined and single-metric charts. Regenerated all 22 panel SVGs and thirteen PNGs; retook every browser screenshot at 0.9.0, including staged night settings, serial debug and Device & firmware. WebP captures reduce embedded asset cost; the decorative footer is unchanged.
+
+Firmware dependencies, partition offsets/sizes and settings schema numbers are unchanged. CI now installs the pinned ArduinoJson headers for real history/config regression harnesses and runs both JavaScript suites. Physical-device history, flash interruption, night transitions and OTA/installer checks remain pending.
 
 ---
 
@@ -16,11 +44,11 @@ No changes yet.
 ### Changed
 
 - Documentation sweep:
-  - Reduce Motion explained in the handbook (energy flow caption and a troubleshooting row) and the README: with it on, the web comets stay still by design.
-  - Footer artwork described in the handbook and README.
-  - "Layout" setting named as in the web UI.
-  - Comets replace chevrons and arrows in the hardware checklist.
-  - Items the owner has verified are ticked: panel layout, iPhone access, CI releases.
+    - Reduce Motion explained in the handbook (energy flow caption and a troubleshooting row) and the README: with it on, the web comets stay still by design.
+    - Footer artwork described in the handbook and README.
+    - "Layout" setting named as in the web UI.
+    - Comets replace chevrons and arrows in the hardware checklist.
+    - Items the owner has verified are ticked: panel layout, iPhone access, CI releases.
 - Every web screenshot retaken for 0.8.0 with the footer artwork, including the README's full-page dashboard capture.
 
 ---
@@ -30,11 +58,11 @@ No changes yet.
 ### Added
 
 - Panel (centre layout) re-laid out to match the web flow:
-  - pipes of equal width end exactly 6 px from each text block;
-  - comets (head, mid and pale tail) ease along each pipe the way power flows, faster as power rises, with a second comet above 2.5 kW;
-  - a sine-wave hub at (140,115);
-  - grid and battery blocks centred under their labels;
-  - an upright battery gauge with the percentage beneath.
+    - pipes of equal width end exactly 6 px from each text block;
+    - comets (head, mid and pale tail) ease along each pipe the way power flows, faster as power rises, with a second comet above 2.5 kW;
+    - a sine-wave hub at (140,115);
+    - grid and battery blocks centred under their labels;
+    - an upright battery gauge with the percentage beneath.
 - Panel redraw: the whole screen 4 times a second (`APP_FULL_FRAME_MS`); between full frames, only the pipe area is redrawn and pushed at 20 fps (`APP_FLOW_FRAME_MS`). Pushing the full screen at 10–20 fps starved Wi-Fi: TCP connects took 0.4 s and page loads 2.2 s. With the partial redraw, loads are typically 0.3–0.7 s, with occasional slower ones.
 - Wi-Fi modem sleep turned off (`WiFi.setSleep(false)`); the panel is mains-powered. With sleep on, pings to the panel swung between 40 and 450 ms.
 - README "Browser dashboard" section: a full-page capture of the dashboard, plus settings, location and diagnostics screenshots, each with notes on what it's for. Settings, location, entities and diagnostics screenshots retaken to show 0.7.0-dev and the Help link.

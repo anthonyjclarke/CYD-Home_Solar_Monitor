@@ -1,6 +1,7 @@
 #include "ota_service.h"
 #include "monitor_config.h"
 #include "ha_source.h"
+#include "history_service.h"
 #include "config.h"
 #include "debug.h"
 #include <ArduinoOTA.h>
@@ -18,7 +19,7 @@ void update() {
         ArduinoOTA.setHostname(APP_MDNS_NAME);
         ArduinoOTA.setPassword(monitor::accessCode().c_str());
         ArduinoOTA.setPort(APP_OTA_PORT);
-        ArduinoOTA.onStart([] { source::pause(true); });
+        ArduinoOTA.onStart([] { history::checkpoint(); source::pause(true); });
         ArduinoOTA.onError([](ota_error_t) { source::pause(false); });
         ArduinoOTA.begin(); current.enabled = true;
         MDNS.addService("http", "tcp", 80);

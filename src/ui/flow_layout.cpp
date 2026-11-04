@@ -177,7 +177,8 @@ void drawCards(Canvas& c, const FlowView& v) {
     c.rect(144,112,32,24,hub,4);
     c.text(160,120,1,muted,Center,"INV");
     c.text(8,224,1,muted,Left,v.status);
-    c.text(312,224,1,muted,Right,v.address);
+    c.rect(232,218,80,20,hub,3);
+    c.text(272,220,2,white,Center,"History");
 }
 
 // Value in font 4 with a small grey unit, positioned by alignment of the pair.
@@ -241,15 +242,6 @@ void uprightBattery(Canvas& c, int x, int y, int w, int h, const energy::Reading
 float cometPhase[4] = {0.45f, 0.4f, 0.55f, 0.5f};
 uint32_t cometMs = 0;
 int textHalf[2] = {36, 36};  // Half widths of the grid and battery blocks.
-
-void gear(Canvas& c, int x, int y, unsigned color) {
-    c.rect(x - 1, y - 7, 3, 14, color);
-    c.rect(x - 7, y - 1, 14, 3, color);
-    c.line(x - 5, y - 5, x + 5, y + 5, color); c.line(x - 5, y - 4, x + 4, y + 5, color);
-    c.line(x - 5, y + 5, x + 5, y - 5, color); c.line(x - 5, y + 4, x + 4, y - 5, color);
-    c.rect(x - 5, y - 5, 11, 11, color, 5);
-    c.rect(x - 2, y - 2, 5, 5, paper, 2);
-}
 
 // A motionOnly frame redraws just the pipes and hub, inside the returned box.
 Box drawCentre(Canvas& c, const FlowView& v) {
@@ -352,10 +344,9 @@ Box drawCentre(Canvas& c, const FlowView& v) {
     const bool good = all && !v.data.demo && (grid < -100 || (battery < -100 && r[energy::Soc].value >= 95));
     const char* status = good ? "Good time to use power" : all && !v.data.demo ? "All readings live" : v.status;
     c.rect(12, 218, 9, 9, good ? goodDot : all ? hubDot : track, 4);
-    c.text(27, 214, 2, good ? batteryInk : label, Left, status);
-    const int settingsWidth = c.textWidth(2, "Settings");
-    c.text(308, 214, 2, label, Right, "Settings");
-    gear(c, 308 - settingsWidth - 12, 221, label);
+    c.text(27, 218, 1, good ? batteryInk : label, Left, status);
+    c.rect(232,210,80,26,bandIdle,4);
+    c.text(272,214,2,ink,Center,"History");
     return box;
 }
 }  // namespace
@@ -372,11 +363,16 @@ void drawBoot(Canvas& c, const BootView& v) {
     for (int i = 0; i < BootView::rowCount; ++i) {
         const BootRow& row = v.rows[i];
         if (!*row.label) continue;
-        const int y = 56 + i * 23;
+        const int y = 54 + i * 21;
         if (row.state != BootInfo)
             c.rect(14, y + 4, 8, 8, row.state == BootOk ? ok : row.state == BootWaiting ? wait : lowRed, 4);
         c.text(30, y, 2, soft, Left, row.label);
-        c.text(104, y, 2, row.state == BootProblem ? lowRed : text, Left, row.value);
+        char value[48]; std::snprintf(value,sizeof(value),"%s",row.value);
+        size_t length=std::strlen(value);
+        const bool clipped=c.textWidth(2,value)>204;
+        while (length>3 && c.textWidth(2,value)>204) value[--length]='\0';
+        if (clipped && length>=3) std::strcpy(value+length-3,"...");
+        c.text(104, y, 2, row.state == BootProblem ? lowRed : text, Left, value);
     }
     // Progress across the boot screen's time on screen, then what happens next.
     const float p = v.progress < 0 ? 0 : v.progress > 1 ? 1 : v.progress;

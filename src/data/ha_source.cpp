@@ -20,6 +20,7 @@ CycleTrace latestTrace;
 uint32_t revision = 0;
 bool paused = false;
 bool running = false;
+bool beginAttempted = false;
 
 // An mbedTLS handshake runs its elliptic-curve maths as one long step that
 // cannot yield. On this core-0 task it starved IDLE0 for over 5 s during the
@@ -291,6 +292,7 @@ void worker(void*) {
 }  // namespace
 
 void begin() {
+    beginAttempted = true;
     mutex = xSemaphoreCreateMutex();
     if (!mutex) { DBG_ERROR("[HA] Could not create source mutex"); return; }
     settings = monitor::config(); revision = 1;
@@ -299,6 +301,8 @@ void begin() {
     if (!running) DBG_ERROR("[HA] Reader task could not start");
     else DBG_INFO("[HA] Background reader started; %u source entities",unsigned(energy::SourceCount));
 }
+
+ReaderState readerState() { return !beginAttempted ? ReaderState::NotStarted : running ? ReaderState::Running : ReaderState::Failed; }
 
 void configure(const monitor::Config& c) {
     if (!mutex) return;

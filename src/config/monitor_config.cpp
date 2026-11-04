@@ -17,6 +17,15 @@ bool validTimezone(const String& tz) {
 }
 
 void loadConfig() {
+    // Migrate the scaffold's optional debug key without adding a second NVS
+    // write to settings saves. New saves keep the level in the atomic JSON.
+    Preferences legacyPrefs;
+    if (legacyPrefs.begin("cyd-core", true)) {
+        const int level = legacyPrefs.getUChar("debug_level", APP_DEFAULT_DEBUG_LEVEL);
+        if (validDebugLevel(level)) current.debugLevel = level;
+        legacyPrefs.end();
+    }
+    debugLevel = current.debugLevel;
     Preferences p;
     p.begin("solar-monitor", false);
     code = p.getString("access", "");
@@ -34,6 +43,8 @@ void loadConfig() {
     const bool legacy = d["schema"] == 1 && d["entities"].size() == 5;
     if (!legacy && !(d["schema"] == 2 && d["entities"].size() == energy::SourceCount)) { DBG_WARN("[CFG] Unsupported settings schema or entity count; using defaults"); return; }
     Config c;
+    c.debugLevel = current.debugLevel;
+    if (d["debugLevel"].is<int>() && validDebugLevel(d["debugLevel"].as<int>())) c.debugLevel = d["debugLevel"].as<int>();
     c.url = d["url"] | c.url;
     c.token = d["token"] | "";
     c.caCertificate = d["ca"] | "";
@@ -48,6 +59,18 @@ void loadConfig() {
     c.pollSeconds = poll; c.staleSeconds = stale; c.brightness = bright;
     c.nightStart = start; c.nightEnd = end;
     c.nightDim = d["nightDim"] | true; c.demo = d["demo"] | false;
+    // Old schema-1/2 records retain their exact hour-based dimming window.
+    c.nightDimAt = start*60; c.nightOnAt = end*60;
+    if (d["nightMode"].is<int>() && d["nightMode"].as<int>()>=0 && d["nightMode"].as<int>()<=night::DimThenOff)
+        c.nightMode = d["nightMode"].as<int>();
+    const char* timeKeys[] = {"nightDimAt","nightOffAt","nightOnAt"};
+    uint16_t* times[] = {&c.nightDimAt,&c.nightOffAt,&c.nightOnAt};
+    for (unsigned i=0;i<3;++i)
+        if (d[timeKeys[i]].is<int>() && night::minuteValid(d[timeKeys[i]].as<int>())) *times[i]=d[timeKeys[i]].as<int>();
+    if (!night::valid(nightSchedule(c))) {
+        c.nightMode=night::DimOnly; c.nightDimAt=start*60; c.nightOnAt=end*60;
+    }
+    c.nightStart=(c.nightMode==night::OffOnly?c.nightOffAt:c.nightDimAt)/60; c.nightEnd=c.nightOnAt/60;
     // Optional field added in 0.2.2; older records keep the default label.
     // Optional field added in 0.2.3; older records get the centre layout.
     const int layout = d["layout"] | 1;
@@ -68,16 +91,21 @@ void loadConfig() {
     }
     if (d["battery"].is<const char*>() && d["battery"].as<String>().length() <= 14) c.batteryLabel = d["battery"].as<String>();
     current = c;
+    debugLevel = current.debugLevel;
     DBG_INFO("[CFG] Loaded settings%s",legacy?"; migrated five mappings and added DC default":" (schema 2)");
 }
 
 bool saveConfig(const Config& next) {
+    if (!night::valid(nightSchedule(next))) return false;
     JsonDocument d;
     d["schema"] = 2; d["url"] = next.url; d["token"] = next.token; d["ca"] = next.caCertificate;
     for (const auto& entity : next.entities) d["entities"].add(entity);
     d["poll"] = next.pollSeconds; d["stale"] = next.staleSeconds; d["brightness"] = next.brightness;
-    d["nightStart"] = next.nightStart; d["nightEnd"] = next.nightEnd;
+    d["nightStart"] = (next.nightMode==night::OffOnly?next.nightOffAt:next.nightDimAt)/60; d["nightEnd"] = next.nightOnAt/60;
+    d["nightMode"] = next.nightMode; d["nightDimAt"] = next.nightDimAt;
+    d["nightOffAt"] = next.nightOffAt; d["nightOnAt"] = next.nightOnAt;
     d["nightDim"] = next.nightDim; d["demo"] = next.demo; d["battery"] = next.batteryLabel; d["layout"] = next.layout;
+    d["debugLevel"] = next.debugLevel;
     if (!std::isnan(next.latitude)) { d["lat"] = next.latitude; d["lon"] = next.longitude; }
     d["place"] = next.place; d["tz"] = next.tzPosix; d["tzName"] = next.tzName;
     d["today"] = next.totalEntities[energy::Today]; d["forecast"] = next.totalEntities[energy::Tomorrow];
@@ -88,7 +116,7 @@ bool saveConfig(const Config& next) {
     // One NVS record keeps settings together across an interrupted write.
     const bool ok = p.putString("settings", body) == body.length();
     p.end();
-    if (ok) { current = next;DBG_INFO("[CFG] Settings saved (schema 2)"); }
+    if (ok) { current = next;current.nightStart=(current.nightMode==night::OffOnly?current.nightOffAt:current.nightDimAt)/60;current.nightEnd=current.nightOnAt/60;debugLevel = current.debugLevel;DBG_INFO("[CFG] Settings saved (schema 2)"); }
     else DBG_ERROR("[CFG] Could not write settings to NVS");
     return ok;
 }

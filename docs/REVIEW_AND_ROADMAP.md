@@ -1,112 +1,63 @@
-# Code Review and Roadmap – toward Rayhub parity
+# Code review and roadmap
 
-Reviewed 3 November 2026 against firmware `0.2.1-dev`, and against Rayhub's current public product and help pages. The build fits (`firmware.bin` 1.22 MB of a 1.79 MB slot) and `tools/check_host.py` passes. Nothing has been flashed to hardware yet.
-
----
-
-## Overall assessment
-
-The data layer is the project's strength. Sign conventions, the DC solar formula, freshness via `last_reported`, timestamp-skew rejection, secret-free logging and the host-testable model are more careful than most commercial firmware. The gap to Rayhub is almost entirely **presentation and daily-energy features**, plus a couple of efficiency issues in the acquisition path.
+Updated 5 November 2026 against source `0.9.0` (base commit `dc1b676`). This is the current implementation summary. The original 3 November review targeted `0.2.1-dev`; its fixed findings and speculative version schedule no longer describe the code. Historical changes remain in [CHANGELOG.md](../CHANGELOG.md).
 
 ---
 
-## Findings – fix first
+## Implemented
 
-### 1. Card colours will be wrong on the real panel
+The reader polls six individual Home Assistant REST states and derives solar from inverter DC and battery power. It shares one keep-alive connection per cycle, copies configuration only on revision changes, and publishes snapshots under a mutex. Heartbeat-based upstream freshness keeps unchanged battery states live while still detecting a stalled integration. Optional daily solar and tomorrow forecast entities are read on a slower cadence.
 
-`app.cpp` renders into an 8-bit sprite, which TFT_eSPI stores as RGB332. The palette in `flow_layout.cpp` is built from dark navy greys that do not survive that quantisation.
+Both RGB332-exact layouts, battery gauges, weather icons, the plain-language spare-power status, configurable battery label and timezone, buffered setup page, swallowed night-wake touch and change-only backlight writes are implemented. The centre layout pushes only the pipe region at 20 fps, with full frames at 4 fps. Built-in fonts 1/2/4 remain a deliberate readability decision; the font-6 redesign was reverted.
 
-| Colour   | Intended  | RGB332 result         |
-|:---------|:----------|:----------------------|
-| `bg`     | `#080f1b` | black                 |
-| `panel`  | `#142236` | dark **green** (0,1,0) |
-| `INV`    | `#243a50` | dark grey             |
+The browser includes live tiles, animated flow, a shared persistent 24-hour history chart, settings, diagnostics, manual app upload, footer artwork and embedded handbook. Open-Meteo weather uses verified TLS; location search runs from the browser. Device history and the 320 × 240 history screen are included in the 0.9.0 source release; real-board persistence, touch and OTA validation remain pending.
 
-The SVG/PNG previews render full 24-bit colour, so they hide this. Simplest fix: pick a palette whose values are exact RGB332 levels (R/G in steps of 36, B in steps of 85). Better fix: a 4-bit palette sprite (`setColorDepth(4)` + `createPalette()`) gives 16 exact RGB565 colours in half the RAM (38.4 KB), but rules out anti-aliased fonts. If smooth fonts are adopted (see §UI), use small 16-bit sprites per card instead of one full-screen buffer.
-
-### 2. Six HTTP requests per cycle, each on a fresh TCP connection
-
-`readEntity()` creates a new `WiFiClient`/`HTTPClient` per entity, so each 5-second cycle does six TCP handshakes (plus six TLS handshakes over HTTPS). It is also the root cause of the timestamp-skew machinery: with 1.5 s connect and read timeouts per request, the first and last readings can be well over 10 s apart when HA is slow.
-
-Simplest fix: one `POST /api/template` request that renders all six states, units and `last_reported` values as a single JSON object – one connection, one coherent snapshot, the existing parser reused per field. I am not certain whether HA still restricts `/api/template` to admin users; verify with the owner's token before relying on it. The more ambitious alternative is the HA WebSocket API (`subscribe_entities`), which pushes changes and would match Rayhub's ~1 s refresh, at the cost of a new library and a persistent connection.
-
-### 3. Worker copies the full config every 100 ms
-
-`worker()` copies `monitor::Config` (token up to 2 KB, CA up to 6 KB, seven `String`s) under the mutex on every 100 ms tick, whether or not anything changed. That is ~10 heap allocate/free cycles per second for the device's lifetime – a fragmentation risk with TLS also allocating. Copy only when `revision` changes.
-
-### 4. Wake tap also toggles the setup page
-
-At night the backlight dims to 1/5. The tap that wakes it also flips `details`, so the user lands on the setup page. Rayhub swallows the waking touch. Fix in `app::update()`: if the panel was dimmed, restore brightness and consume the tap.
-
-### 5. Setup page repaint flickers
-
-`paintInfo()` does `fillScreen()` directly on the TFT once per second, which flashes visibly. Draw it into the existing sprite instead (the page is static apart from the IP).
+Saved serial debug levels and minute-rate default output, shared serial/CYD boot diagnostics and minute-precision dim/off/on schedules are implemented. Old dim-only profiles retain their behaviour; screen-off leaves data/history, serial, WebUI and OTA active. See the [0.9.0 verification record](RELEASE_0.9.0.md).
 
 ---
 
-## Findings – tidy-ups
+## Original review findings resolved
 
-- The solar skew limit `std::max<uint32_t>(10, pollSeconds*2)` is repeated 7 times across `app.cpp`, `monitor_web.cpp`, `serial_diagnostics.cpp` and `ha_source.cpp`. `app.cpp:138` uses `pollSeconds*2` *without* the 10 s floor, so the "Source times differ" status disagrees with solar validity at poll ≤ 4 s. One helper (e.g. `energy::skewLimit(poll)`) fixes both.
-- The "usable/fresh" loop is likewise computed three times (panel, web, serial). A single `energy::usableMask()` would keep them consistent.
-- `"LG 9.8 kWh"` is hard-coded in three places. Make battery label/capacity a setting, which also enables "time to full/empty".
-- Timezone POSIX string and NTP servers are hard-coded in `main.cpp`; move to `config.h`.
-- `delay(5)` in `loop()` – replace with `vTaskDelay(1)` or remove (rule: no `delay()` in loop code).
-- `setBrightness()` is called (and `ledcWrite`) every loop pass; write only on change.
-- `power()` always prints three decimals (`4.404 kW`). The fluctuating last digit is noise; Rayhub shows two. Show watts below 1 kW, `x.xx kW` above.
+| Original finding          | Current implementation           |
+| ------------------------- | -------------------------------- |
+| Wrong panel colours       | RGB332 palettes/static asserts   |
+| New connection per entity | One reused connection per cycle  |
+| Config copied every tick  | Copy only on revision change     |
+| Wake tap opens setup      | Consume dimmed-panel wake tap    |
+| Setup page flicker        | Render through frame sprite      |
+| Duplicated skew decisions | Shared model helpers             |
+| Fixed battery label/TZ    | Persisted browser settings       |
+| Every-loop PWM writes     | Write only on brightness change  |
+| Three-decimal kW values   | W below 1 kW; two decimals above |
 
----
-
-## Rayhub feature gap
-
-| Rayhub feature                        | Here      | Effort | Approach                                 |
-|:--------------------------------------|:----------|:-------|:-----------------------------------------|
-| Live flow, stale grey, arrows stop    | Done      | –      | –                                        |
-| Battery %, charge/discharge           | Done      | –      | –                                        |
-| Night dimming                         | Dim only  | Low    | Add Off/Keep + swallowed wake tap        |
-| Touch calibration                     | Done      | –      | –                                        |
-| "kWh today" headline                  | Missing   | Low    | Read HA daily `utility_meter` sensors    |
-| Tap totals: export / import kWh       | Missing   | Low    | Same sensors, tap zone top-left          |
-| Spent / earned today                  | Missing   | Low    | Import/feed-in price settings × totals   |
-| "Good time to use power" status       | Missing   | Low    | Rule on export or battery near full      |
-| Free-power window + banner            | Missing   | Low    | Time window setting, banner, cost rule   |
-| Tomorrow forecast (corner)            | Missing   | Low    | Read Forecast.Solar/Solcast HA entity    |
-| Solar-vs-forecast ring view           | Missing   | Medium | Second screen, tap centre, 30 s return   |
-| QR code / on-panel setup              | Partial   | Medium | QR to device URL and AP; keep browser UI |
-| Off-grid banner                       | Missing   | Medium | Needs a reliable grid-status entity      |
-| Auto update + signed + rollback       | Missing   | High   | GitHub release manifest; see note below  |
-| Direct Modbus, auto brand detect      | Out       | High   | Not needed – HA is the chosen route      |
-
-Using Home Assistant makes most of these *cheaper* than Rayhub's own implementation: HA already computes daily totals, and Forecast.Solar or Solcast provide forecasts without a learning model. Each is "add one or two configured entities, poll them every 60 s, render them".
-
-Auto-update note: I am not certain that the prebuilt Arduino `2.0.17` bootloader has `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` set, which `esp_ota_mark_app_valid_cancel_rollback()` depends on. Verify before designing rollback around it.
+Connection reuse was selected instead of the proposed `/api/template` or WebSocket migration. The current implementation needs neither. Source and hardware constraints are in [AGENTS.md](../AGENTS.md).
 
 ---
 
-## UI – looking like a product
+## Remaining implementation observations
 
-Current screen: four equal labelled cards and a small "INV" box. Rayhub's: a central home with icon nodes for sun, grid and battery, the day's kWh at the top, a forecast in the corner and a plain-English status line. Suggested changes, roughly in order of visual impact:
+These are code-inspection findings, not new hardware results. They remain follow-up items for later work; the release sweep does not resolve them.
 
-1. **Drop engineering labels from the panel.** "Calculated / DC", "Home demand / AC", "Whole-property meter" and "INV" belong in the browser diagnostics. Use "Solar", "Home", "Importing 1.53 kW", "Charging · 28%".
-2. **Icons instead of title text.** Sun, house, pylon and battery drawn from TFT primitives (or 1-bit bitmaps in PROGMEM) at each node.
-3. **Battery SOC gauge.** A filled battery outline coloured by level is read faster than `28.5%`.
-4. **Smooth fonts.** NotoSans VLW at 2–3 sizes. This is the single biggest "hobby vs product" signal, and is already a project rule. Requires the per-card 16-bit sprite approach from finding 1.
-5. **Better flow animation.** Several dots per path, spacing or speed scaled to power, dots fading when power is near zero, rather than one 3-px square stepping four positions.
-6. **Top bar.** `25.6 kWh today` on the left, forecast or weather on the right, a small Wi-Fi/HA status dot instead of the `HA`/`WAIT` badge.
-7. **Status line in plain English.** "Good time to use power", "Waiting for Home Assistant", "Can't reach Home Assistant" instead of "HA connected / source age unknown".
-8. **Hide the IP from the main screen.** It is already on the tap-through page.
+The optional browser tiles need transition coverage. In `src/web/web_page.h`, some update branches write Solar today, Tomorrow or Weather only while configured/fresh; there is no fallback resetting every tile when its entity/location is cleared or its forecast becomes unavailable. A previously shown value can therefore remain until reload. Also, a failed status refresh greys nodes/tiles but does not explicitly stop the flow animation; persistent history sampling now owns gaps independently of browser live-status requests.
 
-Render-check every change with `tools/check_host.py`, but judge colours on the panel only (finding 1).
+The centre renderer replaces the supplied status with “All readings live” or the spare-power message whenever displayed metrics are usable, even when report time is unknown. The API exposes `reportTimeKnown` and serial diagnostics retain `source-age-unknown`; the centre status can hide that distinction. Do not describe the centre message alone as proof that upstream age was verified.
+
+The vendored Improv parser needs bounds hardening. `handleSerial()` writes into a 128-byte buffer based on a frame's advertised length; `parseImprovData()` reads command/SSID/password offsets without checking each against the received payload length. Treat this as a USB-serial input risk and add malformed-frame regression coverage before changing provisioning. Preserve the existing parser-reset and leading-newline reply patches.
+
+HTTP body size limits are checked after buffering when content length is unknown. They reject oversized content but do not provide a strict allocation ceiling. Consider bounded streaming before supporting less trusted endpoints. A configured HA token with no successful startup reads can also delay the first weather fetch because of the initial `haPublished` gate.
 
 ---
 
-## Suggested sequence
+## Next validation priorities
 
-| Stage | Scope                                          | Version |
-|:------|:-----------------------------------------------|:--------|
-| 1     | Findings 1–5 and tidy-ups – **done in code** | `0.2.2` |
-| 2     | Daily totals, prices, status line, free window – **totals and status line done in `0.3.0`** | `0.3.0` |
-| 3     | Visual redesign: icons, VLW fonts, SOC gauge – **centre layout and SOC bar done in `0.2.3`** | `0.4.0` |
-| 4     | Forecast entity and ring view – **forecast entity done in `0.3.0`** | `0.5.0` |
-| 5     | QR setup, Off night mode, update checks        | `0.6.0` |
+Complete real-board installer smoke testing, settings-preserving update and update from `app1`, as tracked in [WEB_INSTALLER.md](WEB_INSTALLER.md). Verify invalid/interrupted uploads recover, token clearing and schema migration persist, and long-running Wi-Fi/TLS behavior is stable. Use [HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md); retain existing observations and add dates for new evidence.
 
-Stage 1 is implemented in `0.2.2-dev` except finding 2, which uses connection reuse rather than `/api/template`. Commission it on hardware before building on it: the colour issue and real HA cadence will affect every later UI decision.
+Host assertions cover decoding, signs, timestamps, freshness, solar dependencies, history recovery, gestures, log cadence, startup status and night scheduling. Real serializer/config/API harnesses use ArduinoJson and host stand-ins; JavaScript tests exercise the embedded chart and settings event handling. Physical HTTP transport, NVS, serial provisioning, TLS and OTA still need board tests. The synthetic preview server is a development aid rather than device integration coverage.
+
+---
+
+## Deferred features
+
+Daily grid import/export totals, tariffs/costs, free-power windows, forecast progress rings, QR setup, explicit grid-outage detection, signed automatic updates and verified rollback are not implemented. No version targets are assigned here. Direct Modbus and equipment control remain outside the selected read-only Home Assistant route.
+
+The original Rayhub research is preserved as dated product context in [RAYHUB_REVIEW_AND_BUILD_BRIEF.md](RAYHUB_REVIEW_AND_BUILD_BRIEF.md). It is not a current external-product audit or an instruction to implement every feature.

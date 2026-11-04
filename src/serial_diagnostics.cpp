@@ -3,19 +3,43 @@
 #include "debug.h"
 #include "ha_source.h"
 #include "wifi_service.h"
+#include "history_service.h"
 #include <WiFi.h>
 #include <esp_system.h>
+#include <esp_ota_ops.h>
 #include <sys/time.h>
+#include <ctime>
 #include <algorithm>
 #include <climits>
 
 namespace diagnostics {
 namespace {
-uint32_t lastTick=0,lastCycle=0,lastDemoLog=0,lastHealth=0,lastRevision=0;
+uint32_t lastTick=0,lastCycle=0,lastHealth=0,lastRevision=0;
+CycleLogGate cycleLogs;
 int lastWifi=-1;
 bool lastPortal=false,lastClock=false,seenMode=false;
 source::SourceMode lastMode=source::SourceMode::Live;
 unsigned lastValid=UINT_MAX,lastFresh=UINT_MAX;
+boot::Report startup;
+boot::Tracker startupTracker;
+uint32_t lastStartupUpdate=0;
+bool startupFinished=false, startupScreenClosed=false, startupHardwareProblem=false;
+
+const char* resetReason(esp_reset_reason_t reason) {
+    switch (reason) {
+        case ESP_RST_POWERON:return "power-on";
+        case ESP_RST_EXT:return "external";
+        case ESP_RST_SW:return "software restart";
+        case ESP_RST_PANIC:return "panic/exception";
+        case ESP_RST_INT_WDT:return "interrupt watchdog";
+        case ESP_RST_TASK_WDT:return "task watchdog";
+        case ESP_RST_WDT:return "watchdog";
+        case ESP_RST_DEEPSLEEP:return "deep-sleep wake";
+        case ESP_RST_BROWNOUT:return "brownout";
+        case ESP_RST_SDIO:return "SDIO reset";
+        default:return "unknown";
+    }
+}
 
 const char* modeName(source::SourceMode mode) {
     return mode==source::SourceMode::Demo ? "demo" : mode==source::SourceMode::TokenMissing ? "token-missing" : "live";
@@ -51,12 +75,55 @@ String endpoint(const String& url) {
     }
     return url.substring(0,end);
 }
+
+void updateStartup(uint32_t now, bool force=false) {
+    if ((startupFinished && startupScreenClosed) || (!force && uint32_t(now-lastStartupUpdate)<250)) return;
+    lastStartupUpdate=now;
+    const auto& cfg=monitor::config();
+    const auto& wifi=cyd::network::status();
+    const auto state=source::diagnosticSnapshot();
+    now=millis();
+    const time_t epoch=time(nullptr);
+    boot::Inputs in;
+    in.connected=wifi.connected; in.portal=wifi.portalActive;
+    in.ssid=wifi.ssid.c_str(); in.ip=wifi.ip.c_str(); in.web="http://" APP_MDNS_NAME ".local/";
+    in.rssi=wifi.connected?WiFi.RSSI():0;
+    in.clock=epoch>history::clockMinimum;
+    char localTime[24]=""; tm local{};
+    if (in.clock && localtime_r(&epoch,&local)) strftime(localTime,sizeof(localTime),"%H:%M %Z",&local);
+    in.localTime=localTime;
+    in.demo=cfg.demo; in.demoReady=state.data.demo; in.token=!cfg.token.isEmpty(); in.attempted=state.trace.id!=0;
+    in.readerFailed=source::readerState()==source::ReaderState::Failed;
+    in.sourceTimeKnown=in.clock;
+    for (unsigned i=0;i<energy::SourceCount;++i) {
+        in.sources+=energy::metricUsable(state.data,static_cast<energy::Metric>(i),wifi.connected,now,
+                                       in.clock?uint64_t(epoch)*1000:0,cfg.staleSeconds,cfg.pollSeconds);
+        in.sourceTimeKnown &= state.data.readings[i].reportedMs!=0;
+    }
+    in.solar=energy::metricUsable(state.data,energy::Solar,wifi.connected,now,
+                                 in.clock?uint64_t(epoch)*1000:0,cfg.staleSeconds,cfg.pollSeconds);
+    in.restore=history::restoreState(); in.historyHealthy=history::storageHealthy();
+    in.historySamples=boot::restoredSampleCount(history::data(),history::savedAt(),in.clock?uint32_t(epoch):0);
+    startup=boot::build(in); startup.warnings |= startupHardwareProblem;
+    const auto changes=startupTracker.update(startup,now);
+    for (unsigned i=0;i<boot::RowCount;++i) if (changes.rows&(1U<<i)) {
+        if (startup.rows[i].state==boot::Problem) DBG_WARN("[BOOT] %s: %s",boot::label(i),startup.rows[i].value);
+        else DBG_INFO("[BOOT] %s: %s",boot::label(i),startup.rows[i].value);
+    }
+    if (changes.finished) {
+        startupFinished=true;
+        if (changes.timedOut) DBG_WARN("[BOOT] Startup diagnostic window ended; services still pending (Wi-Fi=%u clock=%u HA=%u/6 solar=%u)",
+                                      unsigned(in.connected),unsigned(in.clock),in.sources,unsigned(in.solar));
+        else if (startup.warnings) DBG_WARN("[BOOT] Startup ready with warnings; check the status rows above");
+        else DBG_INFO("[BOOT] Startup ready: Wi-Fi, clock, source and history checks complete");
+    }
+}
 void logConfig() {
     const auto& c=monitor::config();
-    DBG_INFO("[CFG] HA=%s token=%s mode=%s poll=%us stale=%us solar_skew_limit=%us ca=%s",
+    DBG_INFO("[CFG] HA=%s token=%s mode=%s poll=%us stale=%us solar_skew_limit=%us ca=%s debug=%s",
              endpoint(c.url).c_str(),c.token.isEmpty()?"missing":"set",c.demo?"demo":"live",
              unsigned(c.pollSeconds),unsigned(c.staleSeconds),unsigned(energy::skewLimitSeconds(c.pollSeconds)),
-             c.caCertificate.isEmpty()?"missing":"set");
+             c.caCertificate.isEmpty()?"missing":"set",debugLevelName(c.debugLevel));
     for(int i=0;i<energy::SourceCount;++i)
         DBG_INFO("[MAP] %s=%s",metricName(static_cast<energy::Metric>(i)),c.entities[i].c_str());
     DBG_INFO("[MAP] today_kwh=%s forecast_kwh=%s",c.totalEntities[energy::Today].isEmpty()?"<none>":c.totalEntities[energy::Today].c_str(),
@@ -142,15 +209,35 @@ void logCycle(const source::DiagnosticSnapshot& state,uint32_t now,uint64_t epoc
 }  // namespace
 
 void begin() {
-    DBG_INFO("[BOOT] %s %s reset_reason=%d heap=%u min_heap=%u debug=%s",
-             PROJECT_NAME,FIRMWARE_VERSION,int(esp_reset_reason()),ESP.getFreeHeap(),ESP.getMinFreeHeap(),debugLevelName(debugLevel));
+    startupTracker.begin(millis());
+    const auto reset=esp_reset_reason();
+    DBG_INFO("[BOOT] %s %s reset_reason=%d (%s) heap=%u min_heap=%u debug=%s",
+             PROJECT_NAME,FIRMWARE_VERSION,int(reset),resetReason(reset),ESP.getFreeHeap(),ESP.getMinFreeHeap(),debugLevelName(debugLevel));
     DBG_INFO("[BOARD] %s %s 320x240; TFT=HSPI touch=VSPI serial=115200",
              CYD_BOARD_NAME,CYD_DRIVER_NAME);
+    const auto* partition=esp_ota_get_running_partition();
+    DBG_INFO("[BOOT] App slot=%s flash=%u bytes",partition?partition->label:"unknown",ESP.getFlashChipSize());
     logConfig();
+    updateStartup(millis(),true);
 }
 
+void bootStage(const char* stage, const char* detail, bool problem) {
+    startupHardwareProblem |= problem;
+    if (problem) DBG_ERROR("[BOOT] %s: %s",stage,detail);
+    else DBG_INFO("[BOOT] %s: %s",stage,detail);
+}
+const boot::Report& bootStatus() { return startup; }
+void bootScreenClosed(const char* reason) {
+    if (!startupScreenClosed) DBG_INFO("[BOOT] CYD startup screen closed: %s",reason);
+    startupScreenClosed=true;
+}
 void update(uint32_t now) {
-    if(debugLevel==DBG_LEVEL_OFF || uint32_t(now-lastTick)<250) return;
+    // Boot status still drives the TFT with serial logging disabled, and has
+    // its own bounded cadence rather than waiting for minute runtime reports.
+    updateStartup(now);
+    const uint8_t level=debugLevel.load();
+    if(level==DBG_LEVEL_OFF) { cycleLogs.ready(now,0,level); return; }
+    if(uint32_t(now-lastTick)<250) return;
     lastTick=now;
     timeval tv{};gettimeofday(&tv,nullptr);
     const uint64_t epoch=tv.tv_sec>1700000000?uint64_t(tv.tv_sec)*1000+tv.tv_usec/1000:0;
@@ -182,15 +269,12 @@ void update(uint32_t now) {
         lastValid=valid;lastFresh=fresh;
     }
     const bool modeChanged=!seenMode || state.trace.mode!=lastMode;
-    if(state.trace.id && state.trace.id!=lastCycle) {
-        if(state.trace.mode==source::SourceMode::Live || modeChanged ||
-           (state.trace.mode==source::SourceMode::Demo && now-lastDemoLog>=5000)) {
-            logCycle(state,now,epoch);
-            if(state.trace.mode==source::SourceMode::Demo) lastDemoLog=now;
-        }
-        lastCycle=state.trace.id;lastMode=state.trace.mode;seenMode=true;
-    }
-    if(now-lastHealth>=30000) {
+    const bool weatherAttempt=state.trace.weatherRead && state.trace.weather.error!=source::ReadError::Clock &&
+                              state.trace.weather.error!=source::ReadError::Wifi;
+    if(cycleLogs.ready(now,state.trace.id,level,modeChanged || state.trace.totalsRead || weatherAttempt))
+        logCycle(state,now,epoch);
+    if(state.trace.id) { lastCycle=state.trace.id;lastMode=state.trace.mode;seenMode=true; }
+    if(uint32_t(now-lastHealth)>=serialReportIntervalMs) {
         lastHealth=now;
         DBG_INFO("[HEALTH] heap=%u min_heap=%u rssi=%ddBm wifi=%d clock=%s cycle=%lu mode=%s valid=0x%02X fresh=0x%02X",
                  ESP.getFreeHeap(),ESP.getMinFreeHeap(),WiFi.isConnected()?WiFi.RSSI():0,wifi,

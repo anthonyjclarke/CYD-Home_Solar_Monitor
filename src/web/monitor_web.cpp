@@ -1,7 +1,9 @@
 #include "monitor_web.h"
 #include "monitor_config.h"
 #include "ha_source.h"
+#include "history_service.h"
 #include "config.h"
+#include "debug_levels.h"
 #include "web_page.h"
 #include "handbook_data.h"
 #include <ArduinoJson.h>
@@ -54,6 +56,8 @@ void getConfig() {
     d["url"]=c.url; d["tokenSaved"]=!c.token.isEmpty(); d["ca"]=c.caCertificate;
     d["poll"]=c.pollSeconds; d["stale"]=c.staleSeconds; d["brightness"]=c.brightness;
     d["nightStart"]=c.nightStart; d["nightEnd"]=c.nightEnd; d["nightDim"]=c.nightDim; d["demo"]=c.demo; d["battery"]=c.batteryLabel; d["layout"]=c.layout;
+    d["debugLevel"]=c.debugLevel;
+    d["nightMode"]=c.nightMode; d["nightDimAt"]=c.nightDimAt; d["nightOffAt"]=c.nightOffAt; d["nightOnAt"]=c.nightOnAt;
     d["today"]=c.totalEntities[energy::Today]; d["forecast"]=c.totalEntities[energy::Tomorrow];
     if (std::isnan(c.latitude)) { d["lat"]=nullptr; d["lon"]=nullptr; } else { d["lat"]=c.latitude; d["lon"]=c.longitude; }
     d["place"]=c.place; d["tzName"]=c.tzName; d["tz"]=c.tzPosix;
@@ -66,6 +70,12 @@ void saveConfig() {
     JsonDocument d;
     if (deserializeJson(d,server.arg("plain")) || !d.is<JsonObject>()) { error("Expected a JSON object");return; }
     monitor::Config c=monitor::config();
+    // Optional for compatibility with older clients. Reject explicit nulls,
+    // strings, booleans and out-of-range values before any settings are saved.
+    if (!d["debugLevel"].isUnbound()) {
+        if (!d["debugLevel"].is<int>() || !validDebugLevel(d["debugLevel"].as<int>())) { error("Serial debug level must be an integer from 0 to 4");return; }
+        c.debugLevel=d["debugLevel"].as<int>();
+    }
     if (!d["url"].is<String>() || !d["entities"].is<JsonArray>() || d["entities"].size()!=energy::SourceCount) { error("URL and six entity IDs required; reload the page after updating");return; }
     c.url=d["url"].as<String>();c.url.trim();while(c.url.endsWith("/"))c.url.remove(c.url.length()-1);
     if (!validUrl(c.url)) { error("Invalid Home Assistant base URL");return; }
@@ -92,6 +102,25 @@ void saveConfig() {
     if (!d["demo"].is<bool>() || !d["nightDim"].is<bool>()) { error("Expected boolean display settings");return; }
     c.pollSeconds=poll;c.staleSeconds=stale;c.brightness=bright;c.nightStart=start;c.nightEnd=end;
     c.demo=d["demo"].as<bool>();c.nightDim=d["nightDim"].as<bool>();
+    // New optional night fields preserve minute precision for older clients
+    // unless they actually change the legacy start/end hour.
+    if (d["nightDimAt"].isUnbound() && start!=monitor::config().nightStart) {
+        if (c.nightMode==night::OffOnly && d["nightOffAt"].isUnbound()) c.nightOffAt=start*60;
+        else if (c.nightMode!=night::OffOnly) c.nightDimAt=start*60;
+    }
+    if (d["nightOnAt"].isUnbound() && end!=monitor::config().nightEnd) c.nightOnAt=end*60;
+    if (!d["nightMode"].isUnbound()) {
+        if (!d["nightMode"].is<int>() || d["nightMode"].as<int>()<0 || d["nightMode"].as<int>()>night::DimThenOff) { error("Invalid night mode");return; }
+        c.nightMode=d["nightMode"].as<int>();
+    }
+    const char* nightKeys[]={"nightDimAt","nightOffAt","nightOnAt"};
+    uint16_t* nightTimes[]={&c.nightDimAt,&c.nightOffAt,&c.nightOnAt};
+    for (unsigned i=0;i<3;++i) if (!d[nightKeys[i]].isUnbound()) {
+        if (!d[nightKeys[i]].is<int>() || !night::minuteValid(d[nightKeys[i]].as<int>())) { error("Night times must be minutes from midnight (0 to 1439)");return; }
+        *nightTimes[i]=d[nightKeys[i]].as<int>();
+    }
+    if (!night::valid(monitor::nightSchedule(c))) { error("Turn-off time must be between dim time and turn-on time");return; }
+    c.nightStart=(c.nightMode==night::OffOnly?c.nightOffAt:c.nightDimAt)/60; c.nightEnd=c.nightOnAt/60;
     const char* totalKeys[]={"today","forecast"};
     for (int t=0;t<energy::TotalCount;++t) {
         if (d[totalKeys[t]].isNull()) continue;
@@ -131,7 +160,7 @@ void saveConfig() {
         c.batteryLabel=label;
     }
     if (!monitor::saveConfig(c)) { error("Could not persist settings",500);return; }
-    source::configure(c);JsonDocument result;result["saved"]=true;json(result);
+    history::configure();source::configure(c);JsonDocument result;result["saved"]=true;json(result);
 }
 
 void getStatus() {
@@ -180,13 +209,54 @@ void getStatus() {
     d["complete"]=complete;d["battery"]=c.batteryLabel;d["skewLimitSeconds"]=energy::skewLimitSeconds(c.pollSeconds);d["reportTimeKnown"]=reported;json(d);
 }
 
+// Stream small JSON chunks rather than allocating a 288-row JSON tree and
+// another complete response string on this no-PSRAM board.
+void getHistory() {
+    if (server.hasArg("hours") && server.arg("hours")!="24") { error("Only the rolling 24-hour window is supported"); return; }
+    const uint32_t epoch=history::now();
+    JsonDocument d;
+    d["schema"]=1; d["intervalSeconds"]=history::interval; d["durationSeconds"]=history::duration;
+    d["clockKnown"]=epoch!=0; d["end"]=epoch; d["start"]=epoch?epoch-history::duration:0;
+    d["storageReady"]=history::storageReady(); d["storageHealthy"]=history::storageHealthy();
+    d["persistedThrough"]=history::savedAt(); d["demoExcluded"]=monitor::config().demo;
+    d["timezone"]=monitor::config().tzName;
+    for (unsigned i=0;i<history::FieldCount;++i) {
+        auto f=d["fields"].add<JsonObject>(); f["name"]=history::name(i); f["unit"]=history::unit(i);
+    }
+    String chunk; serializeJson(d,chunk); chunk.remove(chunk.length()-1); chunk+=",\"samples\":[";
+    server.sendHeader("Cache-Control","no-store");
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN); server.send(200,"application/json","");
+    server.sendContent(chunk);
+    String packet; packet.reserve(1400);
+    if (epoch) {
+        const uint32_t first=history::bucket(epoch)-(history::capacity-1)*history::interval;
+        for (unsigned i=0;i<history::capacity;++i) {
+            const uint32_t slot=first+i*history::interval;
+            const auto* r=history::data().at(slot);
+            if (r && r->capturedAt>epoch) r=nullptr;
+            d.clear(); d["slot"]=slot;
+            if (r) d["t"]=r->capturedAt; else d["t"]=nullptr;
+            d["sourceTimeKnown"]=r?r->sourceTimeKnown:0;
+            auto values=d["v"].to<JsonArray>();
+            for (unsigned f=0;f<history::FieldCount;++f) {
+                if (r && r->has(f)) values.add(r->values[f]); else values.add(nullptr);
+            }
+            // ArduinoJson replaces String destinations, so separators belong
+            // in the response packet, outside the serialized row string.
+            serializeJson(d,chunk); if (i) packet+=","; packet+=chunk;
+            if (packet.length()>=1024) { server.sendContent(packet); packet=""; }
+        }
+    }
+    packet+="]}"; server.sendContent(packet); server.sendContent("");
+}
+
 void uploadChunk() {
     HTTPUpload& upload=server.upload();
     if (upload.status==UPLOAD_FILE_START) {
         uploadAuth=server.header("X-CYD-Request")=="1";
         uploadOK=false;updateError="";
         if (!uploadAuth) return;
-        uploading=true;source::pause(true);
+        history::checkpoint();uploading=true;source::pause(true);
         if (!Update.begin(UPDATE_SIZE_UNKNOWN,U_FLASH)) updateError="Cannot start firmware update";
     } else if (upload.status==UPLOAD_FILE_WRITE && uploadAuth && updateError.isEmpty()) {
         if (Update.write(upload.buf,upload.currentSize)!=upload.currentSize) updateError="Firmware write failed";
@@ -208,6 +278,7 @@ void begin() {
     });
     server.on("/api/config",HTTP_GET,getConfig);server.on("/api/config",HTTP_POST,saveConfig);
     server.on("/api/status",HTTP_GET,getStatus);
+    server.on("/api/history",HTTP_GET,getHistory);
     server.on("/api/reboot",HTTP_POST,[]{if(!mutation())return;server.send(200,"application/json","{\"restarting\":true}");requestReboot();});
     server.on("/api/wifi-reset",HTTP_POST,[]{
         if(!mutation())return;
@@ -234,7 +305,7 @@ void begin() {
     server.begin();started=true;
 }
 }  // namespace
-void requestReboot() { rebootAt=millis()+1000; }
+void requestReboot() { history::checkpoint(); rebootAt=millis()+1000; }
 bool updating() { return uploading; }
 void update() {
     if (!started && WiFi.isConnected()) begin();

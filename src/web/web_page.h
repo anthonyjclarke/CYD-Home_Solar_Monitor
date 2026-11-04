@@ -125,10 +125,11 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 <text class="nk" x="44" y="26">HOUSE</text><text class="nv" x="44" y="54" id="nvHouse">&ndash;</text><text class="ns" x="44" y="74" id="nsHouse"></text></g>
 </svg>
 <p class="note">Comets travel the way power is flowing. A thicker arm and faster comets mean more power; a plain grey arm is idle, missing or stale.</p></div>
-<div class="card"><h2>Last 30 minutes</h2>
-<svg id="trend" viewBox="0 0 640 250" role="img" aria-label="Power over the last 30 minutes"></svg>
-<div class="legend"><span><i style="background:var(--solar)"></i>Solar</span><span><i style="background:var(--house)"></i>House</span><span><i style="background:var(--grid)"></i>Grid (+ import / &minus; export)</span><span><i style="background:var(--battery)"></i>Battery (+ supplying / &minus; charging)</span></div>
-<p class="note" id="trendNote">Collected by this browser while the page is open; the device keeps no history.</p></div>
+<div class="card"><h2>Last 24 hours</h2>
+<label for="historyMetric">History metric</label><select id="historyMetric"><option value="power">Power flows (kW)</option></select>
+<svg id="trend" viewBox="0 0 640 250" role="img" aria-label="Persistent device history over the last 24 hours"></svg>
+<div class="legend" id="historyLegend"><span><i style="background:var(--solar)"></i>Solar</span><span><i style="background:var(--house)"></i>House</span><span><i style="background:var(--grid)"></i>Grid (+ import / &minus; export)</span><span><i style="background:var(--battery)"></i>Battery (+ supplying / &minus; charging)</span></div>
+<p class="note" id="trendNote">Loading the device’s recorded history…</p></div>
 <p class="cap" id="sourceStatus">Waiting for device status&hellip;</p>
 <footer class="art"><img src="/assets/solar-footer.webp?v=1" alt="" aria-hidden="true" width="1600" height="533" loading="lazy" decoding="async"></footer>
 <div class="foot"><span>CYD Home Solar Monitor &middot; SolarEdge + Home Assistant &middot; <a href="/guide/" target="_blank" rel="noopener">Handbook</a></span>
@@ -150,10 +151,15 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 <div><label for="battery">Battery label (up to 14 characters)</label><input id="battery" maxlength="14" placeholder="LG 9.8 kWh"></div></div>
 <div class="row"><div><label for="brightness">Brightness (10&ndash;255)</label><input id="brightness" type="number" min="10" max="255" required></div>
 <div><label class="check" style="margin-top:40px"><input id="demo" type="checkbox">Demo mode &ndash; synthetic data</label></div></div></div>
-<div class="card"><h2>Night</h2>
-<label class="check"><input id="nightDim" type="checkbox">Dim overnight</label>
-<div class="row"><div><label for="nightStart">Night starts (hour 0&ndash;23)</label><input id="nightStart" type="number" min="0" max="23" required></div><div><label for="nightEnd">Night ends (hour 0&ndash;23)</label><input id="nightEnd" type="number" min="0" max="23" required></div></div>
-<span class="hint">Uses the configured timezone once the clock is set. After a minute without touch the panel dims to a fifth; a tap restores it. Equal hours turn this off.</span>
+<div class="card"><h2>Serial debug</h2>
+<label for="debugLevel">Log detail</label><select id="debugLevel"><option value="0">Off</option><option value="1">Errors only</option><option value="2">Warnings and errors</option><option value="3">Info &ndash; about once per minute (default)</option><option value="4">Verbose &ndash; every poll</option></select>
+<span class="hint">Controls application logs over USB serial. Save to apply and keep after restart. Info also reports connection and state changes.</span></div>
+<div class="card"><h2>Night mode</h2>
+<label class="check"><input id="nightDim" type="checkbox">Enable scheduled night mode</label>
+<label for="nightMode">Night action</label><select id="nightMode"><option value="0">Dim only</option><option value="1">Turn off only</option><option value="2">Dim, then turn off</option></select>
+<div class="row"><div id="nightDimControl"><label for="nightDimAt">Dim at</label><input id="nightDimAt" type="time" step="60" required></div><div id="nightOffControl"><label for="nightOffAt">Turn off at</label><input id="nightOffAt" type="time" step="60" required></div></div>
+<label for="nightOnAt">Turn on at</label><input id="nightOnAt" type="time" step="60" required>
+<span class="hint">Uses the device timezone once the clock is set. Dimming uses one-fifth brightness. A touch wakes a dimmed or off screen for one minute; release, then tap again to use controls. Sampling, history and the WebUI keep running while the screen is off.</span>
 <div class="actions"><button class="primary" type="submit">Save settings</button></div></div></section>
 
 <section class="page" id="p-location"><h1>Location &amp; weather</h1><p class="cap">Sets the clock's timezone and the weather shown on the panel.</p>
@@ -215,7 +221,11 @@ function setV(id,r){const f=fmt(r.value);$(id).innerHTML=r.hasValue?f[0]+'<small
 function pill(id,text,kind){const e=$(id);e.textContent=text;e.className='pill'+(kind?' '+kind:'')}
 let toastTimer;function message(text){const m=$('message');m.textContent=text;m.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>m.style.display='none',5000)}
 async function api(path,body){const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-CYD-Request':'1'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const data=await response.json();if(!response.ok)throw Error(data.error||'Request failed');return data}
-async function load(){const c=await api('/api/config');['url','poll','stale','brightness','nightStart','nightEnd','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>$(k).value=c[k]);$('lat').value=c.lat??'';$('lon').value=c.lon??'';['demo','nightDim'].forEach(k=>$(k).checked=c[k]);$('layout').value=String(c.layout);c.entities.forEach((id,i)=>$('entity'+i).value=id);$('tokenState').textContent=c.tokenSaved?'A token is saved. Leave blank to keep it.':'No Home Assistant token saved yet.'}
+async function load(){const c=await api('/api/config');['url','poll','stale','brightness','debugLevel','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>$(k).value=c[k]);$('lat').value=c.lat??'';$('lon').value=c.lon??'';['demo','nightDim'].forEach(k=>$(k).checked=c[k]);$('layout').value=String(c.layout);$('nightMode').value=String(c.nightMode??0);const times={nightDimAt:c.nightDimAt??(c.nightStart??19)*60,nightOffAt:c.nightOffAt??23*60,nightOnAt:c.nightOnAt??(c.nightEnd??7)*60};Object.keys(times).forEach(k=>{$(k).value=nightTime(times[k]);$(k).defaultValue=$(k).value});nightControls();c.entities.forEach((id,i)=>$('entity'+i).value=id);$('tokenState').textContent=c.tokenSaved?'A token is saved. Leave blank to keep it.':'No Home Assistant token saved yet.'}
+function nightTime(minutes){return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')}
+function nightMinute(value){const m=/^(\d{2}):(\d{2})$/.exec(value);return m&&Number(m[1])<24&&Number(m[2])<60?Number(m[1])*60+Number(m[2]):NaN}
+function nightControls(){const enabled=$('nightDim').checked,mode=Number($('nightMode').value);$('nightMode').disabled=!enabled;$('nightDimControl').hidden=mode===1;$('nightOffControl').hidden=mode===0;$('nightDimAt').disabled=!enabled||mode===1;$('nightOffAt').disabled=!enabled||mode===0;$('nightOnAt').disabled=!enabled}
+$('nightDim').onchange=nightControls;$('nightMode').onchange=nightControls;
 // Flow diagram: comets travel from source to destination, the way power
 // flows. Each arm is [outer end, hub end];
 // grid +import and battery +supplying flow into the hub (320,200).
@@ -241,31 +251,42 @@ k.style.opacity=RM?1:Math.min(1,p/.18,(1-p)/.18).toFixed(2)})}
 if(!RM)requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 function node(id,r,sub){$('n'+id).classList.toggle('stale',!r.fresh);$('nv'+id).textContent=r.hasValue?power(r.value):'–';$('ns'+id).textContent=sub}
-const hist=[],HMAX=600;
-// Fixed 30-minute window ending now, with a kW Y axis on "nice" steps and an
-// X axis ticked every 5 minutes in local time. The viewBox follows the element's
-// real width so axis text is never stretched.
+let historyData=null,historyBusy=false,historyFetched=0,historyError='';
+const POWER=[[6,'--solar'],[1,'--house'],[2,'--grid'],[3,'--battery']];
 function niceStep(range){const raw=range/4,p=Math.pow(10,Math.floor(Math.log10(raw)));for(const m of [1,2,2.5,5,10])if(m*p>=raw)return m*p;return 10*p}
+async function refreshHistory(force=false){if(historyBusy||busy||(!force&&Date.now()-historyFetched<60000))return;historyBusy=true;
+try{const d=await api('/api/history?hours=24');if(d.schema!==1||!Array.isArray(d.samples)||!Array.isArray(d.fields))throw Error('Unsupported history format');historyData=d;historyFetched=Date.now();historyError='';
+if($('historyMetric').options.length===1)d.fields.forEach((f,i)=>$('historyMetric').add(new Option(f.name+' ('+f.unit+')',String(i))));trend()}
+catch(e){historyError='History unavailable: '+e.message;$('trendNote').textContent=historyError}finally{historyBusy=false}}
 function trend(){const svg=$('trend'),W=Math.max(320,Math.round(svg.getBoundingClientRect().width)||640),H=250;svg.setAttribute('viewBox','0 0 '+W+' '+H);
-const L=50,R=14,T=24,B=30,pw=W-L-R,ph=H-T-B,now=Date.now(),t0=now-1800000;
-const keys=[['s','--solar'],['h','--house'],['g','--grid'],['b','--battery']];let lo=0,hi=500;
-hist.forEach(p=>keys.forEach(([k])=>{if(p[k]!=null){lo=Math.min(lo,p[k]);hi=Math.max(hi,p[k])}}));
+const d=historyData;if(!d){svg.innerHTML='';return}
+const choice=$('historyMetric').value,powerMode=choice==='power',keys=powerMode?POWER:[[Number(choice),'--accent']],field=d.fields[Number(choice)],kw=powerMode||field.unit==='W',scale=kw?1000:1,unit=kw?'kW':field.unit;
+$('historyLegend').style.display=powerMode?'':'none';
+const L=54,R=14,T=24,B=30,pw=W-L-R,ph=H-T-B,now=d.end*1000,t0=d.start*1000,span=86400000;
+let lo=0,hi=kw?500:1,count=0,unknown=0;const values=[];
+d.samples.forEach(p=>keys.forEach(([k])=>{if(p.t!=null&&p.v[k]!=null&&p.t*1000>=t0&&p.t*1000<=now){lo=Math.min(lo,p.v[k]);hi=Math.max(hi,p.v[k]);values.push(p.v[k]);++count;if(k<7&&!(p.sourceTimeKnown&(1<<k)))++unknown}}));
+if(choice==='4'){lo=0;hi=100}
 const step=niceStep(hi-lo);lo=Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;if(hi===lo)hi=lo+step;
-const X=t=>L+(t-t0)/1800000*pw,Y=v=>T+(hi-v)/(hi-lo)*ph;
-let out='<text x="'+(L-8)+'" y="'+(T-10)+'" text-anchor="end" font-size="11" fill="var(--label)" font-family="ui-monospace,Menlo,monospace">kW</text>';
-for(let v=lo;v<=hi+1e-6;v+=step){const y=Y(v).toFixed(1);
+const X=t=>L+(t-t0)/span*pw,Y=v=>T+(hi-v)/(hi-lo)*ph;
+let out='<text x="'+(L-8)+'" y="'+(T-10)+'" text-anchor="end" font-size="11" fill="var(--label)">'+esc(unit)+'</text>';
+for(let v=lo;v<=hi+step*.01;v+=step){const y=Y(v).toFixed(1);
 out+='<line x1="'+L+'" x2="'+(L+pw)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"'+(v===0?'':' stroke-dasharray="2 4"')+'/>';
-out+='<text x="'+(L-8)+'" y="'+(+y+4)+'" text-anchor="end" font-size="11" fill="var(--label)">'+(v/1000).toFixed(step%1000?1:0)+'</text>'}
-for(let m=30;m>=0;m-=5){const t=now-m*60000,x=X(t).toFixed(1),d=new Date(t);
+out+='<text x="'+(L-8)+'" y="'+(+y+4)+'" text-anchor="end" font-size="11" fill="var(--label)">'+Number((v/scale).toPrecision(3))+'</text>'}
+for(let h=24;d.clockKnown&&h>=0;h-=6){const t=now-h*3600000,x=X(t).toFixed(1),date=new Date(t);
 out+='<line x1="'+x+'" x2="'+x+'" y1="'+(T+ph)+'" y2="'+(T+ph+5)+'" stroke="var(--label)"/>';
-out+='<text x="'+x+'" y="'+(T+ph+19)+'" text-anchor="'+(m===0?'end':m===30?'start':'middle')+'" font-size="11" fill="var(--label)">'+(m===0?'now':String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))+'</text>'}
-out+='<line x1="'+L+'" x2="'+L+'" y1="'+T+'" y2="'+(T+ph)+'" stroke="var(--label)"/><line x1="'+L+'" x2="'+(L+pw)+'" y1="'+(T+ph)+'" y2="'+(T+ph)+'" stroke="var(--label)"/>';
-if(lo<0)out+='<line x1="'+L+'" x2="'+(L+pw)+'" y1="'+Y(0).toFixed(1)+'" y2="'+Y(0).toFixed(1)+'" stroke="var(--label)" stroke-width="1"/>';
-keys.forEach(([k,c])=>{let d='',pen=false;hist.forEach(p=>{if(p[k]==null||p.t<t0){pen=false;return}d+=(pen?'L':'M')+X(p.t).toFixed(1)+' '+Y(p[k]).toFixed(1);pen=true});
-if(d)out+='<path d="'+d+'" fill="none" stroke="var('+c+')" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'});
-if(hist.length<2)out+='<text x="'+(L+pw/2)+'" y="'+(T+ph/2)+'" text-anchor="middle" font-size="13" fill="var(--muted)">Collecting readings&hellip;</text>';
-svg.innerHTML=out;const span=hist.length?Math.round((now-hist[0].t)/60000):0;
-$('trendNote').textContent='Collected by this browser while the page is open ('+span+' min so far); the device keeps no history. Above zero: grid importing, battery supplying.'}
+out+='<text x="'+x+'" y="'+(T+ph+19)+'" text-anchor="'+(h===0?'end':h===24?'start':'middle')+'" font-size="11" fill="var(--label)">'+date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</text>'}
+if(lo<0)out+='<line x1="'+L+'" x2="'+(L+pw)+'" y1="'+Y(0).toFixed(1)+'" y2="'+Y(0).toFixed(1)+'" stroke="var(--label)"/>';
+keys.forEach(([k,c])=>{let path='',pen=false,lastSlot=0,points='';d.samples.forEach(p=>{if(p.t==null||p.v[k]==null||p.t*1000<t0||p.t*1000>now){pen=false;return}
+const x=X(p.t*1000).toFixed(1),y=Y(p.v[k]).toFixed(1);if(p.slot-lastSlot!==d.intervalSeconds||k===10||k===12)pen=false;path+=(pen?'L':'M')+x+' '+y;pen=true;lastSlot=p.slot;
+points+='<circle cx="'+x+'" cy="'+y+'" r="1.8" fill="var('+c+')"><title>'+esc(d.fields[k].name+': '+(p.v[k]/scale).toFixed(2)+' '+unit+' · '+new Date(p.t*1000).toLocaleString()+(k<7&&!(p.sourceTimeKnown&(1<<k))?' · source age unknown':''))+'</title></circle>'});
+if(path)out+='<path d="'+path+'" fill="none" stroke="var('+c+')" stroke-width="2" stroke-linejoin="round"/>'+points});
+if(!count)out+='<text x="'+(L+pw/2)+'" y="'+(T+ph/2)+'" text-anchor="middle" font-size="13" fill="var(--muted)">'+(d.clockKnown?'No actual samples yet':'Waiting for device clock sync')+'</text>';
+svg.innerHTML=out;
+const summary=!powerMode&&field.unit!=='code'&&values.length?' Sampled min / avg / max: '+[Math.min(...values),values.reduce((a,b)=>a+b,0)/values.length,Math.max(...values)].map(v=>(v/scale).toFixed(2)).join(' / ')+' '+unit+'.':'';
+$('trendNote').textContent=(historyError?historyError+'. ':'')+'Device history · 5-minute snapshots · gaps mean no data · browser timezone.'+summary+
+(d.storageHealthy?' Checkpoints every 15 minutes.':' RAM history only: storage unavailable or checkpoint failed.')+(d.demoExcluded?' Demo excluded; retained actual readings shown.':'')+(unknown?' Some samples have unknown upstream age.':'')+
+(powerMode?' Above zero: grid importing, battery supplying.':'')}
+$('historyMetric').onchange=trend;
 window.addEventListener('resize',trend);
 function age(s){return s==null?'–':s<90?s+' s':Math.round(s/60)+' min'}
 function rows(id,pairs){$(id).innerHTML=pairs.map(([k,v])=>'<tr><th style="width:34%">'+k+'</th><td>'+v+'</td></tr>').join('')}
@@ -297,13 +318,13 @@ node('Solar',solar,solar.fresh?(solar.value>30?'generating':'idle'):'unavailable
 node('Grid',grid,!grid.fresh?'unavailable':grid.value>30?'importing':grid.value<-30?'exporting':'idle');
 node('Batt',batt,(!batt.fresh?'unavailable':batt.value<-30?'charging':batt.value>30?'supplying':'idle')+(soc.hasValue?' · '+soc.value.toFixed(0)+'%':''));
 const fh=soc.hasValue?Math.round(24*Math.max(0,Math.min(100,soc.value))/100):0;$('battFill').setAttribute('height',fh);$('battFill').setAttribute('y',27-fh);
-const now=Date.now(),val=r=>r.fresh?r.value:null;hist.push({t:now,s:val(solar),h:val(house),g:val(grid),b:val(batt)});while(hist.length>HMAX||(hist.length&&now-hist[0].t>1800000))hist.shift();trend();
+refreshHistory();
 $('sourceStatus').textContent=s.message+' · '+(s.reportTimeKnown?'source reporting time verified':'source age unknown');
 rows('deviceRows',[['Firmware',esc(s.project+' '+s.version)],['Address','<code>http://solar.local/</code> · '+esc(s.ip)],['Local time',esc(s.localTime||'clock not set')],['Uptime',age(s.uptimeSeconds)],['Free memory',Math.round(s.freeHeap/1024)+' KB']]);
 $('diagRows').innerHTML=R.map(r=>'<tr><td>'+esc(r.name)+'</td><td><code>'+esc(r.entity||'derived')+'</code></td><td class="num">'+(r.hasValue?(r.unit==='%'?r.value.toFixed(1)+' %':Math.round(r.value)+' W'):'–')+'</td><td class="'+(r.valid?'ok':'no')+'">'+(r.valid?'yes':'no')+'</td><td class="'+(r.fresh?'ok':'no')+'">'+(r.fresh?'yes':'no')+'</td><td class="num">'+age(r.receivedAgeSeconds)+'</td><td class="num">'+age(r.reportedAgeSeconds)+'</td></tr>').join('');
 $('diagnostics').textContent=JSON.stringify(s,null,2)}
 catch(e){pill('badge','Disconnected','bad');$('crtTitle').textContent='Disconnected';$('led').style.background='#E0644F';$('led').style.boxShadow='0 0 7px #E0644F';$('sourceStatus').textContent=e.message;document.querySelectorAll('.tile,.node').forEach(el=>el.classList.add('stale'))}}
-$('settings').addEventListener('submit',async e=>{e.preventDefault();const c={};['url','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>c[k]=$(k).value.trim());const lat=$('lat').value.trim(),lon=$('lon').value.trim();c.lat=lat===''?null:Number(lat);c.lon=lon===''?null:Number(lon);['poll','stale','brightness','nightStart','nightEnd','layout'].forEach(k=>c[k]=Number($(k).value));['demo','nightDim','clearToken'].forEach(k=>c[k]=$(k).checked);c.entities=labels.map((_,i)=>$('entity'+i).value.trim());c.token=$('token').value;try{await api('/api/config',c);$('token').value='';$('clearToken').checked=false;message('Settings saved');await load();await refresh()}catch(err){message(err.message)}});
+$('settings').addEventListener('submit',async e=>{e.preventDefault();const c={};['url','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>c[k]=$(k).value.trim());const lat=$('lat').value.trim(),lon=$('lon').value.trim();c.lat=lat===''?null:Number(lat);c.lon=lon===''?null:Number(lon);['poll','stale','brightness','layout','debugLevel','nightMode'].forEach(k=>c[k]=Number($(k).value));['demo','nightDim','clearToken'].forEach(k=>c[k]=$(k).checked);['nightDimAt','nightOffAt','nightOnAt'].forEach(k=>{const value=nightMinute($(k).value);c[k]=Number.isInteger(value)?value:$(k).disabled?nightMinute($(k).defaultValue):NaN});if(!['nightDimAt','nightOffAt','nightOnAt'].every(k=>Number.isInteger(c[k]))){message('Enter valid night times');return}c.nightStart=Math.floor((c.nightMode===1?c.nightOffAt:c.nightDimAt)/60);c.nightEnd=Math.floor(c.nightOnAt/60);c.entities=labels.map((_,i)=>$('entity'+i).value.trim());c.token=$('token').value;try{await api('/api/config',c);$('token').value='';$('clearToken').checked=false;message('Settings saved');await load();await refresh();await refreshHistory(true)}catch(err){message(err.message)}});
 // Settings span several sections; a field that fails browser validation may be
 // on a hidden one, so show that section before the browser reports it.
 document.querySelectorAll('#settings input,#settings select,#settings textarea').forEach(el=>el.addEventListener('invalid',()=>{const p=el.closest('.page');if(p&&!p.classList.contains('on'))location.hash=p.id.slice(2)}));

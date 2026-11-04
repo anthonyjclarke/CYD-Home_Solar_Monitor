@@ -1,4 +1,6 @@
+#include "config.h"
 #include "flow_layout.h"
+#include "history_layout.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -42,12 +44,42 @@ public:
 int main(int argc,char**argv) {
     SvgCanvas c;
     const char* head="<svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>\n";
+    if (argc>1 && std::string(argv[1])=="history") {
+        // Explicitly synthetic history for layout QA, never persisted on a CYD.
+        history::Store store;
+        const uint32_t epoch=history::bucket(1793836800);
+        const std::string scene=argc>2?argv[2]:"solar";
+        if (scene!="empty") for (unsigned i=0;i<history::capacity;++i) {
+            if ((i>=100 && i<125) || i==230) continue; // Visible outage gaps.
+            auto s=energy::demoSnapshot(1000,i/72%4); s.demo=false;
+            const uint32_t capturedAt=epoch-(287-i)*history::interval;
+            for (auto& r:s.readings) r.reportedMs=uint64_t(capturedAt)*1000;
+            s.heartbeatMs=uint64_t(capturedAt)*1000;
+            s.readings[energy::Solar].value=std::max(0.0f,4500*std::sin(float(i)/288*6.28f));
+            store.add(history::capture(s,true,1000,capturedAt,180,5));
+        }
+        ui::HistoryView v{store}; v.epoch=epoch; v.storageOK=true;
+        if (scene=="battery") v.field=history::Battery;
+        if (scene=="weather") v.field=history::TomorrowTemperature;
+        if (scene=="dark") v.layout=ui::Cards;
+        std::cout<<head;ui::drawHistory(c,v);std::cout<<"</svg>\n";return 0;
+    }
     if(argc>1&&std::string(argv[1])=="boot") {  // boot <layout>: sample start-up screen after Wi-Fi connects.
-        ui::BootView b;b.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Centre;b.version="v0.8.0";
-        b.rows[0]={"Wi-Fi","Connected - HomeNetwork",ui::BootOk};b.rows[1]={"IP address","192.168.1.95",ui::BootInfo};
-        b.rows[2]={"Web page","http://solar.local/",ui::BootInfo};b.rows[3]={"Signal","-37 dBm (excellent)",ui::BootInfo};
-        b.rows[4]={"Home Asst","192.168.1.254:8123",ui::BootInfo};b.rows[5]={"Clock","17:08 AEDT - synced",ui::BootOk};
-        b.progress=.6f;b.footer="Starting display in 3 s - tap to skip";
+        ui::BootView b;b.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Centre;b.version="v" FIRMWARE_VERSION;
+        boot::Inputs in;
+        in.connected=in.clock=in.token=in.solar=in.sourceTimeKnown=in.historyHealthy=true;
+        in.sources=6; in.restore=history::RestoreState::Restored; in.historySamples=144;
+        in.ssid="HomeNetwork"; in.ip="192.0.2.95"; in.rssi=-37; in.localTime="17:08 AEDT";
+        if (argc>3) {
+            in.connected=in.clock=in.token=false; in.sources=0; in.solar=false;
+            in.portal=std::string(argv[3])=="warning";
+            in.historyHealthy=false;
+            in.restore=in.portal?history::RestoreState::Unavailable:history::RestoreState::Starting;
+            if (!in.portal) in.token=true;
+        }
+        const auto status=boot::build(in);
+        for (unsigned i=0;i<boot::RowCount;++i) b.rows[i]={boot::label(i),status.rows[i].value,status.rows[i].state};
+        b.progress=.6f;b.footer=in.connected?"Starting display in 3 s - tap to skip":"Waiting for Wi-Fi - tap to skip";
         std::cout<<head;ui::drawBoot(c,b);std::cout<<"</svg>\n";return 0;
     }
     unsigned scene=argc>1?std::atoi(argv[1]):0;
@@ -57,7 +89,7 @@ int main(int argc,char**argv) {
     v.weatherLive=true;
     if(argc>3)for(bool& b:v.totalLive)b=false;  // No HA totals: clock and weather only.
     // Sample values come from the demo scenes, but are drawn as live readings.
-    v.data.demo=false;v.status="Live / tap for device settings";v.address="192.168.1.50";v.batteryLabel="LG 9.8 kWh";
+    v.data.demo=false;v.status="Live / hold for settings";v.address="192.168.1.50";v.batteryLabel="LG 9.8 kWh";
     if(scene==4){for(bool& b:v.usable)b=false;for(bool& b:v.totalLive)b=false;v.weatherLive=false;v.data.demo=false;v.wifi=false;v.status="WiFi disconnected";}
     if(scene==5){v.weatherLive=false;v.data=energy::Snapshot();for(bool& b:v.usable)b=false;for(bool& b:v.totalLive)b=false;v.status="Waiting / stale or unavailable";}
     std::cout<<head;

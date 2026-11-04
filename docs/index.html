@@ -72,7 +72,7 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <a href="#display">The display</a>
 <a href="#states">Display states</a>
 <a href="#cards">Choosing a layout</a>
-<a href="#touch">Touch, setup page, dimming</a>
+<a href="#touch">Touch, setup page, night mode</a>
 <a href="#browser">Browser dashboard</a>
 <a href="#settings">Settings reference</a>
 <a href="#data">How readings are judged</a>
@@ -84,14 +84,15 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <main>
 <header class="hero">
 <h1>CYD Home Solar Monitor</h1>
-<p>Handbook for firmware <code>0.8.0</code>: installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a <b>SolarEdge</b> inverter and battery, read from <b>Home Assistant</b> through the <b>SolarEdge Modbus Multi</b> integration. It was built on a SolarEdge SE6000 with an LG 9.8 kWh battery.</p>
+<p>Handbook for source release <code>0.9.0</code> (local preparation; publication pending, latest published record <code>0.8.0</code>): installing, configuring, and reading the 2.8-inch ESP32-2432S028R (CYD) home energy display. The panel shows solar, house, grid and battery power for a <b>SolarEdge</b> inverter and battery, read from <b>Home Assistant</b> through the <b>SolarEdge Modbus Multi</b> integration. It was built on a SolarEdge SE6000 with an LG 9.8 kWh battery.</p>
 <p>Source: <a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor">github.com/anthonyjclarke/CYD-Home_Solar_Monitor</a> · Installer: <a href="https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/">anthonyjclarke.github.io/CYD-Home_Solar_Monitor</a></p>
 </header>
 
 <h2 id="overview">Overview</h2>
 <p>The monitor never talks to the inverter. Home Assistant keeps its existing SolarEdge Modbus Multi connection, and the CYD reads selected sensor states from Home Assistant's local REST API every few seconds. Weather comes from Open-Meteo for a location you choose.</p>
-<div class="flow"><span>SolarEdge SE6000 + LG battery</span><i>Modbus TCP →</i><span>Home Assistant</span><i>REST, every 5 s →</i><span>CYD display</span><i>← every 30 min</i><span>Open-Meteo weather</span></div>
-<p>Six Home Assistant entities are read every cycle: inverter AC power, household power, the signed grid meter, signed battery DC power, battery state of energy and inverter DC power. Solar generation is calculated from inverter DC and battery power. Two optional kWh entities (today's solar energy and tomorrow's solar forecast) are read once a minute.</p>
+<div class="flow"><span>SolarEdge SE6000 + LG battery</span><i>Modbus TCP →</i><span>Home Assistant</span><i>REST, 5 s default wait →</i><span>CYD display</span><i>← every 30 min</i><span>Open-Meteo weather</span></div>
+<p>Six Home Assistant entities are read every cycle: inverter AC power, household power, the signed grid meter, signed battery DC power, battery state of energy and inverter DC power. Solar generation is calculated from inverter DC and battery power. Two optional kWh entities (today's solar energy and tomorrow's solar forecast) are attempted about once a minute, at the next eligible polling cycle.</p>
+<p>All browser captures and panel previews in this handbook were refreshed for 0.9.0 on 5 November 2026 using synthetic demonstration data, never the owner’s measurements.</p>
 <figure><span class="panel"><img src="images/centre-flow-preview.svg" alt="Centre-flow layout showing solar, grid, battery and house power"></span>
 <figcaption>The default centre-flow layout. All panel images in this handbook are rendered from the firmware's own drawing code with sample data; fonts are approximated on the desktop.</figcaption></figure>
 
@@ -130,24 +131,27 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 <li><b>New board:</b> choose <b>Install</b> and agree to erase, then use <b>Configure Wi-Fi</b> to send your network over USB.</li>
 <li><b>Board already running this firmware:</b> the page offers <b>Update</b>, which keeps Wi-Fi, settings, the token and touch calibration.</li>
 </ul>
-<p>Each <a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor/releases">release</a> also carries <code>*-firmware.bin</code> for the device page's <b>Firmware update</b>, and <code>*-merged.bin</code> for a clean USB install, which erases everything.</p>
+<p>Each <a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor/releases">release</a> also carries <code>*-firmware.bin</code> for the device page's <b>Firmware update</b>, and <code>*-merged.bin</code> for a clean USB install, which overwrites NVS settings. This is not a full-chip erase.</p>
+<p>The install/update behavior above is the intended contract. Fresh browser installation, Improv provisioning and settings-preserving updates from both app slots remain on the project’s real-board validation checklist.</p>
 <h3>From PlatformIO</h3>
 <p>Open the project folder in PlatformIO; the only environment is <code>cyd28</code>. A build produces:</p>
 <table><thead><tr><th>File</th><th>Use</th></tr></thead><tbody>
 <tr><td><code>.pio/build/cyd28/firmware.bin</code></td><td>App image: USB updates, browser <b>Firmware update</b>, ArduinoOTA. Keeps all settings.</td></tr>
-<tr><td><code>.pio/build/cyd28/firmware-merged.bin</code></td><td>Clean USB install from address <code>0x0</code>. <b>Erases</b> Wi-Fi, settings, token, device code and touch calibration.</td></tr>
+<tr><td><code>.pio/build/cyd28/firmware-merged.bin</code></td><td>Clean USB install from address <code>0x0</code>. <b>Overwrites NVS</b>: Wi-Fi, settings, token, device code and touch calibration. It does not guarantee erasure of the separate coredump partition.</td></tr>
 <tr><td><code>.pio/build/cyd28/flash_parts.json</code></td><td>Map used by the shared browser installer.</td></tr>
 </tbody></table>
-<pre>pio run -t upload --upload-port /dev/cu.usbserial-10
+<pre>python3 tools/check_host.py
+pio run -e cyd28
+pio run -e cyd28 -t upload --upload-port /dev/cu.usbserial-10
 pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
-<p>Run these from the project folder, or add <code>-d &lt;project path&gt;</code>. Over the network, upload <code>firmware.bin</code> from the browser page, or use ArduinoOTA at <code>solar.local</code> on port <code>3232</code> with the device code (shown on the panel's setup page) as the password.</p>
+<p>The host check runs model assertions and renders 22 SVG previews (and thirteen PNGs if <code>rsvg-convert</code> is available). It does not test physical NVS, HTTP transport or OTA. When PlatformIO libraries are installed it also validates the history response, debug configuration and night schedule configuration with host stand-ins; JavaScript tests run separately. Upload only to an authorized board; substitute its actual serial port. Run these from the project folder, or add <code>-d &lt;project path&gt;</code>. Over the network, upload <code>firmware.bin</code> from the browser page, or use ArduinoOTA at <code>solar.local</code> on port <code>3232</code> with the device code (shown on the panel's setup page) as the password.</p>
 
 <h2 id="first-setup">First setup</h2>
 <ol>
 <li><b>Wi-Fi.</b> Power the CYD. If it has no working Wi-Fi after 20 seconds it opens a hotspot named <code>CYD-Solar-xxxx</code>. Its password is the 12-character device code shown on the panel. Join it, open the captive portal (or <code>192.168.4.1</code>), and choose your network. The portal times out after three minutes and reopens after bounded retries. When installing from the browser installer, Wi-Fi can instead be sent over USB (Improv-Serial).</li>
-<li><b>Open the device page.</b> Browse to <a href="http://solar.local/">http://solar.local/</a>. If your device can't resolve <code>.local</code> names (some older Android phones), tap the panel to see its IP address and use that. There is no login.</li>
+<li><b>Open the device page.</b> Browse to <a href="http://solar.local/">http://solar.local/</a>. If your device can't resolve <code>.local</code> names (some older Android phones), hold the panel longer than two seconds to see its IP address and use that. There is no login.</li>
 <li><b>Connect Home Assistant.</b> Under <b>Settings → Home Assistant</b>, check the Home Assistant URL (default <code>http://192.168.1.254:8123</code>), paste a long-lived access token, and save. The default entity IDs are SolarEdge Modbus Multi's, plus the house sensor you create (see <a href="#ha">Home Assistant setup</a>).</li>
-<li><b>Optional extras.</b> Set the daily solar and forecast entities, search for your location to enable weather and set the timezone, choose a panel layout, and adjust night dimming.</li>
+<li><b>Optional extras.</b> Set the daily solar and forecast entities, search for your location to enable weather and set the timezone, choose a panel layout, and adjust the night-mode schedule.</li>
 <li><b>Check.</b> Readings appear after the next cycle. To preview the screen without Home Assistant, tick <b>Demo mode</b>; untick it when commissioning.</li>
 </ol>
 
@@ -184,17 +188,20 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 
 <h2 id="boot">Boot screen</h2>
 <p>At power-on the panel shows a start-up screen in the theme of the chosen layout. Each row fills in as that step completes; a green dot means done, amber means waiting, red needs attention.</p>
-<figure><span class="panel"><img src="images/boot-preview.svg" alt="Boot screen with Wi-Fi, IP address, web page, signal, Home Assistant and clock"></span>
+<figure><span class="panel"><img src="images/boot-preview.svg" alt="Boot screen with Wi-Fi, IP address, web page, signal, live Home Assistant readiness, history and clock"></span>
 <figcaption>Boot screen after Wi-Fi has connected (sample values).</figcaption></figure>
 <table><thead><tr><th>Row</th><th>Shows</th></tr></thead><tbody>
-<tr><td>Wi-Fi</td><td><i>Connected - network name</i>; <i>Connecting...</i>; or, in red, the setup hotspot name when no network is saved.</td></tr>
+<tr><td>Wi-Fi</td><td><i>Connected - network name</i>; <i>Connecting...</i>; or, in red, <i>Setup hotspot active</i> when provisioning is available.</td></tr>
 <tr><td>IP address</td><td>The address the router gave the CYD.</td></tr>
 <tr><td>Web page</td><td><code>http://solar.local/</code></td></tr>
 <tr><td>Signal</td><td>Wi-Fi strength in dBm: excellent (≥ −55), good (≥ −67), fair (≥ −75) or weak.</td></tr>
-<tr><td>Home Asst</td><td>Home Assistant host and port; red <i>no token</i> if none is saved; <i>demo mode</i> in demo.</td></tr>
+<tr><td>Home Asst</td><td>Actual freshness/coherence checks: six live sources plus derived solar, unknown source age, partial/waiting readings, missing token, or explicitly synthetic demo. The configured HA origin is in the serial configuration report and setup page.</td></tr>
+<tr><td>History</td><td>Initialization, restored sample count, new-source collection, or a RAM-only storage warning. Before clock sync, restored counts are marked <i>clock pending</i>; expired samples are excluded once time is known.</td></tr>
 <tr><td>Clock</td><td>Local time once synchronised, or <i>waiting for time server</i>.</td></tr>
 </tbody></table>
-<p>The bar along the bottom shows how long the screen stays up. It closes <b>6 seconds after Wi-Fi connects</b>, so the IP address can be read, or after <b>15 seconds</b> if Wi-Fi hasn't connected (the panel then shows the Wi-Fi setup page). A tap closes it at once. Readings are fetched in the background meanwhile, so the energy display is usually live as soon as it appears. Both times are <code>APP_BOOT_HOLD_MS</code> and <code>APP_BOOT_MAX_MS</code> in <code>include/config.h</code>.</p>
+<p>The bar along the bottom shows how long the screen stays up. It closes <b>6 seconds after Wi-Fi connects</b>, so the IP address can be read, or after <b>15 seconds</b> if Wi-Fi hasn't connected (hold the panel longer than two seconds for Wi-Fi setup details). A tap closes it at once. Readings are fetched in the background meanwhile, so the energy display is usually live as soon as it appears. Both times are <code>APP_BOOT_HOLD_MS</code> and <code>APP_BOOT_MAX_MS</code> in <code>include/config.h</code>.</p>
+
+<p>The same seven status rows are reported over USB serial at <b>115200 baud</b>, following the saved <b>Serial debug</b> level. Before the display is ready, serial also shows firmware/reset/app slot and the initialization stages for device storage, display buffer, touch, Wi-Fi, OTA, history and the HA worker. Messages describe software initialization, not physical hardware self-tests. Rows log initially and when their status changes; clock ticks and signal jitter do not flood the log. A final ready/warning summary ends the startup report, with a 60-second deadline for services still waiting. Skipping the panel screen does not cancel serial checks. Off still disables application logs, while the CYD screen remains active. Access tokens, Wi-Fi passwords and the device code are never printed.</p>
 
 <h2 id="display">The display</h2>
 <p>The centre-flow layout puts the four power flows on arms meeting at a central dot, the inverter: solar above, house below, grid to the left and battery to the right. Each power figure is shown as a positive number, in watts below 1 kW and kW to two decimals above.</p>
@@ -223,7 +230,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <li><b>Battery gauge</b>: an upright battery filled from the bottom to the state of energy, with the percentage beneath it. <span class="swatch" style="background:#249255"></span>Green at 50% and above, <span class="swatch" style="background:#db9255"></span>amber from 20%, <span class="swatch" style="background:#db2400"></span>red below 20%. It is the charge level, not a share of the house load.</li>
 <li><b>House</b> demand, from the household entity.</li>
 <li><b>Status line.</b> A green dot and <i>Good time to use power</i> when every reading is live and you are exporting more than 100 W, or charging above 100 W with the battery at 95% or more. Otherwise <i>All readings live</i>, or the reason readings are missing (see <a href="#states">states</a>).</li>
-<li><b>Settings</b>: a reminder that tapping the screen opens the device setup page.</li>
+<li><b>History</b>: opens the rolling 24-hour history. Hold anywhere for more than two seconds to open device setup.</li>
 </ol>
 <figure><span class="panel"><img src="images/centre-flow-preview.svg" alt="Top row with today's solar energy and tomorrow's solar forecast"></span>
 <figcaption><b>With the optional kWh entities.</b> Today's solar energy replaces the clock top-left, and tomorrow's solar forecast replaces the maximum temperature top-right. Set them under <a href="#ha">Home Assistant setup</a>.</figcaption></figure>
@@ -243,11 +250,11 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <table><thead><tr><th>Message</th><th>Meaning</th></tr></thead><tbody>
 <tr><td>Good time to use power</td><td>All readings live, and exporting &gt; 100 W or charging &gt; 100 W at ≥ 95% battery.</td></tr>
 <tr><td>All readings live</td><td>Everything is current.</td></tr>
-<tr><td>Live / tap for device settings</td><td>(Cards layout) everything is current.</td></tr>
+<tr><td>Live / hold for settings</td><td>(Cards layout) everything is current.</td></tr>
 <tr><td>HA connected / source age unknown</td><td>Readings arrive, but Home Assistant gave no report time or the clock isn't set yet.</td></tr>
 <tr><td>Waiting / stale or unavailable</td><td>At least one displayed reading is missing, invalid or too old.</td></tr>
 <tr><td>WiFi disconnected</td><td>The CYD has lost Wi-Fi; it reconnects on its own.</td></tr>
-<tr><td>DEMO / tap for setup</td><td>Demo mode is on; values are synthetic.</td></tr>
+<tr><td>DEMO / hold for setup</td><td>Demo mode is on; values are synthetic.</td></tr>
 </tbody></table>
 <h3>Weather icons</h3>
 <p>Icons are drawn from Open-Meteo's WMO weather codes: clear (sun), partly cloudy (sun behind cloud), cloudy, fog (horizontal bars), drizzle (cloud with dots), rain (cloud with slanted lines), snow (cloud with flakes) and storm (cloud with lightning).</p>
@@ -260,40 +267,59 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 </div>
 <p>On the cards layout, the badge reads <code>HA</code> when all readings are live, <code>WAIT</code> when some are not, <code>OFFLINE</code> without Wi-Fi and <code>DEMO</code> in demo mode. The battery card shows the battery label, percentage and a small gauge along its bottom line.</p>
 
-<h2 id="touch">Touch, setup page and dimming</h2>
+<h2 id="touch">Touch, setup page and night mode</h2>
 <table><thead><tr><th>Action</th><th>Result</th></tr></thead><tbody>
-<tr><td>Short tap (anywhere)</td><td>Opens the device setup page; tap again to return.</td></tr>
-<tr><td>Hold 2 s on the setup page</td><td>Starts touch calibration: release, then tap each of four crosses once. Saved to the device; a 45-second pause cancels.</td></tr>
-<tr><td>Tap while dimmed at night</td><td>Only wakes the screen to full brightness for a minute; it doesn't also open the setup page.</td></tr>
+<tr><td>Tap History</td><td>Opens 24-hour history. Choose a metric tab or Prev/Next; Home returns to live flows.</td></tr>
+<tr><td>Hold longer than 2 s</td><td>Opens Settings once; release does not also tap. A progress bar appears during the hold. Tap Settings to return.</td></tr>
+<tr><td>Release, then hold &gt;2 s in Settings</td><td>Starts touch calibration: release, then tap each of four crosses once. Saved to the device; a 45-second pause cancels.</td></tr>
+<tr><td>Tap while dimmed or off at night</td><td>Only wakes the screen to full brightness for a minute; it doesn't also open the setup page.</td></tr>
 </tbody></table>
 <p>The setup page shows <code>http://solar.local/</code>, the IP address, the device code (the OTA and setup-hotspot password), the Home Assistant URL and the firmware version. Without Wi-Fi it shows the hotspot name and password instead.</p>
-<p><b>Night dimming</b> runs from <i>Night starts</i> to <i>Night ends</i> (default 19:00–07:00) in the configured timezone, once the clock has synchronised. After a minute without touch the backlight drops to a fifth of the configured brightness.</p>
+<p><b>Settings → Display → Night mode</b> offers <b>Dim only</b>, <b>Turn off only</b> and <b>Dim, then turn off</b>. Set the relevant <b>Dim at</b> and/or <b>Turn off at</b> times, plus <b>Turn on at</b>, with minute precision in the configured timezone. The period can cross midnight. In staged mode, turn-off must occur between dim and morning turn-on. An existing 19:00–07:00 dim schedule is retained as dim-only; display-off is enabled only when you select an off action.</p>
+<p>Dimming uses one-fifth of the configured brightness (minimum 5). Turning off sets the backlight to zero and pauses rendering; it does not shut down the device, polling, history, WebUI, serial or OTA. A touch restores full brightness for one minute and is consumed, including a hold; release, then tap or hold again for controls. The first minute after restart is awake too. The schedule stays inactive until the clock is set, and full brightness resumes automatically at the turn-on time. Equal start/on times disable a single-action schedule.</p>
 
 <h2 id="browser">Browser dashboard</h2>
 <p>Open <code>http://solar.local/</code> from any device on the home network. The page follows your system's light or dark setting and refreshes every three seconds. The sidebar groups the sections: <b>Live</b> (Dashboard), <b>Settings</b> (Home Assistant, Display, Location &amp; weather, Entities) and <b>Device</b> (Device &amp; firmware, Diagnostics) and <b>Help</b>, which opens this handbook from the device itself at <code>http://solar.local/guide/</code>, so it works without internet. A banner at the foot of the dashboard links to this project on GitHub. Beneath the sidebar, the <b>Device status</b> panel shows a status light (green live, amber waiting or demo, red disconnected) with the address, firmware, uptime, free memory and the source message.</p>
-<figure class="shot"><img src="images/webui-dashboard.jpg" alt="Browser dashboard"><figcaption><b>At a glance.</b> Tiles for solar, house, grid and battery power, battery level (bar coloured like the panel gauge), solar today, tomorrow's forecast and the current weather. Pills give direction: <span style="color:#C0392B">↓ Importing</span>, <span style="color:#1F8A5B">↑ Exporting</span>, <span style="color:#1F8A5B">↑ Charging</span>, ↓ Supplying house. Green and red are kept for meaning, as in SpendAnalysis; amber is only used for controls.</figcaption></figure>
-<figure class="shot"><img src="images/webui-flow.jpg" alt="Energy flow diagram with comets on each arm"><figcaption><b>Energy flow.</b> Solar, grid, battery and house around the inverter hub. Comets travel each arm the way power flows; the arm gets thicker and its comets faster and larger as power rises. A plain grey arm is idle, missing or stale. The hub's sine wave marks the inverter, and the battery icon fills to the battery level. If your device has <b>Reduce Motion</b> turned on (iPhone and iPad: Settings → Accessibility → Motion; Mac: System Settings → Accessibility → Display; Windows and Android have an equivalent), the comets stay still, parked near the end of each pipe and pointing the way power flows. That is deliberate.</figcaption></figure>
-<figure class="shot"><img src="images/webui-chart.jpg" alt="Last 30 minutes chart and the dashboard footer"><figcaption><b>Last 30 minutes</b> charts solar, house, grid (+ import / − export) and battery (+ supplying / − charging) against a kW Y axis and an X axis of local clock times every 5 minutes, ending at <i>now</i>. The solid line is zero: above it the grid is importing and the battery supplying. Samples are collected by this browser while the page is open; the device keeps no history, so the chart fills from the right. Beneath it sits a decorative illustration of the system (sun, rooftop panels, house, grid and battery, with Australian plants and wildlife), then a banner linking to this handbook and to the project on GitHub.</figcaption></figure>
-<figure class="shot"><img src="images/webui-diagnostics.jpg" alt="Diagnostics table"><figcaption><b>Diagnostics.</b> Every reading with its entity, value, validity, freshness, and received and reported ages, plus the raw status JSON.</figcaption></figure>
+<figure class="shot"><img src="images/webui-dashboard.webp" alt="Browser dashboard"><figcaption><b>At a glance.</b> Tiles for solar, house, grid and battery power, battery level (bar coloured like the panel gauge), solar today, tomorrow's forecast and the current weather. Pills give direction: <span style="color:#C0392B">↓ Importing</span>, <span style="color:#1F8A5B">↑ Exporting</span>, <span style="color:#1F8A5B">↑ Charging</span>, ↓ Supplying house. Green and red are kept for meaning, as in SpendAnalysis; amber is only used for controls.</figcaption></figure>
+<figure class="shot"><img src="images/webui-flow.webp" alt="Energy flow diagram with comets on each arm"><figcaption><b>Energy flow.</b> Solar, grid, battery and house around the inverter hub. Comets travel each arm the way power flows; the arm gets thicker and its comets faster and larger as power rises. A plain grey arm is idle, missing or stale. The hub's sine wave marks the inverter, and the battery icon fills to the battery level. If your device has <b>Reduce Motion</b> turned on (iPhone and iPad: Settings → Accessibility → Motion; Mac: System Settings → Accessibility → Display; Windows and Android have an equivalent), the comets stay still, parked near the end of each pipe and pointing the way power flows. That is deliberate.</figcaption></figure>
+<h3>Rolling 24-hour history</h3>
+<p>The panel and the browser chart the same device records. On the panel, tap <b>History</b> on the flow screen, pick a tab (Solar, Home, Grid, Batt, Level) or step through every other metric with <b>Prev</b>/<b>Next</b>, and tap <b>Home</b> to return. Each view shows the latest sampled value and time and how many of the 288 five-minute slots hold data. Numeric metrics show sampled minimum, average and maximum; raw weather codes are categorical points without averages or connecting lines. History follows the layout's theme: light with Centre flow, dark with Cards. The pictures below use synthetic data, not measurements from a real system.</p>
+<div class="gallery">
+<figure><span class="panel"><img src="images/history-solar-preview.svg" alt="Panel history: solar generation over 24 hours with a gap"></span><figcaption><b>Solar.</b> A day's generation curve. The break in the line is a stretch with no samples (for example, the panel was off); it is never drawn as zero.</figcaption></figure>
+<figure><span class="panel"><img src="images/history-battery-preview.svg" alt="Panel history: signed battery power"></span><figcaption><b>Battery.</b> Signed power: above the zero line the battery is supplying the house, below it the battery is charging. Grid uses the same idea, with import above zero.</figcaption></figure>
+<figure><span class="panel"><img src="images/history-dark-preview.svg" alt="Panel history in the dark theme"></span><figcaption><b>Dark theme.</b> The same view when the panel uses the Cards layout.</figcaption></figure>
+<figure><span class="panel"><img src="images/history-weather-preview.svg" alt="Panel history: tomorrow's maximum temperature"></span><figcaption><b>Other metrics.</b> Prev/Next reaches battery level, inverter AC/DC, the daily kWh totals and the weather readings; this is tomorrow's maximum temperature.</figcaption></figure>
+<figure><span class="panel"><img src="images/history-empty-preview.svg" alt="Panel history with no samples yet"></span><figcaption><b>No samples yet.</b> Straight after a first install, or after changing the Home Assistant URL, entities or location, history starts empty and fills as the panel runs.</figcaption></figure>
+</div>
+<figure class="shot"><img src="images/webui-chart.webp" alt="Browser history chart showing solar, house, grid and battery over 24 hours"><figcaption><b>Last 24 hours in the browser.</b> Solar, house, grid and battery on one signed kW chart. Above zero, grid is importing and battery is supplying; below zero, grid is exporting and battery is charging. The gap is missing data. Choose any other metric from <b>History metric</b> to see it on its own scale, with sampled min, average and max underneath for numeric metrics; raw weather codes have no averages.</figcaption></figure>
+<figure class="shot"><img src="images/webui-history-metric.webp" alt="Battery percentage history with sampled statistics"><figcaption>Single metric: battery level on its own percentage scale.</figcaption></figure>
+<p><b>Last 24 hours</b> charts the same device records as the panel: solar, house, grid (+ import / − export) and battery (+ supplying / − charging), or one selected metric with its own units. Other selections include battery level, inverter AC/DC, daily solar, forecast, temperature and raw WMO weather codes. Dots represent actual five-minute snapshots; lines break at missing samples. Min/average/max describe the available snapshots, not continuous measurements. Weather codes are categorical and have no average.</p>
+<p>The device keeps 288 UTC five-minute slots including the current partial slot. It takes the first usable actual snapshot in each slot, timestamps the capture and uses the existing freshness rules per field. Invalid, stale or offline fields remain absent. Report-time availability is retained; unknown upstream age is labelled. No demo data or pre-clock samples are recorded, and no historical data is fetched from Home Assistant. Empty areas fill only as the device runs.</p>
+<p>History refreshes in the browser every minute and survives a page reload. Chart labels use the browser timezone; panel labels use the device's saved POSIX timezone. Both show a rolling day rather than resetting at midnight. The daily kWh and tomorrow forecast are the original HA values at each capture, not calculated 24-hour energy totals.</p>
+<p>LittleFS uses the existing data partition, keeping settings in NVS and preserving the OTA app slots. Two alternating checksummed checkpoints are saved every 15 minutes while data changes; controlled restarts and app updates request a save too. A sudden loss of power can lose roughly 15 minutes since the last successful save. Power-off periods and failed reads appear as gaps. A storage fault leaves collection in RAM with a warning; damaged storage is never automatically formatted. Only a completely erased partition is initialized on first use.</p>
+<p>Changing the HA URL, mapped entities, optional totals or coordinates starts a new history. Label, timezone, token and display changes retain it. App-only OTA preserves LittleFS; filesystem uploads or a full flash erase remove history. A merged USB install does not guarantee that history is erased. History is local telemetry without flash encryption. The footer illustration and handbook links remain below the chart.</p>
+<figure class="shot"><img src="images/webui-diagnostics.webp" alt="Diagnostics table"><figcaption><b>Diagnostics.</b> Every reading with its entity, value, validity, freshness, and received and reported ages, plus the raw status JSON.</figcaption></figure>
 <p><b>Device &amp; firmware</b> shows the firmware version, address, local time, uptime and free memory, and has <b>Restart device</b> and <b>Reset Wi-Fi</b> (clears Wi-Fi only; Home Assistant settings stay). <b>Firmware update</b> takes the app <code>firmware.bin</code> only; the device pauses Home Assistant reads while uploading and restarts when done.</p>
 
 <h2 id="settings">Settings reference</h2>
 <p>Settings are split across four sections, but they form one set: <b>Save settings</b> on any section saves them all. If a field elsewhere is invalid, the page switches to that section to show it.</p>
-<figure class="shot"><img src="images/webui-settings.jpg" alt="Home Assistant connection settings"><figcaption>Settings → Home Assistant.</figcaption></figure>
+<figure class="shot"><img src="images/webui-settings.webp" alt="Home Assistant connection settings"><figcaption>Settings → Home Assistant.</figcaption></figure>
 <table><thead><tr><th>Setting</th><th>Default</th><th>Range and notes</th></tr></thead><tbody>
-<tr><td>Home Assistant base URL</td><td><code>http://192.168.1.254:8123</code></td><td><code>http://</code> or <code>https://</code>, no path, query or user name. HTTPS needs the CA certificate below.</td></tr>
+<tr><td>Home Assistant base URL</td><td><code>http://192.168.1.254:8123</code></td><td><code>http://</code> or <code>https://</code>; an optional base path is accepted and <code>/api/states/</code> is appended. No query, fragment, whitespace or user name. HTTPS needs the CA certificate below.</td></tr>
 <tr><td>Home Assistant access token</td><td>none</td><td>Write-only. Blank keeps the saved token.</td></tr>
-<tr><td>Read interval</td><td>5 s</td><td>2–300 s. Failures back off up to 60 s.</td></tr>
+<tr><td>Read interval</td><td>5 s</td><td>2–300 s wait after a completed cycle. When all six reads fail, exponential backoff is capped at 60 s; partial success retains the configured wait. Requests add to the cycle time.</td></tr>
 <tr><td>Stale after</td><td>180 s</td><td>15–3600 s, and at least 3 × the read interval.</td></tr>
 <tr><td>Brightness</td><td>180</td><td>10–255.</td></tr>
+<tr><td>Serial debug</td><td>Info</td><td>Settings → Display. Off, Errors only, Warnings and errors, Info (about once a minute), or Verbose (every poll). Applies on save and survives restart.</td></tr>
 <tr><td>Demo mode</td><td>off</td><td>Cycles four synthetic scenes every 20 s; no Home Assistant needed.</td></tr>
-<tr><td>Dim overnight</td><td>on</td><td>Uses Night starts / Night ends (hours 0–23). Equal hours disable it.</td></tr>
-<tr><td>Solar energy today</td><td>blank</td><td>Optional <code>sensor.</code> in kWh/Wh/MWh, read every 60 s, shown while received within 10 min.</td></tr>
-<tr><td>Solar forecast tomorrow</td><td>blank</td><td>Optional <code>sensor.</code> in kWh; same timing.</td></tr>
+<tr><td>Night mode</td><td>Dim only, enabled</td><td>Minute-precision Dim at / Turn off at / Turn on at controls. Default dim interval 19:00–07:00; off time defaults to 23:00 but remains inactive in dim-only mode. Choose off-only or staged mode to use it. Save to apply and retain after restart.</td></tr>
+<tr><td>Solar energy today</td><td>blank</td><td>Optional <code>sensor.</code> in kWh/Wh/MWh, attempted at least 60 s after the last attempt when the next cycle runs. Shown only while valid and received within 10 min.</td></tr>
+<tr><td>Solar forecast tomorrow</td><td>blank</td><td>Optional <code>sensor.</code> in kWh/Wh/MWh; same timing.</td></tr>
 <tr><td>Layout</td><td>Centre flow (light)</td><td>Or Cards (dark), under Settings → Display. Applies immediately.</td></tr>
 <tr><td>Battery label</td><td><code>LG 9.8 kWh</code></td><td>Up to 14 characters; shown on the cards layout and in the browser.</td></tr>
 </tbody></table>
-<figure class="shot"><img src="images/webui-location.jpg" alt="Location, timezone and weather settings"><figcaption>Settings → Location &amp; weather.</figcaption></figure>
+<figure class="shot"><img src="images/webui-display.webp" alt="Display settings: layout, brightness, serial debug and staged night scheduling"><figcaption>Settings → Display: panel layout, brightness, serial debug and staged dim/off/on times. The selected action and times are synthetic examples; old profiles and firmware defaults remain dim-only.</figcaption></figure>
+<figure class="shot"><img src="images/webui-location.webp" alt="Location, timezone and weather settings"><figcaption>Settings → Location &amp; weather.</figcaption></figure>
 <table><thead><tr><th>Setting</th><th>Notes</th></tr></thead><tbody>
 <tr><td>Find a town or suburb</td><td>Searches Open-Meteo geocoding from your browser and lists matches. Choosing one fills the fields below.</td></tr>
 <tr><td>Latitude / Longitude</td><td>Both blank turns weather off. Only these coordinates are sent to Open-Meteo.</td></tr>
@@ -301,7 +327,7 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <tr><td>Timezone</td><td>Olson name such as <code>Australia/Sydney</code>; used to fill the POSIX rule.</td></tr>
 <tr><td>POSIX TZ rule</td><td>What the device actually uses, e.g. <code>AEST-10AEDT,M10.1.0,M4.1.0/3</code>. About 40 common zones fill automatically; for others, type the rule. Applies on save.</td></tr>
 </tbody></table>
-<figure class="shot"><img src="images/webui-entities.jpg" alt="Entity mapping and HTTPS certificate"><figcaption>Settings → Entities: the six live-power sensors, optional daily totals and the HTTPS certificate.</figcaption></figure>
+<figure class="shot"><img src="images/webui-entities.webp" alt="Entity mapping and HTTPS certificate"><figcaption>Settings → Entities: the six live-power sensors, optional daily totals and the HTTPS certificate.</figcaption></figure>
 <p>Entity IDs must be <code>sensor.</code> followed by lower-case letters, digits and underscores. The CA certificate is only needed for an <code>https://</code> Home Assistant URL; paste the PEM certificate of the authority that signed Home Assistant's certificate. Certificate checks are never skipped.</p>
 
 <h2 id="data">How readings are judged</h2>
@@ -313,20 +339,22 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <li>Upstream age uses Home Assistant's <code>last_reported</code>, judged for the integration as a whole: a reading is fresh while the newest report among all six sources is recent. Home Assistant doesn't refresh <code>last_reported</code> for every unchanged value. For example, an idle, full battery can keep a ten-minute-old report time while the inverter keeps reporting, and that is still a current reading.</li>
 <li>Values reported as <code>unknown</code> or <code>unavailable</code>, non-numeric values, or wrong units are rejected immediately.</li>
 <li>Solar needs fresh DC and battery readings received within <code>max(10 s, 2 × read interval)</code> of each other.</li>
-<li>Daily totals are shown while received within 10 minutes; weather while under 3 hours old.</li>
+<li>Daily totals need a valid response received within 10 minutes. Weather needs a valid report received within 3 hours; an attempted request failure invalidates it immediately. Weather refreshes about every 30 minutes, retries failures after about 5 minutes, and waits for clock/Wi-Fi. With a saved HA token, its initial request also waits until at least one source reading has been published.</li>
 </ul>
+<p>Missing timestamps or an unsynchronised clock mean source age is unknown. The cards layout, API and serial reasons expose that distinction; the centre layout currently replaces it with its normal live/spare-power message when all displayed metrics are usable. A centre “live” message alone does not prove upstream age was verified.</p>
 
 <h2 id="serial">Serial diagnostics</h2>
+<p>Choose <b>Settings → Display → Serial debug → Log detail</b> in the WebUI and save. <b>Info</b> is the default: routine poll details and health appear about once a minute. Connection, data-state and mode changes, plus occasional total/weather refreshes, can log sooner. <b>Verbose</b> reports every completed poll. <b>Warnings and errors</b> and <b>Errors only</b> filter by severity; <b>Off</b> disables application logging. Bootloader/library messages and USB provisioning responses are separate and may still appear. The selection applies immediately and is saved with the other settings for the next restart.</p>
 <p>At 115200 baud the firmware logs timestamped, tagged lines. Tokens, Wi-Fi passwords, the device code, certificates and response bodies are never printed.</p>
 <table><thead><tr><th>Tag</th><th>Content</th></tr></thead><tbody>
 <tr><td><code>[BOOT]</code> <code>[BOARD]</code></td><td>Firmware, reset reason, heap, board.</td></tr>
 <tr><td><code>[CFG]</code> <code>[MAP]</code> <code>[SIGNS]</code></td><td>Active settings and entity mapping (URL origin only).</td></tr>
 <tr><td><code>[WIFI]</code> <code>[CLOCK]</code> <code>[MDNS]</code></td><td>Connection, NTP/timezone, and the <code>solar.local</code> announcement.</td></tr>
-<tr><td><code>[POLL]</code></td><td>One per cycle: duration, valid count, <code>heartbeat_age</code> (age of the newest upstream report).</td></tr>
+<tr><td><code>[POLL]</code></td><td>One per logged cycle (about once a minute at Info, every poll at Verbose): duration, valid count, <code>heartbeat_age</code> (age of the newest upstream report).</td></tr>
 <tr><td><code>[READ]</code></td><td>One per entity: HTTP status, time, raw and normalised value, and a reason (below).</td></tr>
 <tr><td><code>[SOLAR]</code> <code>[BALANCE]</code></td><td>Solar inputs and validity; AC + grid versus household cross-check.</td></tr>
 <tr><td><code>[TOTAL]</code> <code>[WEATHER]</code></td><td>Daily total / forecast reads; weather fetches and location.</td></tr>
-<tr><td><code>[SOURCE]</code> <code>[DATA]</code> <code>[HEALTH]</code></td><td>Status message, validity bit-mask changes, and heap/RSSI every 30 s.</td></tr>
+<tr><td><code>[SOURCE]</code> <code>[DATA]</code> <code>[HEALTH]</code></td><td>Status message, validity bit-mask changes, and heap/RSSI every 60 s.</td></tr>
 </tbody></table>
 <table><thead><tr><th>Read reason</th><th>Meaning</th></tr></thead><tbody>
 <tr><td><code>fresh</code></td><td>Current.</td></tr>
@@ -345,20 +373,21 @@ pio device monitor -b 115200 --port /dev/cu.usbserial-10</pre>
 <tr><td><code>error=invalid-state-or-unit</code></td><td>Entity is unavailable, or reports an unexpected unit (power must be W/kW, battery level %, totals kWh/Wh/MWh).</td></tr>
 <tr><td>Negative HTTP code</td><td>No connection to Home Assistant: check the URL, port and that Home Assistant is running.</td></tr>
 <tr><td>Solar shows <code>--</code> or grey</td><td>Read the <code>[SOLAR] reason=</code>: DC or battery invalid, stale, or received too far apart.</td></tr>
-<tr><td><code>solar.local</code> doesn't open</td><td>The client may not support mDNS; tap the panel and use the IP address.</td></tr>
+<tr><td><code>solar.local</code> doesn't open</td><td>The client may not support mDNS; hold the panel longer than two seconds to open Settings and use the IP address.</td></tr>
 <tr><td><code>[WEATHER] error=http-or-transport</code></td><td>No internet, or the TLS check failed; it retries every five minutes.</td></tr>
 <tr><td>Clock wrong by hours</td><td>Check the POSIX TZ rule in the location settings.</td></tr>
 <tr><td>Energy flow on the web page doesn't move</td><td>The device has Reduce Motion turned on, so the comets are deliberately still. Turn it off in the device's accessibility settings if you want the animation.</td></tr>
-<tr><td>Taps land in the wrong place</td><td>Recalibrate: tap to open setup, hold for two seconds.</td></tr>
+<tr><td>Taps land in the wrong place</td><td>Recalibrate: hold longer than two seconds to open Settings, release, then hold again there.</td></tr>
 </tbody></table>
 
 <h2 id="security">Security and privacy</h2>
 <div class="note warn"><b>No login.</b> The device page has no password, by design for a trusted home LAN. Anyone who can reach it on your network can change settings, replace the Home Assistant token, restart the device or upload firmware. Don't expose it to the internet or to a guest network.</div>
 <ul>
-<li>Changes require an <code>X-CYD-Request</code> header that browsers won't send from other websites without permission, so a malicious web page can't reconfigure the device through your browser.</li>
-<li>The Home Assistant token is stored on the device, is never returned to the browser and is never logged.</li>
+<li>Changes require <code>X-CYD-Request: 1</code>. This guards ordinary cross-site browser mutations because the server does not approve CORS preflight requests; it is not authentication and does not restrict a LAN client.</li>
+<li>The Home Assistant token is stored in device NVS, is never returned by the API and is never logged. The device page uses HTTP, including token submission; HTTP Home Assistant connections also transmit the bearer token unencrypted. HTTPS to Home Assistant requires its trusted CA and a synchronized clock. The editable public CA certificate is returned by the settings API; never paste a private key. No flash encryption or secure boot is configured by this project.</li>
 <li>ArduinoOTA and the Wi-Fi setup hotspot still use the device code as their password.</li>
-<li>Weather requests send only latitude and longitude to Open-Meteo over HTTPS verified against ISRG Root X1 (valid to 2035). Place search runs in your browser, not on the device.</li>
+<li>Optional weather requests send coordinates to Open-Meteo over verified HTTPS, with the bundled ISRG Root X1. Place search sends your search text from the browser to Open-Meteo geocoding. NTP contacts the configured time servers and mDNS advertises locally. Live energy values have no cloud upload path in this firmware.</li>
+<li>Serial diagnostics include network details, entity IDs, place and coordinates. Redact these from shared logs and screenshots. Manual firmware uploads have no project-configured signature verification or automatic rollback; install only trusted app images.</li>
 </ul>
 
 <h2 id="appendix">Appendix: links and acknowledgements</h2>

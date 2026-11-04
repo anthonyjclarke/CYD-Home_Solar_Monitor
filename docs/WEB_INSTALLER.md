@@ -1,23 +1,35 @@
 # Web installer
 
-Installer page: https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/
+Installer page: [CYD Home Solar Monitor](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/).
 
-It is built by `.github/workflows/firmware.yml`, which calls the shared workflow in `anthonyjclarke/cyd-web-installer`. The board env is `cyd28`, labelled "CYD 2.8″ – ESP32-2432S028R". The manifest `name` is `CYD-Home-Solar-Monitor` (`PROJECT_NAME`).
+The local `.github/workflows/firmware.yml` runs host checks and calls the external reusable workflow in `anthonyjclarke/cyd-web-installer` at `main`. That workflow owns release/Pages implementation; it is not copied into this repository. See [DEVELOPMENT.md](DEVELOPMENT.md) for local build outputs.
 
 ---
 
-## Status
+## Identity and image contract
 
-Releases: `v0.6.0` (first), `v0.7.0` and `v0.8.0`, all 04-11-2026. CI builds are green and the partitions are standard dual-OTA, unchanged between them.
+The only board environment is `cyd28`, labelled “CYD 2.8″ – ESP32-2432S028R”. Manifest name must match `PROJECT_NAME`, `CYD-Home-Solar-Monitor`. The GitHub repository is `CYD-Home_Solar_Monitor` (underscores). Changing either spelling casually can break links or installer update recognition.
 
-The firmware runs on the owner's panel, flashed over USB from PlatformIO, not from the installer. The installer smoke test (RUNBOOK 5a) has not been run yet: a fresh install from the live page, Improv **Configure Wi-Fi**, then **Connect** again showing "Connected to CYD-Home-Solar-Monitor 0.8.0". `v0.7.0` and `v0.8.0` were released with these tests still owed, at the owner's request.
+Use separate image parts from `flash_parts.json`, including `boot_app0`, so a device previously running from `app1` boots the newly written app. Never put `firmware-merged.bin` in an update manifest. That clean USB image writes from `0x0` and overwrites NVS; browser/ArduinoOTA app updates take `firmware.bin`.
+
+The release convention is a `v*` tag on `main` matching a suffix-free `FIRMWARE_VERSION`. Source release `0.9.0` is prepared as a local commit; no new tag, hosted release or installer publication has been made by this sweep. See [RELEASE_0.9.0.md](RELEASE_0.9.0.md). Publish credential-free CI artifacts rather than a local build. Preserve partition layout between releases.
+
+---
+
+## Recorded status
+
+The repository records releases `v0.6.0`, `v0.7.0` and `v0.8.0` on 4 November 2026 with green CI and unchanged dual-OTA partitions. This historical record is not a fresh verification of hosted assets. The firmware was running on the owner's panel after a PlatformIO USB flash.
+
+The browser install/update behavior described in the README is the intended contract and still needs the real-board cases below. Releases `v0.7.0` and `v0.8.0` proceeded with these cases outstanding at the owner's request. The 0.9.0 local release preparation does not flash or erase a board; these publication checks remain pending.
 
 ---
 
 ## Tests owed
 
-These have not been run yet. Run them on the next real work on this project, or before the next release, and tick each one off with the date and board MAC.
+Complete these before the next release and record date, board variant, prior app slot, firmware version and result. Keep a board MAC in private commissioning notes if needed; redact it from public reports.
 
-- [ ] 5a – smoke test from the live page (fresh install, Improv Wi-Fi, reconnect shows name and version)
-- [ ] Case 2 – Update on a provisioned board (settings kept)
-- [ ] Case 3 – Update from `app1` after an ArduinoOTA or browser update
+- [ ] Fresh-install smoke test from the live page: install, Improv Configure Wi-Fi, reconnect, and confirm the exact project identity and selected release version.
+- [ ] Update a provisioned board and confirm Wi-Fi, token, entity mappings, display settings and calibration remain.
+- [ ] Update a board running from `app1` after an ArduinoOTA or browser update; confirm the new version boots and settings remain.
+
+Run these only with authorization for the target device and any destructive erase. Link results to [HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md); compilation or synthetic fixture success is not installer evidence.

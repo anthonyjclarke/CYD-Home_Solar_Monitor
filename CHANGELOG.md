@@ -20,6 +20,7 @@ Source release prepared and committed locally. Tagging/publication and real-boar
 
 ### Fixed
 
+- Updated the model-check job to Node.js 24 action runtimes with `actions/checkout@v7`, `actions/setup-node@v7` and `actions/setup-python@v7`, removing GitHub's Node.js 20 deprecation warning. The previous run's checks and firmware build had already passed; publication still requires a release tag.
 - Fixed malformed history JSON: ArduinoJson clears its output string, so row separators are now appended to the response packet after serialization. Added host integration coverage using the actual firmware handler and pinned ArduinoJson String writer, including full, missing and mixed samples across chunk boundaries.
 
 ### Documentation

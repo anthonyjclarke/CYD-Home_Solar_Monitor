@@ -4,7 +4,7 @@ A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-24
 
 It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
 
-Version `1.0.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
+Version `1.0.1` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
 
 **Centre flow (light, default)**
 
@@ -234,7 +234,7 @@ The only environment is `cyd28` (`espressif32@6.12.0`, Arduino core 2.0.17, C++1
 
 `python3 tools/preview_server.py` serves the dashboard with synthetic data at `http://127.0.0.1:8765`. Settings are in memory only; the fixture includes the handbook and images, but has no reboot or upload endpoints. Use synthetic values only.
 
-The firmware build embeds the handbook and web assets, then writes `firmware.bin`, `firmware-merged.bin` and `flash_parts.json` under `.pio/build/cyd28/`. Every build fails if `firmware.bin` would leave less than 64 KiB of the 1,835,008-byte OTA slot; 1.0.0 leaves 188,224 bytes. Use `firmware.bin` for a settings-preserving app update; the merged image is for a clean USB write at `0x0` and overwrites NVS.
+The firmware build embeds the handbook and web assets, then writes `firmware.bin`, `firmware-merged.bin` and `flash_parts.json` under `.pio/build/cyd28/`. Every build fails if `firmware.bin` would leave less than 64 KiB of the 1,835,008-byte OTA slot; 1.0.1 leaves 188,304 bytes. Use `firmware.bin` for a settings-preserving app update; the merged image is for a clean USB write at `0x0` and overwrites NVS.
 
 To upload to an authorized connected board:
 

@@ -1,6 +1,6 @@
 # 24-hour history – design reference
 
-How the device records, stores and serves its rolling 24-hour history. Introduced in `0.9.0`; current for `1.0.0`. Setup and use are in the [README](../README.md) and [handbook](index.html); routes and commands are in [DEVELOPMENT.md](DEVELOPMENT.md).
+How the device records, stores and serves its rolling 24-hour history. Introduced in `0.9.0`; current for `1.0.1`. Setup and use are in the [README](../README.md) and [handbook](index.html); routes and commands are in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ---
 

@@ -1,12 +1,12 @@
 # Hardware validation
 
-Acceptance record for real CYD hardware, current for `1.0.0`. Ticked items have dated evidence from the owner's board running against live Home Assistant data; unticked items still need a real CYD. A local build or the synthetic browser fixture never completes an item here.
+Acceptance record for real CYD hardware, current for `1.0.1`. Ticked items have dated evidence from the owner's board running against live Home Assistant data; unticked items still need a real CYD. A local build or the synthetic browser fixture never completes an item here.
 
 ---
 
 ## Evidence log
 
-Owner's ESP32-2432S028R, SolarEdge Modbus Multi through Home Assistant, Putney NSW. The `0.9.1` builds are the `1.0.0` code before the version number changed. "Live UI correct" means the tiles, flow, history chart, trimmed picker and resized footer all showed as expected.
+Owner's ESP32-2432S028R, SolarEdge Modbus Multi through Home Assistant, Putney NSW. The `0.9.1` builds are the `1.0.1` code before the version number and a CI-only compiler fix. "Live UI correct" means the tiles, flow, history chart, trimmed picker and resized footer all showed as expected.
 
 | Date       | Build | Observation                              |
 |:-----------|:------|:-----------------------------------------|

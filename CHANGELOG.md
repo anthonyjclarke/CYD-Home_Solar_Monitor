@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.1] 08-11-2026
+
+First published release of the 1.0 line. The `v1.0.0` tag failed CI before its release step, so nothing was published from it; 1.0.1 is 1.0.0 plus the fix below.
+
+### Fixed
+
+- The vendored Improv parser compared its `size_t` frame position with an `int` frame length. Linux GCC rejects that under `-Werror` (`-Wsign-compare`); macOS clang accepted it. The frame length is now a `size_t`. Firmware behaviour is unchanged.
+
+---
+
 ## [1.0.0] 08-11-2026
 
 First stable release. It fixes all eight findings of the 7 November code audit (F1–F8), adds a flash budget, moves device weather to plain HTTP after a heap failure found on the board, and tidies the documentation. It includes the unpublished `0.9.0` and `0.9.1` work. Running on the owner's board since 08-11-2026; see `docs/HARDWARE_VALIDATION.md` for the evidence and the checks still open.

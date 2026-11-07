@@ -1,6 +1,6 @@
 # Development reference
 
-Current for `1.0.0`. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, [HISTORY.md](HISTORY.md) for the history design, and the [handbook](index.html) for end-user setup.
+Current for `1.0.1`. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, [HISTORY.md](HISTORY.md) for the history design, and the [handbook](index.html) for end-user setup.
 
 ---
 
@@ -53,7 +53,7 @@ The handbook currently has no script. Syntax checks do not exercise browser even
 
 Every build checks image headroom against the actual `firmware.bin`, not the linker's app percentage, which under-reports it. `tools/flash_budget.py` reads the `ota_0` size from the partition table, prints a `Flash budget:` line and fails the build (deleting the oversized image) when less than 64 KiB would remain. That margin is a team policy, not a hardware limit; retain the deployed partition contract rather than moving offsets to recover space.
 
-The `1.0.0` build is 1,646,784 bytes, leaving 188,224 bytes. The largest costs measured from the ELF symbols are listed below.
+The `1.0.1` build is 1,646,704 bytes, leaving 188,304 bytes. The largest costs measured from the ELF symbols are listed below.
 
 | Item                                    | Bytes   |
 |:----------------------------------------|--------:|

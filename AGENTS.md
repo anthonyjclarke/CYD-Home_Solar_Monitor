@@ -1,6 +1,6 @@
 # CYD Home Solar Monitor – agent and contributor guide
 
-Applies throughout this repository. Read this before changing firmware, tooling or documentation. The current version is `1.0.0`; read `include/config.h` for the actual build identity rather than copying version labels from screenshots.
+Applies throughout this repository. Read this before changing firmware, tooling or documentation. The current version is `1.0.1`; read `include/config.h` for the actual build identity rather than copying version labels from screenshots.
 
 Run commands in the checkout containing `platformio.ini` and `src/main.cpp`; a chat workspace can be empty. Check `git status --short` before editing.
 
@@ -40,7 +40,7 @@ Host checks require Python 3 and a C++17 `c++` compiler; JavaScript checks requi
 
 The firmware build generates `.pio/build/cyd28/firmware.bin`, `firmware-merged.bin` and `flash_parts.json`. Handbook images and web artwork use significant app flash. This repository uses the custom host script, not `pio test`; it has no PlatformIO Unity suite.
 
-`tools/flash_budget.py` runs after every build and fails it when `firmware.bin` would leave less than 64 KiB of the 1,835,008-byte (`0x1C0000`) OTA slot; PlatformIO's app percentage under-reports the image. The 1.0.0 build leaves 188,224 bytes. Treat embedded asset growth as a budget: encode captures as the development reference describes, and never enlarge partitions to hide an oversized app. An incremental build can reuse old outputs; use a fresh build directory when auditing a complete rebuild.
+`tools/flash_budget.py` runs after every build and fails it when `firmware.bin` would leave less than 64 KiB of the 1,835,008-byte (`0x1C0000`) OTA slot; PlatformIO's app percentage under-reports the image. The 1.0.1 build leaves 188,304 bytes. Treat embedded asset growth as a budget: encode captures as the development reference describes, and never enlarge partitions to hide an oversized app. An incremental build can reuse old outputs; use a fresh build directory when auditing a complete rebuild.
 
 Run `node tests/test_web_history.js` for the actual embedded history chart, `node tests/test_web_settings.js` for settings load/save, including Off=0, and `node tests/test_web_dashboard.js` for live tile transitions, request deadlines and stale replies. Once PlatformIO project libraries are installed, `python3 tools/check_history_response.py` also compiles the actual history HTTP handler with the pinned ArduinoJson String writer and validates its streamed JSON; host checks include it when those headers are available, along with `tools/check_debug_config.py` for real config load/save and debug API validation, and `tools/check_night_config.py` for night schedule migration/API validation. For dashboard or handbook changes, syntax-check extracted scripts with `node --check` and review the affected page in a browser. The host script does not run JavaScript tests or physical HTTP/NVS/TLS/OTA tests. Its integration harnesses exercise real extracted API validation and configuration code against host stand-ins. Verify local links and re-run the firmware build after handbook edits because the handbook is compiled into firmware. Do not add tests that merely mirror documentation; add regression coverage when changing model behavior.
 

@@ -221,7 +221,9 @@ function setV(id,r){const f=fmt(r.value);$(id).innerHTML=r.hasValue?f[0]+'<small
 function pill(id,text,kind){const e=$(id);e.textContent=text;e.className='pill'+(kind?' '+kind:'')}
 let toastTimer;function message(text){const m=$('message');m.textContent=text;m.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>m.style.display='none',5000)}
 // Every request has a deadline, so a hung device cannot leave the page looking live.
-async function api(path,body,ms=10000){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),ms);
+// macOS spends 5 s on each solar.local lookup (an unanswered IPv6 query), so
+// deadlines must sit well above that or a healthy device reads as offline.
+async function api(path,body,ms=15000){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),ms);
 try{const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-CYD-Request':'1'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',signal:ctl.signal});const data=await response.json();if(!response.ok)throw Error(data.error||'Request failed');return data}
 catch(e){throw e.name==='AbortError'?Error('No response from the device'):e}finally{clearTimeout(timer)}}
 async function load(){const c=await api('/api/config');['url','poll','stale','brightness','debugLevel','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>$(k).value=c[k]);$('lat').value=c.lat??'';$('lon').value=c.lon??'';['demo','nightDim'].forEach(k=>$(k).checked=c[k]);$('layout').value=String(c.layout);$('nightMode').value=String(c.nightMode??0);const times={nightDimAt:c.nightDimAt??(c.nightStart??19)*60,nightOffAt:c.nightOffAt??23*60,nightOnAt:c.nightOnAt??(c.nightEnd??7)*60};Object.keys(times).forEach(k=>{$(k).value=nightTime(times[k]);$(k).defaultValue=$(k).value});nightControls();c.entities.forEach((id,i)=>$('entity'+i).value=id);$('tokenState').textContent=c.tokenSaved?'A token is saved. Leave blank to keep it.':'No Home Assistant token saved yet.'}
@@ -298,7 +300,7 @@ function esc(t){return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','
 // whichever reply is older than the one already shown is dropped.
 let pollSeq=0,shownSeq=0,polling=false;
 async function refresh(force=false){if(busy||(polling&&!force))return;const seq=++pollSeq;polling=true;
-try{const s=await api('/api/status',undefined,5000);if(seq<shownSeq)return;shownSeq=seq;last=Date.now();render(s)}
+try{const s=await api('/api/status',undefined,12000);if(seq<shownSeq)return;shownSeq=seq;last=Date.now();render(s)}
 catch(e){if(seq>=shownSeq){shownSeq=seq;offline(e.message)}}finally{if(seq===pollSeq)polling=false}}
 function render(s){
 const R=s.readings,solar=R[6],house=R[1],grid=R[2],batt=R[3],soc=R[4],live=s.complete;

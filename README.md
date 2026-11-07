@@ -4,7 +4,7 @@ A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-24
 
 It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
 
-Source release `0.9.1` (local preparation; publication pending) · Latest published record `0.8.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
+Version `1.0.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
 
 **Centre flow (light, default)**
 
@@ -14,7 +14,7 @@ Source release `0.9.1` (local preparation; publication pending) · Latest publis
 
 ![Cards layout](docs/images/flow-preview.png)
 
-All panel previews and browser captures below use synthetic demonstration data. They were refreshed for 0.9.0 on 5 November 2026; none is a measurement from the owner’s system. See the [release verification record](docs/RELEASE_0.9.0.md) for checks and outstanding hardware work.
+Panel previews and most browser captures below use synthetic demonstration data. The two browser history charts are a real 24-hour capture from the owner's system on 7 November 2026.
 
 Both layouts show the same readings. Switch between them in the browser under **Settings → Display → Layout**.
 
@@ -39,6 +39,8 @@ Both layouts show the same readings. Switch between them in the browser under **
     - POSIX timezone set from the browser.
 
 The monitor never talks to the inverter. Home Assistant keeps its existing connection (here, SolarEdge Modbus Multi), and the CYD reads entity states from Home Assistant's local REST API every few seconds.
+
+Not included: daily grid import/export totals, tariffs and costs, free-power windows, forecast progress rings, QR setup, explicit grid-outage detection, signed automatic updates with rollback, and any direct Modbus or equipment control.
 
 ---
 
@@ -125,7 +127,7 @@ The panel serves the same handbook at `http://solar.local/guide/`, so help works
 
 ## Browser dashboard
 
-Open `http://solar.local/` from any phone, tablet or computer on your home network. The page follows your light or dark setting and refreshes every three seconds. Live readings and the rolling 24-hour chart come from the panel. History survives browser reloads and device restarts through the latest valid checkpoint. Live status refreshes every three seconds; history refreshes every minute. Optional place search contacts Open-Meteo from the browser, and optional device weather and NTP need external services.
+Open `http://solar.local/` from any phone, tablet or computer on your home network. The page follows your light or dark setting. Live status refreshes every three seconds and the rolling 24-hour chart every minute, both from the panel. History survives browser reloads and device restarts through the latest valid checkpoint. If the panel stops answering for 12 seconds, the page shows **Disconnected**, greys the tiles and stops the flow animation until it answers again. On a Mac, `solar.local` can take about 5 seconds to look up each time; the panel's IP address avoids the wait. Optional place search contacts Open-Meteo from the browser, and optional device weather and NTP need external services.
 
 ![The whole dashboard: tiles, energy flow, 24-hour history chart and footer](docs/images/webui-dashboard-full.webp)
 
@@ -148,7 +150,7 @@ If your phone or computer has **Reduce Motion** turned on (on an iPhone: Setting
 
 ![Last 24 hours: solar, house, grid and battery on one signed kW chart, with a gap where samples are missing](docs/images/webui-chart.webp)
 
-Pick a single metric from **History metric** to see it on its own scale: battery %, diagnostic inverter AC/DC, kWh totals or temperature, with sampled min, average and max. Raw weather codes are categorical points without averages or connecting lines.
+Pick a single metric from **History metric** to see it on its own scale: one power flow, battery %, diagnostic inverter AC/DC or today's solar kWh, with sampled min, average and max. The forecast and weather readings are recorded too, but only the panel shows them.
 
 ![History of one metric: battery level with sampled min, average and max](docs/images/webui-history-metric.webp)
 
@@ -184,7 +186,7 @@ Straight after install, or after changing the Home Assistant URL, entities or lo
 
 These panel pictures use synthetic data, not readings from a real system.
 
-A sudden outage can lose up to roughly 15 minutes of new samples when storage is healthy. No samples are created without a synchronized device clock or from demo mode. Changing the HA URL, entity mappings, totals or coordinates clears history to avoid mixing sources. Settings, labels and timezone changes otherwise retain it. Corrupt storage is not automatically erased; a storage warning indicates RAM-only collection. See [history implementation and validation](docs/HISTORY_IMPLEMENTATION.md) for storage details and pending real-board tests.
+A sudden outage can lose up to roughly 15 minutes of new samples when storage is healthy. No samples are created without a synchronized device clock or from demo mode. Changing the HA URL, entity mappings, totals or coordinates clears history to avoid mixing sources. Settings, labels and timezone changes otherwise retain it. Corrupt storage is not automatically erased; a storage warning indicates RAM-only collection. See the [history design](docs/HISTORY.md) for storage details.
 
 ---
 
@@ -228,11 +230,11 @@ python3 tools/check_host.py
 pio run -e cyd28
 ```
 
-The only environment is `cyd28` (`espressif32@6.12.0`, Arduino core 2.0.17, C++17). Host checks cover energy, history, serial levels, boot diagnostics and night scheduling, and render 22 SVG previews in `docs/images/` plus thirteen PNGs when `rsvg-convert` is installed. With the pinned ArduinoJson headers installed they also test the real history serializer and configuration/API logic using host stand-ins. Run `node tests/test_web_history.js`, `node tests/test_web_settings.js` and `node tests/test_web_dashboard.js` for browser regressions. These checks do not verify physical HTTP transport, NVS, TLS or OTA.
+The only environment is `cyd28` (`espressif32@6.12.0`, Arduino core 2.0.17, C++17). Host checks cover energy, history, serial levels, boot diagnostics, night scheduling and the panel status line, run the Improv parser and HTTP body cap under sanitizers, and render 22 SVG previews in `docs/images/` plus thirteen PNGs when `rsvg-convert` is installed. With the pinned ArduinoJson headers installed they also test the real history serializer and configuration/API logic using host stand-ins. Run `node tests/test_web_history.js`, `node tests/test_web_settings.js` and `node tests/test_web_dashboard.js` for browser regressions. These checks do not verify physical HTTP transport, NVS, TLS or OTA.
 
 `python3 tools/preview_server.py` serves the dashboard with synthetic data at `http://127.0.0.1:8765`. Settings are in memory only; the fixture includes the handbook and images, but has no reboot or upload endpoints. Use synthetic values only.
 
-The firmware build embeds the handbook and web assets, then writes `firmware.bin`, `firmware-merged.bin` and `flash_parts.json` under `.pio/build/cyd28/`. The app must fit the 1,835,008-byte OTA slot. Use `firmware.bin` for a settings-preserving app update; the merged image is for a clean USB write at `0x0` and overwrites NVS.
+The firmware build embeds the handbook and web assets, then writes `firmware.bin`, `firmware-merged.bin` and `flash_parts.json` under `.pio/build/cyd28/`. Every build fails if `firmware.bin` would leave less than 64 KiB of the 1,835,008-byte OTA slot; 1.0.0 leaves 188,224 bytes. Use `firmware.bin` for a settings-preserving app update; the merged image is for a clean USB write at `0x0` and overwrites NVS.
 
 To upload to an authorized connected board:
 
@@ -245,9 +247,9 @@ At default **Info**, serial startup output first reports firmware/reset/app slot
 
 The default **Info** level reports routine polling and health about once a minute. Choose **Verbose** for every-poll detail, **Warnings and errors**, **Errors only**, or **Off** under **Settings → Display → Serial debug**, then save. The level applies immediately and survives restart. Off controls application logs; bootloader or library output and USB provisioning responses may still appear.
 
-Replace the example serial port with yours. No credentials are needed to compile. Publish release images through CI, never a locally configured build. The local GitHub Actions workflow installs pinned JSON headers and runs host integration/model checks and both browser regression suites before calling the shared [cyd-web-installer](https://github.com/anthonyjclarke/cyd-web-installer) workflow; the release convention is a matching `v*` tag on `main`.
+Replace the example serial port with yours. No credentials are needed to compile. Publish release images through CI, never a locally configured build. The local GitHub Actions workflow installs pinned JSON headers and runs host integration/model checks and all three browser regression suites before calling the shared [cyd-web-installer](https://github.com/anthonyjclarke/cyd-web-installer) workflow; the release convention is a matching `v*` tag on `main`.
 
-See [AGENTS.md](AGENTS.md) for architecture and contribution rules, [development reference](docs/DEVELOPMENT.md) for APIs, storage and checks, [current roadmap](docs/REVIEW_AND_ROADMAP.md) for remaining work, and [hardware validation](docs/HARDWARE_VALIDATION.md) and [installer checks](docs/WEB_INSTALLER.md) for physical tests still owed.
+See [AGENTS.md](AGENTS.md) for architecture and contribution rules, [development reference](docs/DEVELOPMENT.md) for APIs, storage and checks, [history design](docs/HISTORY.md), and [hardware validation](docs/HARDWARE_VALIDATION.md) and [installer checks](docs/WEB_INSTALLER.md) for board evidence and physical tests still owed.
 
 ---
 

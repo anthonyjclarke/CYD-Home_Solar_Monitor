@@ -10,7 +10,7 @@
 <path d='M18 30 L17 31' fill='none' stroke='#db9255'/>
 <path d='M30 30 L31 31' fill='none' stroke='#db9255'/>
 <text x='44' y='31' font-size='25' text-anchor='start' fill='#242455'>Solar Monitor</text>
-<text x='308' y='31' font-size='13' text-anchor='end' fill='#6d6d55'>v0.9.1</text>
+<text x='308' y='31' font-size='13' text-anchor='end' fill='#6d6d55'>v1.0.0</text>
 <rect x='12' y='46' width='296' height='1' rx='0' fill='#b6b6aa'/>
 <rect x='14' y='58' width='8' height='8' rx='4' fill='#db9255'/>
 <text x='30' y='67' font-size='13' text-anchor='start' fill='#6d6d55'>Wi-Fi</text>

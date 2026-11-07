@@ -1,6 +1,6 @@
 # Development reference
 
-Reviewed against source `0.9.0`; commands and review notes refreshed on 7 November 2026. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, the [current audit](CODE_AUDIT_2026-11-07.md) for findings, and the [handbook](index.html) for end-user setup.
+Current for `1.0.0`. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, [HISTORY.md](HISTORY.md) for the history design, and the [handbook](index.html) for end-user setup.
 
 ---
 
@@ -53,15 +53,15 @@ The handbook currently has no script. Syntax checks do not exercise browser even
 
 Every build checks image headroom against the actual `firmware.bin`, not the linker's app percentage, which under-reports it. `tools/flash_budget.py` reads the `ota_0` size from the partition table, prints a `Flash budget:` line and fails the build (deleting the oversized image) when less than 64 KiB would remain. That margin is a team policy, not a hardware limit; retain the deployed partition contract rather than moving offsets to recover space.
 
-The 8 November 2026 build is 1,634,768 bytes, leaving 200,240 bytes. The largest costs measured from the ELF symbols are listed below.
+The `1.0.0` build is 1,646,784 bytes, leaving 188,224 bytes. The largest costs measured from the ELF symbols are listed below.
 
 | Item                                    | Bytes   |
 |:----------------------------------------|--------:|
-| Embedded handbook, 25 assets in total   | 290,865 |
+| Embedded handbook, 25 assets in total   | 302,647 |
 | – footer art `solar-footer.webp`        |  80,860 |
-| – nine browser captures                 | 168,488 |
-| – handbook HTML (gzip)                  |  19,656 |
-| Dashboard page `WEB_PAGE`, uncompressed |  46,556 |
+| – nine browser captures                 | 179,742 |
+| – handbook HTML (gzip)                  |  20,185 |
+| Dashboard page `WEB_PAGE`, uncompressed |  46,720 |
 | `printf`/`scanf` family (newlib)        |  58,155 |
 | mbedTLS client and server handshake     |  13,776 |
 
@@ -102,9 +102,9 @@ The optional `debugLevel` field in schema-2 settings and `/api/config` accepts i
 
 `include/debug_levels.h` holds portable level and cadence rules. Routine cycle details and health are limited to roughly 60 seconds at Info. New mode/level changes and occasional totals/weather attempts may report sooner; Verbose logs each new poll snapshot. Repeated snapshots are suppressed, including when an optional request flag stays set between polls. Off suppresses application macros without disabling Improv protocol responses; framework/bootloader logs are separate.
 
-The browser polls status every three seconds and shared device history every minute. History uses 288 UTC five-minute slots, actual capture timestamps, per-field missing values and report-time availability. Two alternating verified LittleFS banks checkpoint every 15 minutes while dirty, plus controlled restart/update saves. See [history implementation](HISTORY_IMPLEMENTATION.md) for the binary format, identity reset rules, failure behavior and pending board tests. Chart clock labels use the browser timezone; the displayed device clock uses the configured POSIX timezone. Reduced Motion is read when the dashboard loads.
+The browser polls status every three seconds and shared device history every minute. Only one status poll runs at a time; replies older than the one shown are dropped. Status requests give up after 12 s and others after 15 s, which then shows the page as disconnected and stops the flow animation. Keep these above the 5 s macOS can spend resolving `solar.local` (an unanswered IPv6 mDNS query). History uses 288 UTC five-minute slots, actual capture timestamps, per-field missing values and report-time availability. Two alternating verified LittleFS banks checkpoint every 15 minutes while dirty, plus controlled restart/update saves. See [the history design](HISTORY.md) for the binary format, identity reset rules, failure behavior and pending board tests. Chart clock labels use the browser timezone; the displayed device clock uses the configured POSIX timezone. Reduced Motion is read when the dashboard loads.
 
-The device serves HTTP on port 80 after station Wi-Fi connects. ArduinoOTA owns mDNS startup; do not call `MDNS.begin()` independently. The separate WiFiManager portal opens after 20 seconds without an initial successful connection, times out after 180 seconds and retries. Once a connection has succeeded in that boot, later Wi-Fi loss uses reconnection alone, whether setup used the portal or a saved network (audit F5, fixed in `0.9.1`).
+The device serves HTTP on port 80 after station Wi-Fi connects. ArduinoOTA owns mDNS startup; do not call `MDNS.begin()` independently. The separate WiFiManager portal opens after 20 seconds without an initial successful connection, times out after 180 seconds and retries. Once a connection has succeeded in that boot, later Wi-Fi loss uses reconnection alone, whether setup used the portal or a saved network.
 
 ---
 
@@ -141,9 +141,9 @@ URLs allow HTTP/HTTPS and an optional base path; the reader appends `/api/states
 
 Update `docs/index.html` for device help; Markdown guides are not embedded. `tools/embed_docs.py` packages referenced `images/` files and immediate files under `web/assets/` into gitignored `src/web/handbook_data.h`. Handbook routes use `no-cache`; assets use a one-year immutable cache and need a new `?v=` when replaced. Rebuild and check flash use after changing images or text.
 
-`.github/workflows/firmware.yml` triggers on pushes to `dev`/`main`, `v*` tags, pull requests and manual dispatch. Its check job uses the v7 checkout/setup actions, whose internal runtime is Node.js 24. The test tools remain Node.js 22 and Python 3.12; the setup action's internal runtime is independent of the version it installs. The job installs PlatformIO 6.2.0 and ArduinoJson 7.4.2 headers, then runs documentation, host integration/model and JavaScript regressions before the reusable external release workflow at `main`. This ensures the serialization and config harnesses run on a clean CI checkout. A branch push validates/builds without publishing; publication requires the matching release tag. This checkout does not contain that workflow's implementation; review it for release/Pages behavior when publishing. Historical release records are in `CHANGELOG.md`; pending real-board installer cases are in [WEB_INSTALLER.md](WEB_INSTALLER.md).
+`.github/workflows/firmware.yml` triggers on pushes to `dev`/`main`, `v*` tags, pull requests and manual dispatch. Its check job uses the v7 checkout/setup actions, whose internal runtime is Node.js 24. The test tools remain Node.js 22 and Python 3.12; the setup action's internal runtime is independent of the version it installs. The job installs PlatformIO 6.2.0 and ArduinoJson 7.4.2 headers, then runs documentation, host integration/model and JavaScript regressions before the reusable external release workflow at `main`. This ensures the serialization and config harnesses run on a clean CI checkout. A branch push validates/builds without publishing; publication requires the matching release tag. This checkout does not contain that workflow's implementation; review it for release/Pages behavior when publishing. Release history is in `CHANGELOG.md`; pending real-board installer cases are in [WEB_INSTALLER.md](WEB_INSTALLER.md).
 
-Keep a contribution focused, explain the resulting behavior, provide commands/results and distinguish host tests from hardware observations. Use synthetic test data and redact logs/screenshots before sharing. Preserve licenses and existing pin/partition/protocol contracts. A documentation-only review does not require flashing, publishing or contacting a live Home Assistant instance. The local 0.9.0 source release and pending publication/hardware checks are recorded in [RELEASE_0.9.0.md](RELEASE_0.9.0.md).
+Keep a contribution focused, explain the resulting behavior, provide commands/results and distinguish host tests from hardware observations. Use synthetic test data and redact logs/screenshots before sharing. Preserve licenses and existing pin/partition/protocol contracts. A documentation-only review does not require flashing, publishing or contacting a live Home Assistant instance.
 
 
 ---
@@ -152,4 +152,4 @@ Keep a contribution focused, explain the resulting behavior, provide commands/re
 
 Run `python3 tools/check_host.py` to regenerate all 22 SVG and thirteen optional PNG previews from the actual shared renderers. Start `python3 tools/preview_server.py` and capture each dashboard/settings/device page in a browser. Save captures as WebP at most 932 px wide, quality 75 (`cwebp -q 75 -m 6 -sharp_yuv`): the handbook is embedded in the firmware, so image bytes cost OTA headroom. Use the fixed synthetic profile; only history comes from the committed real capture, which holds power readings and no credentials or identifiers. The fixture labels itself Preview and never talks to HA or a CYD. Its Home Assistant URL is a reserved documentation address. Staged night times in captures illustrate the available controls; the firmware default and migrated profiles remain dim-only.
 
-Keep full dashboard and Display captures, plus focused flow, combined-history, battery-history, debug and night-control views. Refresh connection, location, entities, diagnostics and device pages too. The canonical gallery is in [the release record](RELEASE_0.9.0.md). Store browser captures as WebP to limit embedded flash use. The 0.9.0 captures were encoded with `cwebp -q 85 -m 6`; preserve readable text and inspect the result. Update every reference when filenames change, run `python3 tools/check_docs.py`, rebuild the handbook and verify app-slot headroom. Decorative footer artwork is unchanged.
+Keep full dashboard and Display captures, plus focused flow, combined-history, battery-history, debug and night-control views. Refresh connection, location, entities, diagnostics and device pages too. Inspect each encoded capture for readable text. Update every reference when filenames change, run `python3 tools/check_docs.py` and rebuild: the flash budget check reports the remaining headroom.

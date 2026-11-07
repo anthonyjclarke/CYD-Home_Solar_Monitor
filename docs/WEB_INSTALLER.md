@@ -12,7 +12,7 @@ The only board environment is `cyd28`, labelled “CYD 2.8″ – ESP32-2432S028
 
 Use separate image parts from `flash_parts.json`, including `boot_app0`, so a device previously running from `app1` boots the newly written app. Never put `firmware-merged.bin` in an update manifest. That clean USB image writes from `0x0` and overwrites NVS; browser/ArduinoOTA app updates take `firmware.bin`.
 
-The release convention is a `v*` tag on `main` matching a suffix-free `FIRMWARE_VERSION`. Source release `0.9.0` is prepared as a local commit; no new tag, hosted release or installer publication has been made by this sweep. See [RELEASE_0.9.0.md](RELEASE_0.9.0.md). Publish credential-free CI artifacts rather than a local build. Preserve partition layout between releases.
+The release convention is a `v*` tag on `main` matching a suffix-free `FIRMWARE_VERSION`, for example `v1.0.0`. Pushing that tag runs the release and Pages publication. Publish credential-free CI artifacts rather than a local build. Preserve partition layout between releases.
 
 ---
 
@@ -20,7 +20,7 @@ The release convention is a `v*` tag on `main` matching a suffix-free `FIRMWARE_
 
 The repository records releases `v0.6.0`, `v0.7.0` and `v0.8.0` on 4 November 2026 with green CI and unchanged dual-OTA partitions. This historical record is not a fresh verification of hosted assets. The firmware was running on the owner's panel after a PlatformIO USB flash.
 
-The browser install/update behavior described in the README is the intended contract and still needs the real-board cases below. Releases `v0.7.0` and `v0.8.0` proceeded with these cases outstanding at the owner's request. The 0.9.0 local release preparation does not flash or erase a board; these publication checks remain pending.
+`0.9.0` and `0.9.1` were not published; `1.0.0` is the next release after `v0.8.0`. The browser install/update behavior described in the README is the intended contract and still needs the real-board cases below. Releases `v0.7.0` and `v0.8.0` proceeded with these cases outstanding at the owner's request.
 
 ---
 

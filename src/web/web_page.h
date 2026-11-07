@@ -166,7 +166,7 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 <div class="card"><h2>Find your location</h2>
 <div class="row"><input id="placeSearch" placeholder="Town or suburb, e.g. Parramatta" aria-label="Town or suburb"><div style="display:flex;gap:10px"><button type="button" id="findPlace">Search</button><button type="button" id="clearPlace">Clear location</button></div></div>
 <select id="placeResults" class="hidden" aria-label="Search results" style="margin-top:12px"></select>
-<span class="hint">Search runs from this browser using Open-Meteo geocoding. The device fetches weather every 30 minutes over verified HTTPS, sending only the coordinates.</span>
+<span class="hint">Search runs from this browser using Open-Meteo geocoding. The device fetches weather every 30 minutes over plain HTTP, sending only the coordinates (unencrypted).</span>
 <div class="row"><div><label for="lat">Latitude</label><input id="lat" type="number" step="0.0001" min="-90" max="90"></div><div><label for="lon">Longitude</label><input id="lon" type="number" step="0.0001" min="-180" max="180"></div></div>
 <label for="place">Place name</label><input id="place" maxlength="48"></div>
 <div class="card"><h2>Timezone</h2>

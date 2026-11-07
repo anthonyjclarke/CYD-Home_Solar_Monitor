@@ -1,8 +1,29 @@
-# Hardware Validation
+# Hardware validation
 
-Source is now `0.9.0`; the recorded physical observations below are from the `0.8.0` release era and are retained as historical evidence. The project records a running panel with live Home Assistant data. Unchecked items still need a real CYD; a new local build does not complete them.
+Acceptance record for real CYD hardware, current for `1.0.0`. Ticked items have dated evidence from the owner's board running against live Home Assistant data; unticked items still need a real CYD. A local build or the synthetic browser fixture never completes an item here.
 
-The 5 November documentation review and its local validation results are recorded in [DOCUMENTATION_REVIEW.md](DOCUMENTATION_REVIEW.md). No new physical tests are claimed there. The current desktop release checks and refreshed image gallery are recorded in [RELEASE_0.9.0.md](RELEASE_0.9.0.md).
+---
+
+## Evidence log
+
+Owner's ESP32-2432S028R, SolarEdge Modbus Multi through Home Assistant, Putney NSW. The `0.9.1` builds are the `1.0.0` code before the version number changed. "Live UI correct" means the tiles, flow, history chart, trimmed picker and resized footer all showed as expected.
+
+| Date       | Build | Observation                              |
+|:-----------|:------|:-----------------------------------------|
+| 04-11-2026 | 0.8.0 | Centre layout matches preview            |
+| 04-11-2026 | 0.8.0 | `http://solar.local/` opens on an iPhone |
+| 07-11-2026 | 0.9.1 | Weather TLS `-9984` was heap; now HTTP   |
+| 07-11-2026 | 0.9.1 | Weather 200; `min_heap` 64 KB over 4 min |
+| 07-11-2026 | 0.9.1 | No Wi-Fi: portal opened; later resets OK |
+| 07-11-2026 | 0.9.1 | 24 h `/api/history`: 272 of 288 slots    |
+| 07-11-2026 | 0.9.1 | History kept across USB app flash        |
+| 08-11-2026 | 0.9.1 | Boot: 6/6 live, weather 200              |
+| 08-11-2026 | 0.9.1 | `min_heap` 73.5 KB after boot            |
+| 08-11-2026 | 0.9.1 | Status by IP 0.06 s; `solar.local` 5 s   |
+| 08-11-2026 | 0.9.1 | Live UI correct, no console errors       |
+| 08-11-2026 | 0.9.1 | Boot restored 270 history samples        |
+
+The macOS figure is name lookup, not the device: an IPv6 mDNS query for `solar.local` goes unanswered and the Mac waits 5 s. Forcing IPv4, or using the IP address, resolves in milliseconds. Browser request deadlines (12 s status, 15 s others) sit above it.
 
 ---
 
@@ -35,7 +56,7 @@ The browser fixture uses synthetic data. Its success does not validate device au
 - [ ] Touch works under continuous TFT redraws; calibration targets map correctly.
 - [ ] Saturated/no-response readings do not generate phantom taps.
 - [ ] Saved Wi-Fi reconnects, and loss/recovery leaves the device responsive.
-- [ ] No saved Wi-Fi opens the password-protected setup portal after about 20 seconds.
+- [x] No saved Wi-Fi opens the password-protected setup portal after about 20 seconds (owner, 07-11-2026).
 - [ ] Portal timeout and failed-password recovery retain usable setup access.
 - [ ] Improv responds to device-info queries and provisions Wi-Fi through the installer.
 - [ ] Device access code persists across ordinary restarts.
@@ -63,10 +84,10 @@ The browser fixture uses synthetic data. Its success does not validate device au
 - [ ] Unknown source reporting time is labelled rather than assumed current.
 - [ ] Source timestamp skew and real upstream reporting cadence are understood.
 - [ ] Place search fills latitude, longitude, timezone and POSIX rule; saving changes the clock immediately.
-- [x] `[WEATHER]` shows HTTP 200 after boot (fetch ≈7.6 s, no watchdog reset). Still to check: repeats about every 30 minutes; icons match conditions.
+- [x] `[WEATHER]` shows HTTP 200 after boot over plain HTTP, about 0.8–1 s (07-11 and 08-11-2026). Still to check: repeats about every 30 minutes; icons match conditions.
 - [ ] Weather survives an HA outage and clears when the location is cleared.
-- [ ] Web page stays responsive while the panel animates at 20 fps (page loads typically 0.3–0.7 s).
-- [x] Free heap healthy across a weather TLS fetch (`min_heap` 53 KB, idle heap ~114–122 KB). Still to check over hours.
+- [x] Web page stays responsive while the panel animates at 20 fps: `/api/status` by IP in 0.06–0.09 s (08-11-2026).
+- [x] Free heap healthy after boot and weather: `min_heap` 73.5 KB, heap about 96 KB (08-11-2026). Still to check over hours.
 - [ ] Battery gauge fill and colour match state of energy (green ≥ 50%, amber ≥ 20%, red below).
 - [ ] Daily solar total matches the HA Energy dashboard and resets at local midnight.
 - [ ] Forecast value matches the HA forecast entity; `[TOTAL]` lines appear about once a minute.
@@ -98,15 +119,15 @@ The browser fixture uses synthetic data. Its success does not validate device au
 
 - [x] Create/configure the remote repository and Pages only when requested.
 - [x] Build a credential-free CI release on a `v*` tag on `main` (v0.6.0, v0.7.0).
+- [x] Every build fails if `firmware.bin` leaves less than 64 KiB in the OTA slot (`tools/flash_budget.py`).
 - [ ] Fresh browser installation provisions Wi-Fi and reports the expected project identity.
 - [ ] Reconnecting recognises the same firmware and offers an update preserving NVS.
 
-
 ---
 
-## 24-hour history – pending real-board validation
+## 24-hour history
 
-The implementation and desktop checks are described in `docs/HISTORY_IMPLEMENTATION.md`. These checks remain unverified on hardware.
+The design and desktop checks are described in [HISTORY.md](HISTORY.md). A full day of real data and retention across a USB app flash are in the evidence log; the checks below are still open.
 
 - [ ] First boot initializes only a completely blank data partition; nonblank mount failure leaves a RAM-only warning and retains flash contents.
 - [ ] Collect more than 24 hours of actual power, SOC, configured totals and weather; compare timestamps, units and signs on the CYD and `/api/history?hours=24`.
@@ -121,7 +142,7 @@ The implementation and desktop checks are described in `docs/HISTORY_IMPLEMENTAT
 
 ---
 
-## Serial debug settings – pending real-board validation
+## Serial debug settings
 
 - [ ] At default Info, verify routine polling/health reports occur about once per minute; connection/state changes and occasional total/weather events remain visible.
 - [ ] Save each debug level in Settings → Display; confirm Off suppresses application logs and Verbose restores every-poll detail without disrupting Improv or live data/history.
@@ -129,7 +150,7 @@ The implementation and desktop checks are described in `docs/HISTORY_IMPLEMENTAT
 
 ---
 
-## Shared serial/CYD startup diagnostics – pending real-board validation
+## Shared serial/CYD startup diagnostics
 
 - [ ] Capture a cold boot at 115200 baud with Info selected: verify service stages precede TFT initialization, the seven serial/TFT status rows agree, and HA readiness reflects actual readings rather than configuration alone.
 - [ ] Check restored, expired, new-source and corrupt/unavailable history cases; confirm clock-pending counts change appropriately after NTP sync.
@@ -138,7 +159,7 @@ The implementation and desktop checks are described in `docs/HISTORY_IMPLEMENTAT
 
 ---
 
-## Scheduled dim/off/on – pending real-board validation
+## Scheduled dim/off/on
 
 - [ ] Upgrade an existing dim-only hour schedule; verify unchanged behaviour, saved minute-precision times and all three night actions across restart.
 - [ ] Verify dim, off and on transitions at minute boundaries across midnight and timezone/DST changes; missing clock must keep the display awake.

@@ -1,6 +1,6 @@
-# 24-hour history – implementation and validation
+# 24-hour history – design reference
 
-Included in source release `0.9.0` on 5 November 2026. Desktop fixtures use synthetic data only. No device was flashed and no live Home Assistant or inverter was contacted.
+How the device records, stores and serves its rolling 24-hour history. Introduced in `0.9.0`; current for `1.0.0`. Setup and use are in the [README](../README.md) and [handbook](index.html); routes and commands are in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ---
 
@@ -46,24 +46,8 @@ The WebUI fetches history every minute and after a settings save, independently 
 
 ---
 
-## Changed files
+## Tests
 
-The implementation adds `include/history_model.h`, `include/history_service.h`, `src/history_service.cpp`, `include/history_layout.h`, `src/ui/history_layout.cpp` and `include/touch_gesture.h`. Runtime integration changes are in `src/main.cpp`, `src/app/app.cpp`, `src/ui/flow_layout.cpp`, `src/web/monitor_web.cpp`, `src/web/web_page.h`, `src/ota_service.cpp` and `src/network/improv_setup.cpp`. Only explanatory comments change in `partitions_custom.csv`.
+`tools/check_host.py` runs `tests/test_history.cpp`: signed values, partial failure, coherence, stale/future/unknown reports, absent clock, demo exclusion, receive-time rollover, statistics, gaps, more than 24 hours across midnight, backward clock changes, round-trip recovery, corrupt header/payload/checksum, trailing data, failed writes and every possible checkpoint truncation point. It also runs `tools/check_history_response.py` when PlatformIO's libraries are installed. That check compiles the real `getHistory()` handler against the pinned ArduinoJson and parses the reassembled stream: 288 full, all-missing and mixed rows across packet boundaries, quoted metadata, no clock and accepted/rejected `hours` values. `node tests/test_web_history.js` exercises the embedded browser chart.
 
-Regression and fixture work adds `tests/test_history.cpp`, `tests/test_web_history.js`, `tests/history_response_harness.cpp`, `tests/support/Arduino.h` and `tools/check_history_response.py`, and adjusts `tools/check_host.py`, `tools/render_preview.cpp` and `tools/preview_server.py`. Shared renderer previews under `docs/images/` now show History buttons; a synthetic WebUI screenshot and five additional history SVG/PNG fixtures cover solar, battery, empty, dark and weather views.
-
-User and developer guidance is updated in `README.md`, `CHANGELOG.md`, `AGENTS.md`, `docs/index.html`, `docs/DEVELOPMENT.md`, `docs/REVIEW_AND_ROADMAP.md` and `docs/HARDWARE_VALIDATION.md`. Existing documentation edits present before this work are preserved. Generated `src/web/handbook_data.h` remains ignored and is not a source change.
-
----
-
-## Validation and remaining hardware checks
-
-`python3 tools/check_host.py` compiles with warnings as errors, runs existing energy checks and the new history suite, then renders both layouts, boot and history fixtures. History tests cover signed values, partial failure, coherence, stale/future/unknown reports, absent clock, demo exclusion, receive-time rollover, statistics, gaps, more than 24 hours across midnight, backward clock changes, round-trip recovery, corrupt header/payload/checksum, trailing data, failed writes and every possible truncation point of a checkpoint. Gesture tests cover short noise, taps, the strict two-second boundary, one hold per contact, release suppression, night wake and timing rollover.
-
-After PlatformIO installs its libraries, `python3 tools/check_history_response.py` compiles the actual `getHistory()` handler with the pinned ArduinoJson Arduino String writer and host String/HTTP stand-ins, then parses the reassembled response. It covers 288 full, all-missing and mixed rows across packet boundaries, quoted metadata, no clock and accepted/rejected `hours` values. `tools/check_host.py` runs this integration check when those library headers are available. This catches firmware serialization behavior that a synthetic browser fixture cannot: ArduinoJson replaces a String destination, so array commas must be appended outside the serialized row string.
-
-`node tests/test_web_history.js` exercises the actual embedded chart functions with a synthetic API: shared endpoint usage, fetch throttling, missing-data path breaks, signed axes, unit selection, statistics and clock/storage/demo/fetch-failure states. Extracted dashboard JavaScript is syntax checked. Both themes and empty/signed/weather CYD layouts are visually inspected with generated fixtures. The release sweep checked the synthetic WebUI in light and dark themes at desktop width for metric selection, gaps, settings navigation and reload persistence; mobile acceptance remains pending as recorded in the release verification report. The README and handbook screenshots were retaken from this fixture on 5 November 2026.
-
-`pio run -e cyd28` builds the app, merged image and installer part map against the pinned toolchain. Final source-release build sizes, including night scheduling, startup diagnostics and refreshed handbook assets, are recorded in [RELEASE_0.9.0.md](RELEASE_0.9.0.md). The app must fit the unchanged 1,835,008-byte OTA slot. Build success measures static use, not peak runtime heap with the display sprite and TLS active.
-
-All real-device history tests remain unchecked in `docs/HARDWARE_VALIDATION.md`, including first-use mount/format, actual HA sampling, outage and mid-write power cuts, NTP recovery, 24-hour soak, touch targets, watchdog/heap/latency measurements, and retention/configuration across both OTA paths and app slots. The source release is committed locally; publication, hardware flashing and live configuration changes are separate work.
+Real-board history checks, including power cuts during checkpoints, clock corrections and OTA retention, are tracked in [HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md).

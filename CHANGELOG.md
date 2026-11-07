@@ -1,50 +1,49 @@
 # Changelog
 
-## [0.9.1] 07-11-2026
+## [1.0.0] 08-11-2026
 
-Maintenance release addressing all eight audit findings (F1–F8), the audit's flash budget, two smaller audit items and a weather certificate failure found on the first 0.9.1 boot. Not yet hardware-accepted.
+First stable release. It fixes all eight findings of the 7 November code audit (F1–F8), adds a flash budget, moves device weather to plain HTTP after a heap failure found on the board, and tidies the documentation. It includes the unpublished `0.9.0` and `0.9.1` work. Running on the owner's board since 08-11-2026; see `docs/HARDWARE_VALIDATION.md` for the evidence and the checks still open.
 
 ### Fixed
 
-- Improv serial provisioning (audit F1): frames advertising a payload larger than the 128-byte receive buffer are rejected before any byte is stored, and the Wi-Fi settings parser bounds every length byte and string span by the received payload. Malformed or truncated credentials now return `ERROR_INVALID_RPC` instead of reading past the payload. The library's callback pointers now start as null, and `sprintf` became `snprintf`.
-- The Wi-Fi setup portal no longer reopens during a later outage after the device has connected in that boot (audit F5). Portal-assisted and saved-network boots now both recover by reconnection alone.
-- Weather no longer waits indefinitely when Home Assistant fails from boot (audit F6). The first weather fetch now waits for one completed Wi-Fi-connected HA cycle, successful or not, so healthy readings still reach the panel before the weather TLS handshake.
-- HTTP response bodies are now capped as they arrive (audit F4). HA entity and weather replies are streamed into a buffer that refuses bytes past 16 KiB or 8 KiB, so an oversized chunked or unknown-length reply is cut off and its connection closed instead of being read whole into heap first. A body that trickles in past 5 s (HA) or 10 s (weather) is cut off the same way. Truncated bodies and failed buffer allocations are reported as read errors. Keep-alive reuse after a complete HA read is unchanged. The settings upload limit is still checked after the web server has read the request.
-- The centre layout's status line keeps the "source age unknown" warning (audit F8). It used to show *All readings live* or *Good time to use power* whenever readings were usable, even when Home Assistant gave no report time. It now shows *Live / source age unknown* or *Spare power / age unknown* in that case; the Cards layout already showed it.
+- **Improv serial provisioning (F1).** Frames advertising a payload larger than the 128-byte receive buffer are rejected before any byte is stored, and the Wi-Fi settings parser bounds every length byte and string span by the received payload. Malformed or truncated credentials return `ERROR_INVALID_RPC` instead of reading past the payload. The library's callback pointers now start as null, and `sprintf` became `snprintf`.
+- **Dashboard tiles (F2).** Solar today, Tomorrow and Weather are rewritten on every status reply. Clearing an entity or the location, or losing the forecast and weather together, shows "–" with *not configured* or *unavailable* instead of leaving the last value looking current.
+- **Live polling (F3).** Every browser request has a deadline: 12 s for status and 15 s otherwise, above the 5 s macOS can spend resolving `solar.local`. Only one timer poll runs at a time, and a reply older than the one already shown is dropped. A failure or timeout stops every flow arm as well as greying the tiles, and the status line says how long ago the last update was.
+- **HTTP response bodies (F4).** HA entity and weather replies stream into a buffer that refuses bytes past 16 KiB or 8 KiB. An oversized chunked or unknown-length reply is cut off and its connection closed instead of being read whole into heap first. A body that trickles in past 5 s (HA) or 10 s (weather) is cut off the same way. Truncated bodies and failed buffer allocations are reported as read errors. Keep-alive reuse after a complete HA read is unchanged. The settings upload limit is still checked after the web server has read the request.
+- **Setup portal (F5).** The Wi-Fi setup portal no longer reopens during a later outage after the device has connected in that boot. Portal-assisted and saved-network boots both recover by reconnection alone.
+- **Weather start (F6).** Weather no longer waits indefinitely when Home Assistant fails from boot. The first fetch waits for one completed Wi-Fi-connected HA cycle, successful or not.
+- **Weather transport.** Weather failed with `X509 - Certificate verification failed` (`-9984`). An on-board diagnostic showed each root's signature verifying offline, but the handshake failing with `BIGNUM - Memory allocation failed`: its peak near 60 KB no longer fits in the roughly 96 KB left beside the frame buffer. Weather now uses plain HTTP to `api.open-meteo.com`, so coordinates travel unencrypted and the reply is unauthenticated. This removes the 4–9 s blocking handshake, its watchdog pause and the bundled ISRG Root X1 header, and raised the lowest free heap from about 41 KB to about 64–73 KB. The Location page hint no longer claims verified HTTPS.
+- **Unknown source age on the panel (F8).** The centre layout used to show *All readings live* or *Good time to use power* whenever readings were usable, even without a Home Assistant report time. It now shows *Live / source age unknown* or *Spare power / age unknown*; the Cards layout already did.
 - Persisted touch calibration is validated on restore with the same span rules used when saving; an invalid record keeps the built-in defaults rather than reaching `map()` with equal endpoints.
 - Panel freshness is evaluated after copying the source snapshot, so a publication newer than the frame's timestamp can no longer wrap to a huge receive age.
-- Weather has failed since the first 0.9.1 boot, and probably earlier, with `X509 - Certificate verification failed` (`-9984`). A temporary on-board diagnostic showed every root's signature verifying offline, but checks during the handshake failing with `BIGNUM - Memory allocation failed`. The handshake no longer fits in heap beside the frame buffer, about 96 KB free at fetch time against a peak near 60 KB, and Open-Meteo's newer Let's Encrypt chains are longer. Weather now uses plain HTTP to `api.open-meteo.com`, so coordinates travel unencrypted and the reply is unauthenticated. This also removes the 4–9 s blocking handshake and its watchdog pause, along with the bundled ISRG Root X1 header.
-
-- Dashboard tiles for Solar today, Tomorrow and Weather are rewritten on every status reply (audit F2). Clearing an entity or the location, or losing the forecast and weather together, now shows "–" with *not configured* or *unavailable* instead of leaving the last value looking current.
-- Live polling (audit F3): every browser request has a deadline (12 s for status, 15 s otherwise, above the 5 s macOS can spend resolving `solar.local`), only one timer poll runs at a time, and a reply older than the one already shown is dropped. A failure or timeout now stops every flow arm as well as greying the tiles, and the status line says how long ago the last update was.
 
 ### Changed
 
-- The browser history picker offers only the power and battery metrics and today's solar kWh. Solar forecast, temperature, weather code, tomorrow's maximum and tomorrow's sky code are no longer listed; the device still records them and the panel's Prev/Next still shows them.
+- The browser history picker offers the power flows, battery level, inverter AC/DC and today's solar kWh. Solar forecast, temperature, weather code, tomorrow's maximum and tomorrow's sky code are no longer listed; the device still records them and the panel's Prev/Next still shows them.
+- **Handbook HA helper recipes (F7).** The house power and solar production templates check both inputs with `has_value()` and become *unknown* when either is missing, instead of `float(0)` turning a missing grid or battery reading into a plausible but wrong number. Existing helpers must be edited by hand.
+- The dashboard footer art is 960 × 320 px at WebP quality 85 instead of 1600 × 533 (112,064 to 80,860 bytes); its cache-busting query is now `?v=2`.
+- Every handbook browser capture is re-encoded at WebP quality 75 and at most 932 px wide. Seven full-page captures were retaken to show `1.0.0`, and the two history charts now show a real 24-hour capture from the owner's board, replayed by the preview server from `tools/fixtures/webui-history.json`.
 
 ### Added
 
-- Browser regression `tests/test_web_dashboard.js`, run in CI, covering configured-to-cleared, fresh-to-invalid, forecast-to-weather fallback and loss of both optional sources, plus explicit rejection, a hung request reaching its deadline, overlapping timer ticks, a late superseded reply and recovery, under reduced motion. It fails against the 0.9.0 page.
-- Host regression `tests/test_flow_status.cpp`, covering verified, unknown-age and stale status in both layouts, including the spare-power case.
-- Host regression `tests/test_body_limit.cpp`, under AddressSanitizer and UndefinedBehaviorSanitizer, for the body cap: exact limit, one byte over, a chunked flood, an oversized first block, an empty body and refusal staying set.
-- Flash budget (audit flash reclaim): `tools/flash_budget.py` runs after every build, locally and in CI, and fails it when `firmware.bin` would leave less than 64 KiB free in the OTA app slot. It measures the actual image, which the linker's percentage under-reports. This build leaves 169,664 bytes.
-- Host regression `tests/test_improv.cpp`, run under AddressSanitizer and UndefinedBehaviorSanitizer by `tools/check_host.py`, covering valid, empty-password, maximum-size, oversized, bad-checksum and every truncated Wi-Fi-settings boundary, plus recovery on the next frame. It fails against the 0.9.0 parser.
+- **Flash budget.** `tools/flash_budget.py` runs after every build, locally and in CI, and fails it when `firmware.bin` would leave less than 64 KiB of the OTA slot. It measures the actual image, which the linker's percentage under-reports. With the image work above, headroom went from 10,912 bytes to 188,224 bytes.
+- Host regression `tests/test_improv.cpp` under AddressSanitizer and UndefinedBehaviorSanitizer: valid, empty-password, maximum-size, oversized, bad-checksum and every truncated Wi-Fi-settings boundary, plus recovery on the next frame. It fails against the `0.9.0` parser.
+- Host regression `tests/test_body_limit.cpp` under the same sanitizers: exact limit, one byte over, a chunked flood, an oversized first block, an empty body and refusal staying set.
+- Host regression `tests/test_flow_status.cpp`: verified, unknown-age and stale status in both layouts, including the spare-power case.
+- Browser regression `tests/test_web_dashboard.js`, run in CI: configured-to-cleared, fresh-to-invalid, forecast-to-weather fallback and loss of both optional sources, plus explicit rejection, a hung request reaching its deadline, overlapping timer ticks, a late superseded reply and recovery. It fails against the `0.9.0` page.
 
 ### Documentation
 
-- Added the 7 November code audit and peer review with severity-ranked findings, targeted host reproductions, fresh firmware-build measurements and an ordered improvement plan.
-- Updated `AGENTS.md` with checkout discovery, complete validation commands, actual image headroom, transition testing, parser hardening and evidence-based review expectations. Corrected development guidance for host commands and setup-portal recovery behaviour; linked the audit from the roadmap.
-- The two handbook browser history captures (`webui-chart.webp`, `webui-history-metric.webp`) now show a real 24-hour capture from the owner's board instead of synthetic curves. The preview server replays it from `tools/fixtures/webui-history.json` and falls back to synthetic history when the file is absent.
-- The dashboard footer art (`web/assets/solar-footer.webp`) is now 960 × 320 px at WebP quality 85 instead of 1600 × 533. It is shown at most 480 px wide, so it stays sharp on high-density screens. It went from 112,064 to 80,860 bytes, and the page's cache-busting query moved to `?v=2`.
-- Handbook HA helper recipes (audit F7): the house power and solar production templates now check both inputs with `has_value()` and become *unknown* when either is missing, instead of `float(0)` turning a missing grid or battery reading into a plausible but wrong number. The handbook says existing helpers must be edited by hand, and to check the solar integral flattens across an outage. Added the two new centre status messages to the status table.
-- Replaced the manual headroom snippet in `docs/DEVELOPMENT.md` with the budget rule and a measured inventory of the largest flash costs, plus two further savings not yet taken.
-- Re-encoded every handbook browser capture (`docs/images/webui-*.webp`) at WebP quality 75, at most 932 px wide (the handbook shows them at 800 px at most). The set dropped from 508 KB to 250 KB, and since the handbook is embedded, the firmware image dropped from 1,826,409 to 1,657,625 bytes, leaving about 173 KB of OTA headroom instead of 8.6 KB.
+- Retired the code audit, the review and roadmap, the documentation review, the `0.9.0` release record, the original build plan and the Rayhub research brief; they remain in Git history. Remaining feature ideas moved to the README.
+- `docs/HISTORY_IMPLEMENTATION.md` became `docs/HISTORY.md`, a current design reference without one-off release notes.
+- `docs/HARDWARE_VALIDATION.md` now opens with a dated evidence log from the owner's board and ticks only items with evidence.
+- `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/DEVELOPMENT.md`, `docs/WEB_INSTALLER.md` and the handbook were brought up to date for `1.0.0`, including the flash budget, browser deadlines, the macOS `solar.local` delay and the capture encoding rule.
 
 ---
 
 ## [0.9.0] 05-11-2026
 
-Source release prepared and committed locally. Tagging/publication and real-board acceptance remain pending; see [release verification](docs/RELEASE_0.9.0.md).
+Source release prepared and committed locally; not published. Its verification record has since been retired (see Git history).
 
 ### Added
 

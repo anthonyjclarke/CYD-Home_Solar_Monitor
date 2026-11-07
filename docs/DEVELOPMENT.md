@@ -1,6 +1,6 @@
 # Development reference
 
-Reviewed against source `0.9.0` on 5 November 2026. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, and the [handbook](index.html) for end-user setup.
+Reviewed against source `0.9.0`; commands and review notes refreshed on 7 November 2026. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, the [current audit](CODE_AUDIT_2026-11-07.md) for findings, and the [handbook](index.html) for end-user setup.
 
 ---
 
@@ -8,20 +8,23 @@ Reviewed against source `0.9.0` on 5 November 2026. See [AGENTS.md](../AGENTS.md
 
 Install PlatformIO Core, Python 3 and a C++17 compiler named `c++`. Node.js 22 or later runs the JavaScript regressions and syntax checks; no frontend build is needed. `rsvg-convert` is optional for PNG previews. Pinned dependencies are declared in `platformio.ini`: Espressif32 6.12.0, TFT_eSPI 2.5.43, WiFiManager 2.0.17, XPT2046 v1.4 and ArduinoJson 7.4.2. Improv 0.0.2 is vendored with local fixes.
 
+Use the checkout containing `platformio.ini`; a companion chat directory need not contain the repository. If `pio` is missing from `PATH`, the existing installation may be at `$HOME/.platformio/penv/bin/pio`.
+
 ```bash
 python3 tools/check_docs.py
 python3 tools/check_host.py
 node tests/test_web_history.js
 node tests/test_web_settings.js
+node tests/test_web_dashboard.js
 pio run -e cyd28
 python3 tools/preview_server.py
 ```
 
 After PlatformIO installs project libraries, run `python3 tools/check_history_response.py` to validate the real history handler with the pinned ArduinoJson String writer. `python3 tools/check_debug_config.py` also checks the actual configuration loader/saver and debug API validation with host NVS stand-ins. `python3 tools/check_night_config.py` checks night schedule migration and API validation. `tools/check_host.py` includes these checks when the headers are installed; on a clean checkout it reports that this integration check is skipped.
 
-The first command compiles and runs `tests/test_energy.cpp`, `tests/test_history.cpp`, `tests/test_debug.cpp`, `tests/test_boot.cpp` and `tests/test_night.cpp` and compiles the shared layout renderer with warnings as errors. It writes six scene SVGs for each of two layouts, a weather-only centre scene, four boot scenes and five history scenes into `docs/images/`. If `rsvg-convert` is available, it refreshes thirteen PNGs too. It does not update browser captures. Boot previews and the browser fixture both read `FIRMWARE_VERSION` from `include/config.h`. All readings in generated examples are synthetic.
+`tools/check_docs.py` checks local documentation links, handbook anchors, Markdown structure, preview dimensions and version identity. `tools/check_host.py` compiles and runs `tests/test_energy.cpp`, `tests/test_history.cpp`, `tests/test_debug.cpp`, `tests/test_boot.cpp`, `tests/test_night.cpp` and `tests/test_flow_status.cpp`, plus `tests/test_body_limit.cpp` and `tests/test_improv.cpp` under AddressSanitizer and UndefinedBehaviorSanitizer, and compiles the shared layout renderer with warnings as errors. It writes six scene SVGs for each of two layouts, a weather-only centre scene, four boot scenes and five history scenes into `docs/images/`. If `rsvg-convert` is available, it refreshes thirteen PNGs too. It does not update browser captures. Boot previews and the browser fixture both read `FIRMWARE_VERSION` from `include/config.h`. All readings in generated examples are synthetic.
 
-The preview server runs at `http://127.0.0.1:8765`. It serves the dashboard, fixed-date synthetic status/configuration/history, the handbook with its images, a subset of preview images and footer artwork. Append `?theme=dark` for a deterministic dark-theme fixture. Settings are changed in memory only. It does not implement reboot, Wi-Fi reset, upload, authentication, persistence or device validation. Do not use real credentials. Stop with Ctrl-C.
+The preview server runs at `http://127.0.0.1:8765`. It serves the dashboard, fixed-date synthetic status/configuration, history from `tools/fixtures/webui-history.json` (a real 24-hour `/api/history` capture from the owner's board; synthetic if the file is absent), the handbook with its images, a subset of preview images and footer artwork. Append `?theme=dark` for a deterministic dark-theme fixture. Settings are changed in memory only. It does not implement reboot, Wi-Fi reset, upload, authentication, persistence or device validation. Do not use real credentials. Stop with Ctrl-C.
 
 To check both inline JavaScript programs without creating files in the source tree:
 
@@ -48,6 +51,22 @@ The handbook currently has no script. Syntax checks do not exercise browser even
 
 `pio run -e cyd28` generates the embedded handbook before compilation and a merged image/part map after building. App capacity is 1,835,008 bytes (`0x1C0000`). `partitions_custom.csv` defines NVS at `0x9000`, OTA data at `0xE000`, app slots at `0x10000` and `0x1D0000`, LittleFS history data at `0x390000`, and coredump at `0x3F0000`. History mounts the existing 384 KiB `spiffs` partition as LittleFS; no partition offsets or sizes change.
 
+Every build checks image headroom against the actual `firmware.bin`, not the linker's app percentage, which under-reports it. `tools/flash_budget.py` reads the `ota_0` size from the partition table, prints a `Flash budget:` line and fails the build (deleting the oversized image) when less than 64 KiB would remain. That margin is a team policy, not a hardware limit; retain the deployed partition contract rather than moving offsets to recover space.
+
+The 8 November 2026 build is 1,634,768 bytes, leaving 200,240 bytes. The largest costs measured from the ELF symbols are listed below.
+
+| Item                                    | Bytes   |
+|:----------------------------------------|--------:|
+| Embedded handbook, 25 assets in total   | 290,865 |
+| – footer art `solar-footer.webp`        |  80,860 |
+| – nine browser captures                 | 168,488 |
+| – handbook HTML (gzip)                  |  19,656 |
+| Dashboard page `WEB_PAGE`, uncompressed |  46,556 |
+| `printf`/`scanf` family (newlib)        |  58,155 |
+| mbedTLS client and server handshake     |  13,776 |
+
+The footer art is stored at 960 px, twice its largest displayed width of 480 px, at WebP quality 85 because its fine line work softens at 75. One further saving is known but not taken: serving `WEB_PAGE` gzipped, as the handbook already is, would save about 30 KB. Captures follow the encoding rule in [Refreshing visual documentation](#refreshing-visual-documentation).
+
 The app update image is `.pio/build/cyd28/firmware.bin`. The clean USB image is `.pio/build/cyd28/firmware-merged.bin`, written at `0x0`; its padding overwrites NVS, including settings and the device code. `flash_parts.json` lists the separate flash images and offsets for the shared installer. A merged write is not a full-chip erase and does not guarantee removal of the separate coredump partition.
 
 After authorization for a physical device, substitute the actual serial port:
@@ -65,7 +84,7 @@ Use the browser's Firmware update for an app update over the LAN. ArduinoOTA is 
 
 The reader copies settings only when their revision changes, and publishes a snapshot only if its revision is still current and it is not paused. Six sequential entity requests share a keep-alive connection. Default wait is 5 seconds after a completed cycle, not an exact five-second start-to-start period. If all six reads fail, exponential waits are capped at 60 seconds; any valid source resets backoff. Offline Wi-Fi retries use a one-second wait. Demo and missing-token modes also use one-second waits.
 
-Configured totals are attempted on a new revision or when at least a minute has elapsed, after the six live reads; no token means no total reads. Weather does not require the token. With a token configured, its first request waits until at least one source has been published; a completely failing HA source at startup can therefore delay weather. Clearing location resets the snapshot and disables device weather requests. External time synchronization is required for TLS and local night scheduling.
+Configured totals are attempted on a new revision or when at least a minute has elapsed, after the six live reads; no token means no total reads. Weather does not require the token. With a token configured, its first request waits for one completed Wi-Fi-connected HA cycle, successful or not, so a failing HA no longer blocks weather. Weather uses plain HTTP to `api.open-meteo.com`; see `AGENTS.md` for why. Clearing location resets the snapshot and disables device weather requests. External time synchronization is required for HTTPS HA and local night scheduling.
 
 Startup diagnostics begin immediately after application configuration loads, before display/touch/network initialization. `include/boot_status.h` supplies a portable seven-row report and change tracker shared by serial and the CYD. `src/serial_diagnostics.cpp` gathers inputs on the main task every 250 ms while startup is active. HA status uses actual usable source/solar readings, not the configured URL as proof of connectivity, and explicitly reports a failed reader task via `source::readerState()`. `history::restoreState()` distinguishes pending, empty, restored, mapping reset, corrupt and unavailable storage; restored counts exclude new RAM captures, future values and (after clock sync) expired slots.
 
@@ -85,7 +104,7 @@ The optional `debugLevel` field in schema-2 settings and `/api/config` accepts i
 
 The browser polls status every three seconds and shared device history every minute. History uses 288 UTC five-minute slots, actual capture timestamps, per-field missing values and report-time availability. Two alternating verified LittleFS banks checkpoint every 15 minutes while dirty, plus controlled restart/update saves. See [history implementation](HISTORY_IMPLEMENTATION.md) for the binary format, identity reset rules, failure behavior and pending board tests. Chart clock labels use the browser timezone; the displayed device clock uses the configured POSIX timezone. Reduced Motion is read when the dashboard loads.
 
-The device serves HTTP on port 80 after station Wi-Fi connects. ArduinoOTA owns mDNS startup; do not call `MDNS.begin()` independently. The separate WiFiManager portal opens after 20 seconds without an initial successful connection, times out after 180 seconds and retries. Ordinary later Wi-Fi loss uses reconnection rather than automatically starting a new portal after a previously successful connection.
+The device serves HTTP on port 80 after station Wi-Fi connects. ArduinoOTA owns mDNS startup; do not call `MDNS.begin()` independently. The separate WiFiManager portal opens after 20 seconds without an initial successful connection, times out after 180 seconds and retries. Once a connection has succeeded in that boot, later Wi-Fi loss uses reconnection alone, whether setup used the portal or a saved network (audit F5, fixed in `0.9.1`).
 
 ---
 
@@ -112,7 +131,7 @@ Every POST requires `X-CYD-Request: 1`; firmware upload checks it before startin
 
 Validation limits: JSON body 12,288 characters, URL 180, token 2,048, CA 6,000, entity IDs 8–100, battery label 14 printable ASCII characters, place 48, timezone name 40 and POSIX rule 3–60. Power mappings must start `sensor.` and use lower-case letters, digits or underscores. Optional total IDs may be blank. Poll is 2–300 seconds; stale is 15–3,600 and at least three polls; brightness is 10–255; legacy night hours are 0–23; new mode is 0–2 and new local minute fields are 0–1439. Coordinates must both be absent or within latitude ±90 and longitude ±180. POSIX validation is a character/length check, not a full timezone parser.
 
-URLs allow HTTP/HTTPS and an optional base path; the reader appends `/api/states/`. Whitespace, userinfo, queries and fragments are rejected. HTTPS requires a PEM CA marker on save and actual certificate verification when connecting. Entity responses over 16 KiB and weather responses over 8 KiB are rejected, but unknown-length bodies are buffered before the post-read size check; these are not strict allocation ceilings.
+URLs allow HTTP/HTTPS and an optional base path; the reader appends `/api/states/`. Whitespace, userinfo, queries and fragments are rejected. HTTPS requires a PEM CA marker on save and actual certificate verification when connecting. Entity responses over 16 KiB and weather responses over 8 KiB are rejected as they arrive, including chunked and close-delimited bodies, so memory for a body never exceeds the cap. Bodies also have a 5 s (HA) or 10 s (weather) deadline, checked whenever data arrives. The 12,288-character settings check is still made after the web server has read the request.
 
 `GET /api/status` includes six source readings plus derived solar in that order, `hasValue`, `valid`, usable `fresh`, raw report time/age, totals, weather, version, IP, uptime and heap. Raw report age may look old for unchanged sensors while heartbeat-adjusted freshness is true. `complete` covers the five displayed metrics, not the optional totals/weather or diagnostic AC reading. Use the shared model to interpret it.
 
@@ -131,6 +150,6 @@ Keep a contribution focused, explain the resulting behavior, provide commands/re
 
 ## Refreshing visual documentation
 
-Run `python3 tools/check_host.py` to regenerate all 22 SVG and thirteen optional PNG previews from the actual shared renderers. Start `python3 tools/preview_server.py` and capture each dashboard/settings/device page in a browser. Use the fixed synthetic profile only; the fixture labels itself Preview and never talks to HA or a CYD. Its Home Assistant URL is a reserved documentation address. Staged night times in captures illustrate the available controls; the firmware default and migrated profiles remain dim-only.
+Run `python3 tools/check_host.py` to regenerate all 22 SVG and thirteen optional PNG previews from the actual shared renderers. Start `python3 tools/preview_server.py` and capture each dashboard/settings/device page in a browser. Save captures as WebP at most 932 px wide, quality 75 (`cwebp -q 75 -m 6 -sharp_yuv`): the handbook is embedded in the firmware, so image bytes cost OTA headroom. Use the fixed synthetic profile; only history comes from the committed real capture, which holds power readings and no credentials or identifiers. The fixture labels itself Preview and never talks to HA or a CYD. Its Home Assistant URL is a reserved documentation address. Staged night times in captures illustrate the available controls; the firmware default and migrated profiles remain dim-only.
 
 Keep full dashboard and Display captures, plus focused flow, combined-history, battery-history, debug and night-control views. Refresh connection, location, entities, diagnostics and device pages too. The canonical gallery is in [the release record](RELEASE_0.9.0.md). Store browser captures as WebP to limit embedded flash use. The 0.9.0 captures were encoded with `cwebp -q 85 -m 6`; preserve readable text and inspect the result. Update every reference when filenames change, run `python3 tools/check_docs.py`, rebuild the handbook and verify app-slot headroom. Decorative footer artwork is unchanged.

@@ -1,7 +1,7 @@
 #include "ha_source.h"
 #include "diagnostic_helpers.h"
 #include "debug.h"
-#include "ca_isrg_root_x1.h"
+#include "body_limit.h"
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
@@ -21,6 +21,29 @@ uint32_t revision = 0;
 bool paused = false;
 bool running = false;
 bool beginAttempted = false;
+
+// Arduino Stream face of BodyLimit for HTTPClient::writeToStream(). Bodies
+// are capped as they arrive instead of after getString() buffered them whole.
+// HTTPClient's body loop has no deadline of its own, so a server trickling
+// bytes is also cut off once `ms` has passed (checked as each block arrives).
+class LimitedBody : public Stream {
+public:
+    LimitedBody(size_t limit, uint32_t ms) : limit(limit), ms(ms) {}
+    BodyLimit limit;
+    bool slow = false;
+    size_t write(uint8_t b) override { return write(&b, 1); }
+    size_t write(const uint8_t* data, size_t size) override {
+        if (slow || millis() - start > ms) { slow = true; return 0; }
+        return limit.accept(data, size);
+    }
+    int available() override { return 0; }
+    int read() override { return -1; }
+    int peek() override { return -1; }
+    void flush() override {}
+private:
+    const uint32_t ms;
+    const uint32_t start = millis();
+};
 
 // An mbedTLS handshake runs its elliptic-curve maths as one long step that
 // cannot yield. On this core-0 task it starved IDLE0 for over 5 s during the
@@ -46,7 +69,7 @@ struct Connection {
         http.setConnectTimeout(1500);
         http.setTimeout(1500);
         http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
-        http.setReuse(true);  // HTTP/1.1; the body is read with getString(), which handles chunking.
+        http.setReuse(true);  // HTTP/1.1; writeToStream() reads chunked bodies and keeps the socket after a full read.
     }
     ~Connection() { close(); }
     // Drop the socket after a failed request so an unread body cannot leak
@@ -95,17 +118,24 @@ bool readEntity(const monitor::Config& c, Connection& conn, const String& entity
         trace.error = ReadError::TooLarge;
         snprintf(message, messageSize, "Entity response too large"); conn.close(); return false;
     }
-    const String body = http.getString();
-    if (body.length() > 16384) {
+    LimitedBody sink(16384, 5000);
+    const int read = http.writeToStream(&sink);
+    if (sink.limit.overflow()) {
         trace.error = ReadError::TooLarge;
         snprintf(message, messageSize, "Entity response too large"); conn.close(); return false;
     }
+    if (read < 0) {  // Truncated, too slow, out of memory or lost mid-body.
+        trace.httpStatus = read; trace.error = ReadError::Http;
+        snprintf(message, messageSize, "HA %s %d / reading %u", sink.slow ? "body too slow" : "read error", read, label);
+        conn.close(); return false;
+    }
+    const std::string& body = sink.limit.body();
     JsonDocument filter;
     filter["state"] = true;
     filter["attributes"]["unit_of_measurement"] = true;
     filter["last_reported"] = true;
     JsonDocument doc;
-    const auto error = deserializeJson(doc, body, DeserializationOption::Filter(filter),
+    const auto error = deserializeJson(doc, body.data(), body.size(), DeserializationOption::Filter(filter),
                                       DeserializationOption::NestingLimit(12));
     if (error) {
         trace.error = ReadError::Json;
@@ -132,27 +162,25 @@ bool readEntity(const monitor::Config& c, Connection& conn, const String& entity
 }
 
 // Current conditions and tomorrow's maximum from Open-Meteo for the configured
-// coordinates. HTTPS is verified against ISRG Root X1; only the coordinates
-// leave the LAN. A failure keeps the previous report but marks it invalid.
+// coordinates. Plain HTTP by design: the TLS handshake's ~60 KB peak no longer
+// fits beside the frame buffer, and mbedTLS then fails signature checks with
+// MPI allocation errors (reported as X509 -9984). Only the coordinates leave
+// the LAN, unencrypted; the reply is unauthenticated weather data. A failure
+// keeps the previous report but marks it invalid.
 void fetchWeather(const monitor::Config& c, weather::Report& report, RequestTrace& trace) {
     const uint32_t start = millis();
     trace = RequestTrace();
-    if (!WiFi.isConnected()) trace.error = ReadError::Wifi;
-    else if (time(nullptr) < 1700000000) trace.error = ReadError::Clock;
-    if (trace.error != ReadError::NotRead) { trace.elapsedMs = millis() - start; return; }
+    if (!WiFi.isConnected()) { trace.error = ReadError::Wifi; trace.elapsedMs = millis() - start; return; }
     report.valid = false;  // Only an attempted request can invalidate the last report.
-    TlsWatchdogPause watchdog(true);
-    WiFiClientSecure tls;
-    tls.setCACert(ISRG_ROOT_X1);
-    tls.setHandshakeTimeout(APP_TLS_HANDSHAKE_S);
+    WiFiClient client;
     HTTPClient http;
     http.setConnectTimeout(5000);
     http.setTimeout(5000);
     char url[260];
-    snprintf(url, sizeof(url), "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
+    snprintf(url, sizeof(url), "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
              "&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max&timezone=auto&forecast_days=2",
              c.latitude, c.longitude);
-    if (!http.begin(tls, url)) { trace.error = ReadError::Url; trace.elapsedMs = millis() - start; return; }
+    if (!http.begin(client, url)) { trace.error = ReadError::Url; trace.elapsedMs = millis() - start; return; }
     trace.httpStatus = http.GET();
     if (trace.httpStatus != 200) trace.error = ReadError::Http;
     else if (http.getSize() > 8192) trace.error = ReadError::TooLarge;
@@ -163,9 +191,12 @@ void fetchWeather(const monitor::Config& c, weather::Report& report, RequestTrac
         filter["daily"]["weather_code"] = true;
         filter["daily"]["temperature_2m_max"] = true;
         JsonDocument doc;
-        const String body = http.getString();
-        if (body.length() > 8192) trace.error = ReadError::TooLarge;
-        else if (deserializeJson(doc, body, DeserializationOption::Filter(filter))) trace.error = ReadError::Json;
+        LimitedBody sink(8192, 10000);
+        const int read = http.writeToStream(&sink);
+        const std::string& body = sink.limit.body();
+        if (sink.limit.overflow()) trace.error = ReadError::TooLarge;
+        else if (read < 0) { trace.httpStatus = read; trace.error = ReadError::Http; }
+        else if (deserializeJson(doc, body.data(), body.size(), DeserializationOption::Filter(filter))) trace.error = ReadError::Json;
         else if (!doc["current"]["temperature_2m"].is<float>() || !doc["daily"]["temperature_2m_max"][1].is<float>() ||
                  !doc["current"]["weather_code"].is<int>() || !doc["daily"]["weather_code"][1].is<int>()) trace.error = ReadError::Value;
         else {
@@ -175,14 +206,16 @@ void fetchWeather(const monitor::Config& c, weather::Report& report, RequestTrac
         }
     }
     http.end();
-    tls.stop();
+    client.stop();
     trace.elapsedMs = millis() - start;
 }
 
 void worker(void*) {
     uint32_t seenRevision = 0, lastCycle = 0, waitMs = 0, totalsRevision = 0, lastTotals = 0;
     uint32_t weatherRevision = 0, lastWeather = 0;
-    bool haPublished = false;  // Live readings have reached the display at least once.
+    // A Wi-Fi-connected HA cycle has finished and been published, whether or
+    // not it returned data. Gates the first weather fetch (audit F6).
+    bool haCycleDone = false;
     unsigned failures = 0;
     uint32_t cycleId = 0;
     monitor::Config c;
@@ -199,7 +232,7 @@ void worker(void*) {
         const uint32_t now = millis();
         if (!hold && (rev != seenRevision || static_cast<uint32_t>(now - lastCycle) >= waitMs)) {
             CycleTrace trace;
-            bool cycleHasData = false;
+            bool haCycle = false;
             seenRevision = rev;
             xSemaphoreTake(mutex, portMAX_DELAY);
             s = latest;
@@ -262,27 +295,28 @@ void worker(void*) {
                 // Wi-Fi not up yet (typical at boot) is not a Home Assistant
                 // failure: retry soon instead of backing off.
                 if (!WiFi.isConnected()) { failures = 0; waitMs = 1000; }
-                cycleHasData = valid > 0;
+                else haCycle = true;
                 s.cycleMs = millis();
             }
-            // Weather runs after the HA connection is closed, so only one TLS
-            // session is ever open. It is independent of the HA token.
+            // Weather runs after the HA connection is closed, so only one
+            // connection is open at a time. It is independent of the HA token.
             const uint32_t weatherWait = (s.weather.valid ? weather::refreshSeconds : weather::retrySeconds) * 1000UL;
-            // The first weather fetch (an ~8 s TLS handshake) waits until live
-            // readings have been published once, so they reach the panel first.
-            if (!c.demo && !std::isnan(c.latitude) && (haPublished || c.token.isEmpty()) &&
+            // The first weather fetch waits for one completed HA cycle, so
+            // healthy readings reach the panel first; a
+            // failing HA no longer blocks weather for the whole outage.
+            if (!c.demo && !std::isnan(c.latitude) && (haCycleDone || c.token.isEmpty()) &&
                 (rev != weatherRevision || static_cast<uint32_t>(millis() - lastWeather) >= weatherWait)) {
                 fetchWeather(c, s.weather, trace.weather);
                 trace.weatherRead = true;
-                // Without a clock TLS cannot start; retry on the next cycle instead.
-                if (trace.weather.error != ReadError::Clock && trace.weather.error != ReadError::Wifi) {
+                // Without Wi-Fi nothing was attempted; retry on the next cycle instead.
+                if (trace.weather.error != ReadError::Wifi) {
                     weatherRevision = rev; lastWeather = millis();
                 }
             }
             s.revision = rev;
             trace.id=++cycleId; trace.elapsedMs=millis()-now; trace.nextPollMs=waitMs;
             xSemaphoreTake(mutex, portMAX_DELAY);
-            if (revision == rev && !paused) { latest = s; latestTrace=trace; if (cycleHasData) haPublished = true; }
+            if (revision == rev && !paused) { latest = s; latestTrace=trace; if (haCycle) haCycleDone = true; }
             xSemaphoreGive(mutex);
             lastCycle = millis();
         }

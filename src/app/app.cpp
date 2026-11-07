@@ -218,23 +218,26 @@ void update(uint32_t now) {
     }
     ui::FlowView view;
     view.data=source::snapshot(); view.wifi=cyd::network::status().connected;
+    // Copy first, then evaluate receive ages, as history does: a publication
+    // newer than `now` would otherwise wrap to a huge unsigned age.
+    const uint32_t ageNow=millis();
     view.clockKnown=clock; view.phase=now/250; view.ms=now; view.motionOnly=!full;
     bool all=true, reportKnown=clock;
     for (int i=0;i<energy::Count;++i) {
-        view.usable[i]=energy::metricUsable(view.data,static_cast<energy::Metric>(i),view.wifi,now,clock ? uint64_t(epoch)*1000 : 0,cfg.staleSeconds,cfg.pollSeconds);
+        view.usable[i]=energy::metricUsable(view.data,static_cast<energy::Metric>(i),view.wifi,ageNow,clock ? uint64_t(epoch)*1000 : 0,cfg.staleSeconds,cfg.pollSeconds);
     }
     for (auto metric:energy::displayMetrics) {
         all &= view.usable[metric]; reportKnown &= view.data.readings[metric].reportedMs!=0;
     }
     const char* status=view.data.demo ? "DEMO / hold for setup" : !view.wifi ? "WiFi disconnected" : !all ? "Waiting / stale or unavailable" : !reportKnown ? "HA connected / source age unknown" : "Live / hold for settings";
-    view.status=status;
+    view.status=status; view.reportKnown=reportKnown;
     String ip=cyd::network::status().ip;
     view.address=ip.c_str();
     view.batteryLabel=cfg.batteryLabel.c_str();
     view.layout=static_cast<ui::Layout>(cfg.layout);
     for (int t=0;t<energy::TotalCount;++t)
-        view.totalLive[t]=energy::totalUsable(view.data,static_cast<energy::Total>(t),view.wifi,now);
-    view.weatherLive=(view.data.demo || view.wifi) && weather::usable(view.data.weather,now);
+        view.totalLive[t]=energy::totalUsable(view.data,static_cast<energy::Total>(t),view.wifi,ageNow);
+    view.weatherLive=(view.data.demo || view.wifi) && weather::usable(view.data.weather,ageNow);
     char clockText[8]="";
     if (clock) strftime(clockText,sizeof(clockText),"%H:%M",&local);
     view.time=clockText;

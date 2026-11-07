@@ -1,6 +1,6 @@
 # Code review and roadmap
 
-Updated 5 November 2026 against source `0.9.0` (base commit `dc1b676`). This is the current implementation summary. The original 3 November review targeted `0.2.1-dev`; its fixed findings and speculative version schedule no longer describe the code. Historical changes remain in [CHANGELOG.md](../CHANGELOG.md).
+Updated 7 November 2026 against source `0.9.0` at `cdcb226`. This is the current implementation summary. The original 3 November review targeted `0.2.1-dev`; its fixed findings and speculative version schedule no longer describe the code. Historical changes remain in [CHANGELOG.md](../CHANGELOG.md). The [full code audit and peer review](CODE_AUDIT_2026-11-07.md) records priorities, source evidence, reproduced failures, validation and recommendations.
 
 ---
 
@@ -36,7 +36,7 @@ Connection reuse was selected instead of the proposed `/api/template` or WebSock
 
 ## Remaining implementation observations
 
-These are code-inspection findings, not new hardware results. They remain follow-up items for later work; the release sweep does not resolve them.
+These remain open implementation findings. The 7 November audit reproduced the Improv memory faults, optional-tile retention, disconnected flow state and portal lifecycle using host stand-ins/extracted production code. Other observations below are static findings; none is a new hardware result. See the audit for fix acceptance cases.
 
 The optional browser tiles need transition coverage. In `src/web/web_page.h`, some update branches write Solar today, Tomorrow or Weather only while configured/fresh; there is no fallback resetting every tile when its entity/location is cleared or its forecast becomes unavailable. A previously shown value can therefore remain until reload. Also, a failed status refresh greys nodes/tiles but does not explicitly stop the flow animation; persistent history sampling now owns gaps independently of browser live-status requests.
 
@@ -45,6 +45,10 @@ The centre renderer replaces the supplied status with “All readings live” or
 The vendored Improv parser needs bounds hardening. `handleSerial()` writes into a 128-byte buffer based on a frame's advertised length; `parseImprovData()` reads command/SSID/password offsets without checking each against the received payload length. Treat this as a USB-serial input risk and add malformed-frame regression coverage before changing provisioning. Preserve the existing parser-reset and leading-newline reply patches.
 
 HTTP body size limits are checked after buffering when content length is unknown. They reject oversized content but do not provide a strict allocation ceiling. Consider bounded streaming before supporting less trusted endpoints. A configured HA token with no successful startup reads can also delay the first weather fetch because of the initial `haPublished` gate.
+
+The portal retry path omits the `everConnected` guard: a boot that used the setup portal can reopen it during a later outage. Browser status refresh also lacks a deadline and an in-flight guard, so delayed requests can overlap while old live state remains visible. The handbook's house/solar helper recipes use `float(0)` without availability conditions, allowing upstream failure to become a plausible numeric measurement.
+
+The fresh app image leaves only 10,912 bytes in an OTA slot. Reclaim asset space and enforce an image-size budget before substantial feature work. Treat optional authentication, source-specific heartbeat grouping, update coordination, diagnostics export and additional energy/cost views as separate proposals with explicit memory and compatibility budgets.
 
 ---
 

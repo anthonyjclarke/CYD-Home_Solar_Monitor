@@ -31,6 +31,17 @@ with tempfile.TemporaryDirectory(prefix="cyd-solar-check-") as directory:
     subprocess.run([str(test)], check=True)
     subprocess.run(common + [str(root / "tests/test_night.cpp"), "-o", str(test)], check=True)
     subprocess.run([str(test)], check=True)
+    subprocess.run(common + ["-g", "-fsanitize=address,undefined", "-fno-sanitize-recover=all", str(root / "tests/test_body_limit.cpp"), "-o", str(test)], check=True)
+    subprocess.run([str(test)], check=True)
+    subprocess.run(common + [str(root / "tests/test_flow_status.cpp"), str(root / "src/ui/flow_layout.cpp"), "-o", str(test)], check=True)
+    subprocess.run([str(test)], check=True)
+    # The vendored Improv parser runs under ASan/UBSan so a buffer overrun
+    # fails the check (audit F1). Its WiFi/Stream stand-ins come first.
+    improv = ["c++", "-std=c++17", "-Wall", "-Wextra", "-Werror", "-g", "-fsanitize=address,undefined",
+              "-fno-sanitize-recover=all", "-DARDUINO_ARCH_ESP32", "-I", str(root / "tests/support/improv"),
+              "-I", str(root / "tests/support"), "-I", str(root / "lib/ImprovWiFi/src")]
+    subprocess.run(improv + [str(root / "tests/test_improv.cpp"), str(root / "lib/ImprovWiFi/src/ImprovWiFiLibrary.cpp"), "-o", str(test)], check=True)
+    subprocess.run([str(test)], check=True)
     renderer = Path(directory) / "preview"
     subprocess.run(common + [str(root / "tools/render_preview.cpp"), str(root / "src/ui/flow_layout.cpp"), str(root / "src/ui/history_layout.cpp"), "-o", str(renderer)], check=True)
     output = root / "docs/images"

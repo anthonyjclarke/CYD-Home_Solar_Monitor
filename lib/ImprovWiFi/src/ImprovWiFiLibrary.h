@@ -158,7 +158,9 @@ public:
   bool isConnected();
 
 private:
-  OnImprovError *onImproErrorCallback;
-  OnImprovConnected *onImprovConnectedCallback;
-  CustomConnectWiFi *customConnectWiFiCallback;
+  // cyd-web-installer patch: upstream leaves these uninitialised, which is
+  // only safe for a static instance; an unset callback must read as null.
+  OnImprovError *onImproErrorCallback = nullptr;
+  OnImprovConnected *onImprovConnectedCallback = nullptr;
+  CustomConnectWiFi *customConnectWiFiCallback = nullptr;
 };

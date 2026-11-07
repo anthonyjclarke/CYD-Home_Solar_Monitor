@@ -144,7 +144,7 @@ void ImprovWiFi::sendDeviceUrl(ImprovTypes::Command cmd)
 
   const IPAddress address = WiFi.localIP();
   char buffer[16];
-  sprintf(buffer, "%d.%d.%d.%d", address[0], address[1], address[2], address[3]);
+  snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d", address[0], address[1], address[2], address[3]);
   std::string ipStr = std::string{buffer};
 
   if (improvWiFiParams.deviceUrl.empty())
@@ -252,8 +252,15 @@ bool ImprovWiFi::parseImprovSerial(size_t position, uint8_t byte, const uint8_t 
   if (position == 6)
     return byte == ImprovTypes::IMPROV_SERIAL_VERSION;
 
-  if (position <= 8)
+  if (position == 7)
     return true;
+
+  // cyd-web-installer patch: upstream stores whatever length is advertised,
+  // so a frame longer than _buffer overruns it. The header and payload are
+  // stored (the checksum byte is consumed, not stored), so reject a length
+  // whose 9 + payload bytes would not fit.
+  if (position == 8)
+    return 9u + byte <= sizeof(_buffer);
 
   uint8_t type = buffer[7];
   uint8_t data_len = buffer[8];
@@ -299,6 +306,14 @@ ImprovTypes::ImprovCommand ImprovWiFi::parseImprovData(const std::vector<uint8_t
 ImprovTypes::ImprovCommand ImprovWiFi::parseImprovData(const uint8_t *data, size_t length, bool check_checksum)
 {
   ImprovTypes::ImprovCommand improv_command;
+  // cyd-web-installer patch: upstream reads the command, length bytes and
+  // both strings without checking they lie inside the payload. Every read
+  // below is now bounded by `length`.
+  if (length < 2u + check_checksum)
+  {
+    improv_command.command = ImprovTypes::Command::UNKNOWN;
+    return improv_command;
+  }
   ImprovTypes::Command command = (ImprovTypes::Command)data[0];
   uint8_t data_length = data[1];
 
@@ -313,7 +328,7 @@ ImprovTypes::ImprovCommand ImprovWiFi::parseImprovData(const uint8_t *data, size
     uint8_t checksum = data[length - 1];
 
     uint32_t calculated_checksum = 0;
-    for (uint8_t i = 0; i < length - 1; i++)
+    for (size_t i = 0; i < length - 1; i++)
     {
       calculated_checksum += data[i];
     }
@@ -327,13 +342,22 @@ ImprovTypes::ImprovCommand ImprovWiFi::parseImprovData(const uint8_t *data, size
 
   if (command == ImprovTypes::Command::WIFI_SETTINGS)
   {
+    // A malformed payload returns an empty SSID, which onCommandCallback()
+    // answers with ERROR_INVALID_RPC.
+    const size_t payload_end = 2u + data_length;
+    if (payload_end < 3)
+      return {.command = command, .ssid = "", .password = ""};
     uint8_t ssid_length = data[2];
     uint8_t ssid_start = 3;
     size_t ssid_end = ssid_start + ssid_length;
+    if (ssid_end >= payload_end)
+      return {.command = command, .ssid = "", .password = ""};
 
     uint8_t pass_length = data[ssid_end];
     size_t pass_start = ssid_end + 1;
     size_t pass_end = pass_start + pass_length;
+    if (pass_end > payload_end)
+      return {.command = command, .ssid = "", .password = ""};
 
     std::string ssid(data + ssid_start, data + ssid_end);
     std::string password(data + pass_start, data + pass_end);

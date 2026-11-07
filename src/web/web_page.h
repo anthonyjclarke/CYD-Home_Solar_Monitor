@@ -131,7 +131,7 @@ main{padding:20px 16px 60px}h1{font-size:30px}.row{grid-template-columns:1fr}.ti
 <div class="legend" id="historyLegend"><span><i style="background:var(--solar)"></i>Solar</span><span><i style="background:var(--house)"></i>House</span><span><i style="background:var(--grid)"></i>Grid (+ import / &minus; export)</span><span><i style="background:var(--battery)"></i>Battery (+ supplying / &minus; charging)</span></div>
 <p class="note" id="trendNote">Loading the device’s recorded history…</p></div>
 <p class="cap" id="sourceStatus">Waiting for device status&hellip;</p>
-<footer class="art"><img src="/assets/solar-footer.webp?v=1" alt="" aria-hidden="true" width="1600" height="533" loading="lazy" decoding="async"></footer>
+<footer class="art"><img src="/assets/solar-footer.webp?v=2" alt="" aria-hidden="true" width="960" height="320" loading="lazy" decoding="async"></footer>
 <div class="foot"><span>CYD Home Solar Monitor &middot; SolarEdge + Home Assistant &middot; <a href="/guide/" target="_blank" rel="noopener">Handbook</a></span>
 <a href="https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.6 7.6 0 0 1 8 3.9c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>github.com/anthonyjclarke/CYD-Home_Solar_Monitor</a></div>
 </section>
@@ -220,7 +220,10 @@ function power(w){const f=fmt(w);return f[0]+' '+f[1]}
 function setV(id,r){const f=fmt(r.value);$(id).innerHTML=r.hasValue?f[0]+'<small>'+f[1]+'</small>':'&ndash;'}
 function pill(id,text,kind){const e=$(id);e.textContent=text;e.className='pill'+(kind?' '+kind:'')}
 let toastTimer;function message(text){const m=$('message');m.textContent=text;m.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>m.style.display='none',5000)}
-async function api(path,body){const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-CYD-Request':'1'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const data=await response.json();if(!response.ok)throw Error(data.error||'Request failed');return data}
+// Every request has a deadline, so a hung device cannot leave the page looking live.
+async function api(path,body,ms=10000){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),ms);
+try{const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-CYD-Request':'1'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',signal:ctl.signal});const data=await response.json();if(!response.ok)throw Error(data.error||'Request failed');return data}
+catch(e){throw e.name==='AbortError'?Error('No response from the device'):e}finally{clearTimeout(timer)}}
 async function load(){const c=await api('/api/config');['url','poll','stale','brightness','debugLevel','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>$(k).value=c[k]);$('lat').value=c.lat??'';$('lon').value=c.lon??'';['demo','nightDim'].forEach(k=>$(k).checked=c[k]);$('layout').value=String(c.layout);$('nightMode').value=String(c.nightMode??0);const times={nightDimAt:c.nightDimAt??(c.nightStart??19)*60,nightOffAt:c.nightOffAt??23*60,nightOnAt:c.nightOnAt??(c.nightEnd??7)*60};Object.keys(times).forEach(k=>{$(k).value=nightTime(times[k]);$(k).defaultValue=$(k).value});nightControls();c.entities.forEach((id,i)=>$('entity'+i).value=id);$('tokenState').textContent=c.tokenSaved?'A token is saved. Leave blank to keep it.':'No Home Assistant token saved yet.'}
 function nightTime(minutes){return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')}
 function nightMinute(value){const m=/^(\d{2}):(\d{2})$/.exec(value);return m&&Number(m[1])<24&&Number(m[2])<60?Number(m[1])*60+Number(m[2]):NaN}
@@ -256,7 +259,7 @@ const POWER=[[6,'--solar'],[1,'--house'],[2,'--grid'],[3,'--battery']];
 function niceStep(range){const raw=range/4,p=Math.pow(10,Math.floor(Math.log10(raw)));for(const m of [1,2,2.5,5,10])if(m*p>=raw)return m*p;return 10*p}
 async function refreshHistory(force=false){if(historyBusy||busy||(!force&&Date.now()-historyFetched<60000))return;historyBusy=true;
 try{const d=await api('/api/history?hours=24');if(d.schema!==1||!Array.isArray(d.samples)||!Array.isArray(d.fields))throw Error('Unsupported history format');historyData=d;historyFetched=Date.now();historyError='';
-if($('historyMetric').options.length===1)d.fields.forEach((f,i)=>$('historyMetric').add(new Option(f.name+' ('+f.unit+')',String(i))));trend()}
+if($('historyMetric').options.length===1)d.fields.slice(0,8).forEach((f,i)=>$('historyMetric').add(new Option(f.name+' ('+f.unit+')',String(i))));trend()}
 catch(e){historyError='History unavailable: '+e.message;$('trendNote').textContent=historyError}finally{historyBusy=false}}
 function trend(){const svg=$('trend'),W=Math.max(320,Math.round(svg.getBoundingClientRect().width)||640),H=250;svg.setAttribute('viewBox','0 0 '+W+' '+H);
 const d=historyData;if(!d){svg.innerHTML='';return}
@@ -291,7 +294,13 @@ window.addEventListener('resize',trend);
 function age(s){return s==null?'–':s<90?s+' s':Math.round(s/60)+' min'}
 function rows(id,pairs){$(id).innerHTML=pairs.map(([k,v])=>'<tr><th style="width:34%">'+k+'</th><td>'+v+'</td></tr>').join('')}
 function esc(t){return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-async function refresh(){if(busy)return;try{const s=await api('/api/status');last=Date.now();
+// One timer poll at a time; a forced refresh (after saving) may overlap it, and
+// whichever reply is older than the one already shown is dropped.
+let pollSeq=0,shownSeq=0,polling=false;
+async function refresh(force=false){if(busy||(polling&&!force))return;const seq=++pollSeq;polling=true;
+try{const s=await api('/api/status',undefined,5000);if(seq<shownSeq)return;shownSeq=seq;last=Date.now();render(s)}
+catch(e){if(seq>=shownSeq){shownSeq=seq;offline(e.message)}}finally{if(seq===pollSeq)polling=false}}
+function render(s){
 const R=s.readings,solar=R[6],house=R[1],grid=R[2],batt=R[3],soc=R[4],live=s.complete;
 pill('badge',s.demo?'Demo data':live?'Live':'Waiting',s.demo?'warn':live?'good':'warn');
 const led=s.demo||!live?'#FFCF7A':'#84F3AD';$('led').style.background=led;$('led').style.boxShadow='0 0 7px '+led;
@@ -306,13 +315,7 @@ pill('sSolar',solar.fresh?(solar.value>30?'Generating':'No generation'):'Unavail
 pill('sHouse',house.fresh?'Demand':'Unavailable','');
 $('kSoc').textContent=s.battery?'Battery · '+s.battery:'Battery level';$('vSoc').innerHTML=soc.hasValue?soc.value.toFixed(0)+'<small>%</small>':'&ndash;';
 $('socBar').style.width=(soc.hasValue?Math.max(0,Math.min(100,soc.value)):0)+'%';$('socBar').style.background=soc.value>=50?'var(--battery)':soc.value>=20?'var(--solar)':'var(--bad)';
-const t=s.totals||{},w=s.weather||{};
-if(t.today&&t.today.entity){$('vToday').innerHTML=t.today.fresh?t.today.value.toFixed(2)+'<small>kWh</small>':'&ndash;';pill('sToday',t.today.fresh?'since midnight':'unavailable','')}
-if(t.tomorrow&&t.tomorrow.entity&&t.tomorrow.fresh){$('vTomorrow').innerHTML='~'+Math.round(t.tomorrow.value)+'<small>kWh</small>';pill('sTomorrow',w.fresh?SKY(w.tomorrowCode)+' · '+w.tomorrowMaxC.toFixed(0)+'°':'solar forecast','')}
-else if(w.fresh){$('vTomorrow').innerHTML=w.tomorrowMaxC.toFixed(0)+'<small>°C max</small>';pill('sTomorrow',SKY(w.tomorrowCode),'')}
-if(w.configured){$('kWeather').textContent=w.place?'Now · '+w.place.split(',')[0]:'Weather now';$('vWeather').innerHTML=w.fresh?w.nowC.toFixed(0)+'<small>°C</small>':'&ndash;';pill('sWeather',w.fresh?SKY(w.nowCode):'unavailable','')}
-// These tiles show "–" when unavailable; clear the grey a failed refresh left.
-['tToday','tTomorrow','tWeather'].forEach(t=>$(t).classList.remove('stale'));
+optionalTiles(s.totals||{},s.weather||{});
 arm('Solar',solar.fresh,solar.value,true);arm('Grid',grid.fresh,grid.value,grid.value>0);arm('Batt',batt.fresh,batt.value,batt.value>0);arm('House',house.fresh,house.value,false);
 node('Solar',solar,solar.fresh?(solar.value>30?'generating':'idle'):'unavailable');node('House',house,house.fresh?'demand':'unavailable');
 node('Grid',grid,!grid.fresh?'unavailable':grid.value>30?'importing':grid.value<-30?'exporting':'idle');
@@ -323,8 +326,21 @@ $('sourceStatus').textContent=s.message+' · '+(s.reportTimeKnown?'source report
 rows('deviceRows',[['Firmware',esc(s.project+' '+s.version)],['Address','<code>http://solar.local/</code> · '+esc(s.ip)],['Local time',esc(s.localTime||'clock not set')],['Uptime',age(s.uptimeSeconds)],['Free memory',Math.round(s.freeHeap/1024)+' KB']]);
 $('diagRows').innerHTML=R.map(r=>'<tr><td>'+esc(r.name)+'</td><td><code>'+esc(r.entity||'derived')+'</code></td><td class="num">'+(r.hasValue?(r.unit==='%'?r.value.toFixed(1)+' %':Math.round(r.value)+' W'):'–')+'</td><td class="'+(r.valid?'ok':'no')+'">'+(r.valid?'yes':'no')+'</td><td class="'+(r.fresh?'ok':'no')+'">'+(r.fresh?'yes':'no')+'</td><td class="num">'+age(r.receivedAgeSeconds)+'</td><td class="num">'+age(r.reportedAgeSeconds)+'</td></tr>').join('');
 $('diagnostics').textContent=JSON.stringify(s,null,2)}
-catch(e){pill('badge','Disconnected','bad');$('crtTitle').textContent='Disconnected';$('led').style.background='#E0644F';$('led').style.boxShadow='0 0 7px #E0644F';$('sourceStatus').textContent=e.message;document.querySelectorAll('.tile,.node').forEach(el=>el.classList.add('stale'))}}
-$('settings').addEventListener('submit',async e=>{e.preventDefault();const c={};['url','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>c[k]=$(k).value.trim());const lat=$('lat').value.trim(),lon=$('lon').value.trim();c.lat=lat===''?null:Number(lat);c.lon=lon===''?null:Number(lon);['poll','stale','brightness','layout','debugLevel','nightMode'].forEach(k=>c[k]=Number($(k).value));['demo','nightDim','clearToken'].forEach(k=>c[k]=$(k).checked);['nightDimAt','nightOffAt','nightOnAt'].forEach(k=>{const value=nightMinute($(k).value);c[k]=Number.isInteger(value)?value:$(k).disabled?nightMinute($(k).defaultValue):NaN});if(!['nightDimAt','nightOffAt','nightOnAt'].every(k=>Number.isInteger(c[k]))){message('Enter valid night times');return}c.nightStart=Math.floor((c.nightMode===1?c.nightOffAt:c.nightDimAt)/60);c.nightEnd=Math.floor(c.nightOnAt/60);c.entities=labels.map((_,i)=>$('entity'+i).value.trim());c.token=$('token').value;try{await api('/api/config',c);$('token').value='';$('clearToken').checked=false;message('Settings saved');await load();await refresh();await refreshHistory(true)}catch(err){message(err.message)}});
+// Every tile is written on every reply, so a cleared entity or lost source can
+// never leave an old value looking current. Unavailable shows "–" without grey.
+function optionalTiles(t,w){const D='&ndash;',today=t.today||{},fc=t.tomorrow||{};
+const tile=(id,value,text)=>{$('v'+id).innerHTML=value;pill('s'+id,text,'');$('t'+id).classList.remove('stale')};
+tile('Today',today.entity&&today.fresh?today.value.toFixed(2)+'<small>kWh</small>':D,!today.entity?'not configured':today.fresh?'since midnight':'unavailable');
+if(fc.entity&&fc.fresh)tile('Tomorrow','~'+Math.round(fc.value)+'<small>kWh</small>',w.fresh?SKY(w.tomorrowCode)+' · '+w.tomorrowMaxC.toFixed(0)+'°':'solar forecast');
+else if(w.fresh)tile('Tomorrow',w.tomorrowMaxC.toFixed(0)+'<small>°C max</small>',SKY(w.tomorrowCode));
+else tile('Tomorrow',D,fc.entity||w.configured?'unavailable':'not configured');
+$('kWeather').textContent=!w.configured?'Weather':w.place?'Now · '+w.place.split(',')[0]:'Weather now';
+tile('Weather',w.configured&&w.fresh?w.nowC.toFixed(0)+'<small>°C</small>':D,!w.configured?'not configured':w.fresh?SKY(w.nowCode):'unavailable')}
+// Failure or timeout: keep last values greyed, and stop every flow arm.
+function offline(reason){pill('badge','Disconnected','bad');$('crtTitle').textContent='Disconnected';$('led').style.background='#E0644F';$('led').style.boxShadow='0 0 7px #E0644F';
+$('sourceStatus').textContent=reason+(last?' · last update '+age(Math.round((Date.now()-last)/1000))+' ago':'');
+document.querySelectorAll('.tile,.node').forEach(el=>el.classList.add('stale'));Object.keys(FL).forEach(id=>arm(id,false,0,true))}
+$('settings').addEventListener('submit',async e=>{e.preventDefault();const c={};['url','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>c[k]=$(k).value.trim());const lat=$('lat').value.trim(),lon=$('lon').value.trim();c.lat=lat===''?null:Number(lat);c.lon=lon===''?null:Number(lon);['poll','stale','brightness','layout','debugLevel','nightMode'].forEach(k=>c[k]=Number($(k).value));['demo','nightDim','clearToken'].forEach(k=>c[k]=$(k).checked);['nightDimAt','nightOffAt','nightOnAt'].forEach(k=>{const value=nightMinute($(k).value);c[k]=Number.isInteger(value)?value:$(k).disabled?nightMinute($(k).defaultValue):NaN});if(!['nightDimAt','nightOffAt','nightOnAt'].every(k=>Number.isInteger(c[k]))){message('Enter valid night times');return}c.nightStart=Math.floor((c.nightMode===1?c.nightOffAt:c.nightDimAt)/60);c.nightEnd=Math.floor(c.nightOnAt/60);c.entities=labels.map((_,i)=>$('entity'+i).value.trim());c.token=$('token').value;try{await api('/api/config',c);$('token').value='';$('clearToken').checked=false;message('Settings saved');await load();await refresh(true);await refreshHistory(true)}catch(err){message(err.message)}});
 // Settings span several sections; a field that fails browser validation may be
 // on a hidden one, so show that section before the browser reports it.
 document.querySelectorAll('#settings input,#settings select,#settings textarea').forEach(el=>el.addEventListener('invalid',()=>{const p=el.closest('.page');if(p&&!p.classList.contains('on'))location.hash=p.id.slice(2)}));

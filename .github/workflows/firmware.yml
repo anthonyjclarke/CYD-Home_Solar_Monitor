@@ -23,6 +23,7 @@ jobs:
       - run: python3 tools/check_docs.py
       - run: node tests/test_web_history.js
       - run: node tests/test_web_settings.js
+      - run: node tests/test_web_dashboard.js
   firmware:
     needs: model-checks
     uses: anthonyjclarke/cyd-web-installer/.github/workflows/cyd-release.yml@main

@@ -12,12 +12,20 @@ XPT2046_Touchscreen controller(TOUCH_CS_PIN, TOUCH_IRQ_PIN);
 State current = {};
 uint16_t width = 320, height = 240;
 uint16_t limits[4] = {TOUCH_X_MIN, TOUCH_X_MAX, TOUCH_Y_MIN, TOUCH_Y_MAX};
+// The same spans calibrate() requires; equal endpoints would divide by zero
+// in map().
+bool validLimits(const uint16_t* l) {
+    return l[1] > l[0] + 1000 && l[3] > l[2] + 1000 && l[1] <= 4095 && l[3] <= 4095;
+}
 }
 void begin(uint16_t w, uint16_t h) {
     width = w; height = h;
     Preferences p;
     if (p.begin("solar-touch", true)) {
-        if (p.getBytesLength("limits") == sizeof(limits)) p.getBytes("limits", limits, sizeof(limits));
+        uint16_t saved[4];
+        // A corrupt or out-of-range record keeps the built-in defaults.
+        if (p.getBytesLength("limits") == sizeof(saved) && p.getBytes("limits", saved, sizeof(saved)) == sizeof(saved) &&
+            validLimits(saved)) memcpy(limits, saved, sizeof(limits));
         p.end();
     }
     bus.begin(TOUCH_CLK_PIN, TOUCH_MISO_PIN, TOUCH_MOSI_PIN, TOUCH_CS_PIN);
@@ -39,8 +47,8 @@ void update() {
 const State& state() { return current; }
 
 bool calibrate(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1) {
-    if (x1 <= x0 + 1000 || y1 <= y0 + 1000 || x1 > 4095 || y1 > 4095) return false;
     uint16_t next[] = {x0, x1, y0, y1};
+    if (!validLimits(next)) return false;
     Preferences p;
     if (!p.begin("solar-touch", false)) return false;
     bool ok = p.putBytes("limits", next, sizeof(next)) == sizeof(next); p.end();

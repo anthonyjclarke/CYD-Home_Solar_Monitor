@@ -9,9 +9,12 @@ import re
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
+# A real 24-hour /api/history capture from the owner's board (7 Nov 2026),
+# used for the handbook chart screenshots. Falls back to synthetic data.
+HISTORY = ROOT / "tools/fixtures/webui-history.json"
 PAGE = (ROOT / "src/web/web_page.h").read_text().split('R"HTML(', 1)[1].rsplit(')HTML"', 1)[0]
 VERSION = re.search(r'#define FIRMWARE_VERSION "([^\"]+)"', (ROOT / "include/config.h").read_text())[1]
-# Fixed public demonstration date; screenshots never contain live readings.
+# Fixed public demonstration date for the status fixture.
 EPOCH = int(datetime(2026, 11, 5, 6, 10, tzinfo=timezone.utc).timestamp())
 # Make the documentation fixture visibly distinct without changing firmware UI.
 PAGE = PAGE.replace("live from Home Assistant", "synthetic documentation fixture")
@@ -55,6 +58,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send({"error": "Not found"}, code=404)
         if self.path == "/api/config":
             return self.send(CONFIG)
+        if self.path.startswith("/api/history") and HISTORY.is_file():
+            return self.send(json.loads(HISTORY.read_text()))
         if self.path.startswith("/api/history"):
             # Synthetic full-day fixture with an outage and one missing metric.
             epoch = EPOCH

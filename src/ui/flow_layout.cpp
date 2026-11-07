@@ -342,7 +342,8 @@ Box drawCentre(Canvas& c, const FlowView& v) {
     bool all = true;
     for (auto metric : energy::displayMetrics) all &= u[metric];
     const bool good = all && !v.data.demo && (grid < -100 || (battery < -100 && r[energy::Soc].value >= 95));
-    const char* status = good ? "Good time to use power" : all && !v.data.demo ? "All readings live" : v.status;
+    const char* status = good ? (v.reportKnown ? "Good time to use power" : "Spare power / age unknown") :
+                         all && !v.data.demo ? (v.reportKnown ? "All readings live" : "Live / source age unknown") : v.status;
     c.rect(12, 218, 9, 9, good ? goodDot : all ? hubDot : track, 4);
     c.text(27, 218, 1, good ? batteryInk : label, Left, status);
     c.rect(232,210,80,26,bandIdle,4);

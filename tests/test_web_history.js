@@ -15,7 +15,7 @@ const context=vm.createContext({$:id=>elements[id],busy:false,Date,Math,Number,A
 vm.runInContext(source,context);
 (async()=>{
     await vm.runInContext('refreshHistory(true)',context);
-    assert.equal(elements.historyMetric.options.length,14);
+    assert.equal(elements.historyMetric.options.length,9); // Forecast and weather fields are not offered.
     assert.equal(calls,1);
     await vm.runInContext('refreshHistory()',context);
     assert.equal(calls,1); // Do not fetch the entire history on every status refresh.

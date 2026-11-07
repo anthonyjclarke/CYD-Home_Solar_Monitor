@@ -22,6 +22,10 @@ struct FlowView {
     bool clockKnown = false;
     bool totalLive[energy::TotalCount] = {};
     bool weatherLive = false;
+    // False when a displayed reading has no Home Assistant report time (or the
+    // clock is unset). The centre layout keeps this warning even when it would
+    // otherwise show "All readings live" or the spare-power hint (audit F8).
+    bool reportKnown = true;
     unsigned phase = 0;
     uint32_t ms = 0;  // Frame time; the centre layout's comets advance with it.
     bool motionOnly = false;  // Redraw only the moving pipes and hub (centre layout).

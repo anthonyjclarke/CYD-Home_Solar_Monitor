@@ -4,7 +4,7 @@ A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-24
 
 It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
 
-Source release `0.9.0` (local preparation; publication pending) · Latest published record `0.8.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
+Source release `0.9.1` (local preparation; publication pending) · Latest published record `0.8.0` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
 
 **Centre flow (light, default)**
 
@@ -228,7 +228,7 @@ python3 tools/check_host.py
 pio run -e cyd28
 ```
 
-The only environment is `cyd28` (`espressif32@6.12.0`, Arduino core 2.0.17, C++17). Host checks cover energy, history, serial levels, boot diagnostics and night scheduling, and render 22 SVG previews in `docs/images/` plus thirteen PNGs when `rsvg-convert` is installed. With the pinned ArduinoJson headers installed they also test the real history serializer and configuration/API logic using host stand-ins. Run `node tests/test_web_history.js` and `node tests/test_web_settings.js` for browser regressions. These checks do not verify physical HTTP transport, NVS, TLS or OTA.
+The only environment is `cyd28` (`espressif32@6.12.0`, Arduino core 2.0.17, C++17). Host checks cover energy, history, serial levels, boot diagnostics and night scheduling, and render 22 SVG previews in `docs/images/` plus thirteen PNGs when `rsvg-convert` is installed. With the pinned ArduinoJson headers installed they also test the real history serializer and configuration/API logic using host stand-ins. Run `node tests/test_web_history.js`, `node tests/test_web_settings.js` and `node tests/test_web_dashboard.js` for browser regressions. These checks do not verify physical HTTP transport, NVS, TLS or OTA.
 
 `python3 tools/preview_server.py` serves the dashboard with synthetic data at `http://127.0.0.1:8765`. Settings are in memory only; the fixture includes the handbook and images, but has no reboot or upload endpoints. Use synthetic values only.
 

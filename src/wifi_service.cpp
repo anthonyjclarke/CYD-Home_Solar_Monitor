@@ -44,8 +44,11 @@ void update() {
     if (!current.connected && !current.portalActive && millis() - lastAttempt >= 30000) {
         lastAttempt = millis(); WiFi.reconnect();
     }
-    // The timed-out setup portal is reopened after a bounded retry interval.
-    if (!current.connected && !current.portalActive && portalStarted && millis() - lastAttempt >= 20000) {
+    // The timed-out setup portal is reopened after a bounded retry interval,
+    // but only until the first connection: a later outage on a configured
+    // device uses reconnection alone, however the network was first joined.
+    if (!current.connected && !everConnected && !current.portalActive && portalStarted &&
+        millis() - lastAttempt >= 20000) {
         startPortal(); lastAttempt = millis();
     }
 }

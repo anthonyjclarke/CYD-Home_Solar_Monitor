@@ -263,7 +263,7 @@ bool ImprovWiFi::parseImprovSerial(size_t position, uint8_t byte, const uint8_t 
     return 9u + byte <= sizeof(_buffer);
 
   uint8_t type = buffer[7];
-  uint8_t data_len = buffer[8];
+  const size_t data_len = buffer[8];  // size_t: compared with size_t position (GCC -Wsign-compare)
 
   if (position <= 8 + data_len)
     return true;

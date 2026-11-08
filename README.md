@@ -1,5 +1,13 @@
 # CYD Home Solar Monitor
 
+[![Firmware](https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor/actions/workflows/firmware.yml/badge.svg)](https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor/actions/workflows/firmware.yml)
+[![Release](https://img.shields.io/github/v/release/anthonyjclarke/CYD-Home_Solar_Monitor)](https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-espressif32%406.12.0-orange?logo=platformio)](https://platformio.org/)
+[![Board](https://img.shields.io/badge/board-ESP32--2432S028R%20(CYD)-yellow)](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-REST%20API-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
+[![Web installer](https://img.shields.io/badge/install-web%20browser-brightgreen)](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/)
+
 A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-2432S028R). It shows solar generation, house demand, grid import/export and battery power and charge as live, animated flows.
 
 It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
@@ -65,13 +73,23 @@ The inverter takes one Modbus client at a time. Home Assistant is that client, w
 
 | Item            | Notes                                         |
 | :-------------- | :-------------------------------------------- |
-| ESP32-2432S028R | 2.8″ CYD: ILI9341, resistive touch, micro-USB |
+| ESP32 display   | One of the supported boards below             |
 | USB data cable  | Charge-only cables aren't detected            |
 | 5 V USB supply  | 1 A or better, to run it permanently          |
 | Chrome or Edge  | Desktop browser, for the web installer        |
 | 2.4 GHz Wi-Fi   | The ESP32 can't join 5 GHz-only networks      |
 
-No soldering or wiring. The board costs about US$10–15; the [CYD community repository](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display) describes it, where to buy it and printable cases. Newer two-USB-port boards use a different display controller and are untested.
+No soldering or wiring. The boards cost about US$10–25; the [CYD community repository](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display) describes the classic CYD, where to buy it and printable cases. Pick the matching board in the web installer:
+
+| Env               | Board                             | Status   |
+| :---------------- | :-------------------------------- | :------- |
+| `cyd28`           | ESP32-2432S028R 2.8″ ILI9341      | Tested   |
+| `cyd24`           | ESP32-2432S024R 2.4″ ILI9341      | Untested |
+| `e32r28t-st7789`  | Freenove FNK0114B 2.8″ ST7789     | Untested |
+| `e32r28t-ili9341` | Freenove FNK0114F 2.8″ ILI9341    | Untested |
+| `cyd40`           | ESP32-32E 4.0″ ST7796S 480 × 320  | Untested |
+
+The two `e32r28t` builds are for the USB-C ESP32-32E 2.8″ board with speaker and battery connectors (LCDwiki E32R28T, sold by Freenove as FNK0114); the box or listing says whether its panel is an ST7789 or ILI9341. Every board shows the same 320 × 240 display; the 4.0″ shows it centred with a black border. A capacitive-touch ("C") 2.4″ board displays but does not respond to taps. Untested boards have been built but not yet run; [hardware validation](docs/HARDWARE_VALIDATION.md) lists what to check.
 
 ---
 
@@ -230,7 +248,7 @@ python3 tools/check_host.py
 pio run -e cyd28
 ```
 
-The only environment is `cyd28` (`espressif32@6.12.0`, Arduino core 2.0.17, C++17). Host checks cover energy, history, serial levels, boot diagnostics, night scheduling and the panel status line, run the Improv parser and HTTP body cap under sanitizers, and render 22 SVG previews in `docs/images/` plus thirteen PNGs when `rsvg-convert` is installed. With the pinned ArduinoJson headers installed they also test the real history serializer and configuration/API logic using host stand-ins. Run `node tests/test_web_history.js`, `node tests/test_web_settings.js` and `node tests/test_web_dashboard.js` for browser regressions. These checks do not verify physical HTTP transport, NVS, TLS or OTA.
+The reference environment is `cyd28`; `cyd24`, `e32r28t-st7789`, `e32r28t-ili9341` and `cyd40` build the other boards; `pio run -e cyd28 -e cyd24 -e e32r28t-st7789 -e e32r28t-ili9341 -e cyd40` builds all five (`espressif32@6.12.0`, Arduino core 2.0.17, C++17). Host checks cover energy, history, serial levels, boot diagnostics, night scheduling and the panel status line, run the Improv parser and HTTP body cap under sanitizers, and render 22 SVG previews in `docs/images/` plus thirteen PNGs when `rsvg-convert` is installed. With the pinned ArduinoJson headers installed they also test the real history serializer and configuration/API logic using host stand-ins. Run `node tests/test_web_history.js`, `node tests/test_web_settings.js` and `node tests/test_web_dashboard.js` for browser regressions. These checks do not verify physical HTTP transport, NVS, TLS or OTA.
 
 `python3 tools/preview_server.py` serves the dashboard with synthetic data at `http://127.0.0.1:8765`. Settings are in memory only; the fixture includes the handbook and images, but has no reboot or upload endpoints. Use synthetic values only.
 

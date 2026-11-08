@@ -8,6 +8,8 @@ void begin() {
     screen.fillScreen(TFT_BLACK);
 }
 TFT_eSPI& tft() { return screen; }
+int16_t originX() { return (screen.width() - CYD_EXPECTED_WIDTH) / 2; }
+int16_t originY() { return (screen.height() - CYD_EXPECTED_HEIGHT) / 2; }
 void showBootMessage(const String& title, const String& detail) {
     screen.fillScreen(TFT_BLACK);
     screen.setTextColor(TFT_WHITE, TFT_BLACK);

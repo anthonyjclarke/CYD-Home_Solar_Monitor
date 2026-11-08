@@ -31,6 +31,10 @@ unsigned target = 0;
 uint16_t raw[4][2] = {};
 const int targets[4][2] = {{20,20},{299,20},{299,219},{20,219}};
 
+// The frame's position on the panel; non-zero only on panels larger than it.
+int16_t ox() { return cyd::display::originX(); }
+int16_t oy() { return cyd::display::originY(); }
+
 unsigned rgb565(unsigned rgb) {
     return ((rgb>>8)&0xf800) | ((rgb>>5)&0x07e0) | ((rgb>>3)&0x001f);
 }
@@ -64,7 +68,7 @@ void paintInfo() {
     t.drawString("Tap: return / hold 2s: calibrate",10,170,2);
     t.drawString(wifi.connected ? "Use browser for settings and updates" : "Portal: 192.168.4.1 (after 20s)",10,196,2);
     t.drawString("No Home Assistant token in logs",10,219,1);
-    buffer.pushSprite(0,0);
+    buffer.pushSprite(ox(),oy());
 }
 
 // Start-up screen: one row per step, repainted every 250 ms so Wi-Fi, IP and
@@ -88,15 +92,15 @@ void paintBoot(uint32_t now) {
     }
     v.footer = footer;
     ui::drawBoot(canvas, v);
-    buffer.pushSprite(0, 0);
+    buffer.pushSprite(ox(),oy());
 }
 
 void paintCalibration() {
     auto& t = cyd::display::tft();
     t.fillScreen(TFT_BLACK); t.setTextDatum(TC_DATUM); t.setTextColor(TFT_WHITE,TFT_BLACK);
-    t.drawString("Tap each cross once",160,95,2);
-    t.drawString("Timeout: 45 seconds",160,120,2);
-    int x=targets[target][0], y=targets[target][1];
+    t.drawString("Tap each cross once",ox()+160,oy()+95,2);
+    t.drawString("Timeout: 45 seconds",ox()+160,oy()+120,2);
+    int x=ox()+targets[target][0], y=oy()+targets[target][1];
     t.drawLine(x-8,y,x+8,y,TFT_YELLOW); t.drawLine(x,y-8,x,y+8,TFT_YELLOW);
 }
 void sampleCalibration(const cyd::touch::State& touch, uint32_t now) {
@@ -119,7 +123,7 @@ void sampleCalibration(const cyd::touch::State& touch, uint32_t now) {
                                          constrain(y0-dy,0,4095),constrain(y1+dy,0,4095));
             calibrating=false; details=true;
             auto& t=cyd::display::tft(); t.fillScreen(TFT_BLACK);
-            t.drawString(ok ? "Calibration saved" : "Calibration rejected",160,100,2);
+            t.drawString(ok ? "Calibration saved" : "Calibration rejected",ox()+160,oy()+100,2);
         } else paintCalibration();
         lastTouch=now;
     }
@@ -208,7 +212,7 @@ void update(uint32_t now) {
         if (gesture.heldMs(now)>300) {
             canvas.rect(0,237,std::min<uint32_t>(320,gesture.heldMs(now)*320/2000),3,0x9292aa);
         }
-        buffer.pushSprite(0,0); return;
+        buffer.pushSprite(ox(),oy()); return;
     }
     if (details) {
         // Repaint at 1 Hz to avoid flashing the setup page.
@@ -244,8 +248,8 @@ void update(uint32_t now) {
     const ui::Box box=ui::drawFlow(canvas,view);
     if (full && gesture.heldMs(now)>300)
         canvas.rect(0,237,std::min<uint32_t>(320,gesture.heldMs(now)*320/2000),3,0x9292aa);
-    if (full) { buffer.pushSprite(0,0); flowShown=true; }
-    else if (box.w > 0 && box.h > 0) buffer.pushSprite(box.x,box.y,box.x,box.y,box.w,box.h);
+    if (full) { buffer.pushSprite(ox(),oy()); flowShown=true; }
+    else if (box.w > 0 && box.h > 0) buffer.pushSprite(ox()+box.x,oy()+box.y,box.x,box.y,box.w,box.h);
 }
 }  // namespace app
 

@@ -8,20 +8,20 @@ Acceptance record for real CYD hardware, current for `1.0.1`. Ticked items have 
 
 Owner's ESP32-2432S028R, SolarEdge Modbus Multi through Home Assistant, Putney NSW. The `0.9.1` builds are the `1.0.1` code before the version number and a CI-only compiler fix. "Live UI correct" means the tiles, flow, history chart, trimmed picker and resized footer all showed as expected.
 
-| Date       | Build | Observation                              |
-|:-----------|:------|:-----------------------------------------|
-| 04-11-2026 | 0.8.0 | Centre layout matches preview            |
-| 04-11-2026 | 0.8.0 | `http://solar.local/` opens on an iPhone |
-| 07-11-2026 | 0.9.1 | Weather TLS `-9984` was heap; now HTTP   |
-| 07-11-2026 | 0.9.1 | Weather 200; `min_heap` 64 KB over 4 min |
-| 07-11-2026 | 0.9.1 | No Wi-Fi: portal opened; later resets OK |
-| 07-11-2026 | 0.9.1 | 24 h `/api/history`: 272 of 288 slots    |
-| 07-11-2026 | 0.9.1 | History kept across USB app flash        |
-| 08-11-2026 | 0.9.1 | Boot: 6/6 live, weather 200              |
-| 08-11-2026 | 0.9.1 | `min_heap` 73.5 KB after boot            |
-| 08-11-2026 | 0.9.1 | Status by IP 0.06 s; `solar.local` 5 s   |
-| 08-11-2026 | 0.9.1 | Live UI correct, no console errors       |
-| 08-11-2026 | 0.9.1 | Boot restored 270 history samples        |
+| Date         | Build   | Observation                                |
+| :----------- | :------ | :----------------------------------------- |
+| 04-11-2026   | 0.8.0   | Centre layout matches preview              |
+| 04-11-2026   | 0.8.0   | `http://solar.local/` opens on an iPhone   |
+| 07-11-2026   | 0.9.1   | Weather TLS `-9984` was heap; now HTTP     |
+| 07-11-2026   | 0.9.1   | Weather 200; `min_heap` 64 KB over 4 min   |
+| 07-11-2026   | 0.9.1   | No Wi-Fi: portal opened; later resets OK   |
+| 07-11-2026   | 0.9.1   | 24 h `/api/history`: 272 of 288 slots      |
+| 07-11-2026   | 0.9.1   | History kept across USB app flash          |
+| 08-11-2026   | 0.9.1   | Boot: 6/6 live, weather 200                |
+| 08-11-2026   | 0.9.1   | `min_heap` 73.5 KB after boot              |
+| 08-11-2026   | 0.9.1   | Status by IP 0.06 s; `solar.local` 5 s     |
+| 08-11-2026   | 0.9.1   | Live UI correct, no console errors         |
+| 08-11-2026   | 0.9.1   | Boot restored 270 history samples          |
 
 The macOS figure is name lookup, not the device: an IPv6 mDNS query for `solar.local` goes unanswered and the Mac waits 5 s. Forcing IPv4, or using the IP address, resolves in milliseconds. Browser request deadlines (12 s status, 15 s others) sit above it.
 
@@ -39,7 +39,22 @@ The macOS figure is name lookup, not the device: an IPv6 mDNS query for `solar.l
 - [x] Embedded JavaScript passes syntax checking.
 - [x] Browser fixture shows sample measurements and saves settings through its mock endpoint.
 
-The browser fixture uses synthetic data. Its success does not validate device authentication, NVS or the on-device HTTP server.
+The browser fixture uses synthetic status/settings and replays the documented real history capture for charts. Its success does not validate device authentication, NVS or the on-device HTTP server. The [8 November source review](REVIEW_2026-11-08.md) records additional host checks; no hardware item was completed by that review.
+
+---
+
+## Additional boards
+
+Built but never run. Each needs a board owner to flash its env and report. The ESP32-32E 2.8″ pins come from Freenove's FNK0114 schematic and TFT_eSPI setups; the 4.0″ pins from CYD_AnimatedPixelClock, which runs on that board. A `[BOARD]` serial line names the build at boot.
+
+- [ ] `e32r28t-st7789` (Freenove FNK0114B): colours correct (navy cards, not inverted or red/blue swapped), image not shifted.
+- [ ] `e32r28t-st7789`: taps land where pressed; if an axis is mirrored, the 2-second-hold calibration corrects it.
+- [ ] `e32r28t-ili9341` (Freenove FNK0114F): colours, image and touch as above.
+- [ ] ESP32-32E 2.8″: RGB LED stays off and the speaker stays silent (GPIO 4 is the amplifier enable).
+- [ ] `cyd24`: display and touch as on the 2.8″.
+- [ ] `cyd40`: 320 × 240 frame centred, colours correct, backlight dims and turns off.
+- [ ] `cyd40`: shared-bus touch maps taps into the centred frame; calibration targets appear inside it.
+- [ ] Each new board: Wi-Fi, HA readings, weather and history work as on the 2.8″ (heap matches: same frame buffer).
 
 ---
 

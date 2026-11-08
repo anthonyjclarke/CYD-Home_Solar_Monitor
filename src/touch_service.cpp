@@ -2,20 +2,45 @@
 #include "config.h"
 #include <Arduino.h>
 #include <Preferences.h>
+#include <cstdlib>
+#if defined(TOUCH_CS)
+#include "display_service.h"
+#else
 #include <SPI.h>
 #include <XPT2046_Touchscreen.h>
+#endif
 
 namespace cyd::touch {
 namespace {
+#if defined(TOUCH_CS)
+// Shared-bus boards (4.0-inch): the XPT2046 sits on the display's SPI lines,
+// so only TFT_eSPI may drive it; it drops to SPI_TOUCH_FREQUENCY per read.
+// Same raw-axis convention as CYD_AnimatedPixelClock's 4.0-inch backend.
+bool sample(uint16_t& x, uint16_t& y, uint16_t& z) {
+    z = cyd::display::tft().getTouchRawZ();
+    if (z < 350) return false;
+    cyd::display::tft().getTouchRaw(&x, &y);
+    return true;
+}
+#else
 SPIClass bus(VSPI);
 XPT2046_Touchscreen controller(TOUCH_CS_PIN, TOUCH_IRQ_PIN);
+bool sample(uint16_t& x, uint16_t& y, uint16_t& z) {
+    if (!controller.tirqTouched() || !controller.touched()) return false;
+    const TS_Point p = controller.getPoint();
+    x = p.x; y = p.y; z = p.z;
+    return true;
+}
+#endif
 State current = {};
 uint16_t width = 320, height = 240;
 uint16_t limits[4] = {TOUCH_X_MIN, TOUCH_X_MAX, TOUCH_Y_MIN, TOUCH_Y_MAX};
 // The same spans calibrate() requires; equal endpoints would divide by zero
-// in map().
+// in map(). A reversed pair is a mirrored axis, which map() handles, so a
+// board whose touch film runs the other way is fixed by calibrating.
 bool validLimits(const uint16_t* l) {
-    return l[1] > l[0] + 1000 && l[3] > l[2] + 1000 && l[1] <= 4095 && l[3] <= 4095;
+    return std::abs(int(l[1]) - int(l[0])) > 1000 && std::abs(int(l[3]) - int(l[2])) > 1000 &&
+           l[0] <= 4095 && l[1] <= 4095 && l[2] <= 4095 && l[3] <= 4095;
 }
 }
 void begin(uint16_t w, uint16_t h) {
@@ -28,20 +53,23 @@ void begin(uint16_t w, uint16_t h) {
             validLimits(saved)) memcpy(limits, saved, sizeof(limits));
         p.end();
     }
+#if !defined(TOUCH_CS)
+    // TFT_eSPI starts the shared-bus controller inside tft.init().
     bus.begin(TOUCH_CLK_PIN, TOUCH_MISO_PIN, TOUCH_MOSI_PIN, TOUCH_CS_PIN);
     controller.begin(bus); controller.setRotation(1);
+#endif
     current.available = true;
 }
 void update() {
     current.pressed = false;
-    if (!controller.tirqTouched() || !controller.touched()) return;
-    const TS_Point p = controller.getPoint();
+    uint16_t x = 0, y = 0, z = 0;
+    if (!sample(x, y, z)) return;
     // Reject saturated/no-response pressure and rail coordinates, as in the
     // working AnimatedPixelClock, rather than creating phantom touches.
-    if (p.z < 350 || p.z >= 4000 || p.x <= 0 || p.y <= 0 || p.x >= 4095 || p.y >= 4095) return;
-    current.rawX = p.x; current.rawY = p.y; current.z = p.z;
-    current.x = constrain(map(p.x, limits[0], limits[1], 0, width - 1), 0, width - 1);
-    current.y = constrain(map(p.y, limits[2], limits[3], 0, height - 1), 0, height - 1);
+    if (z < 350 || z >= 4000 || x == 0 || y == 0 || x >= 4095 || y >= 4095) return;
+    current.rawX = x; current.rawY = y; current.z = z;
+    current.x = constrain(map(x, limits[0], limits[1], 0, width - 1), 0, width - 1);
+    current.y = constrain(map(y, limits[2], limits[3], 0, height - 1), 0, height - 1);
     current.pressed = true;
 }
 const State& state() { return current; }

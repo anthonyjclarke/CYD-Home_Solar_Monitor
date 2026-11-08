@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **More boards.** New PlatformIO envs and web-installer entries for the 2.4″ ESP32-2432S024R (`cyd24`), the USB-C ESP32-32E 2.8″ board sold by Freenove as FNK0114B with an ST7789 panel (`e32r28t-st7789`) and as FNK0114F with an ILI9341 (`e32r28t-ili9341`), and the 4.0″ ESP32-32E ST7796S (`cyd40`). `include/config.h` holds one pin/driver block per board, selected by a `BOARD_*` build flag; the classic 2.8″ (`cyd28`) build is unchanged. The ESP32-32E boards put the red LED on GPIO 22 and leave GPIO 4, their speaker-amplifier enable, alone. The 4.0″ shows the 320 × 240 display centred and reads touch through TFT_eSPI on the shared display bus. None of the new boards has been run on hardware yet.
+
+### Changed
+
+- Touch calibration accepts a reversed axis, so a board whose touch film is mirrored is corrected by the 2-second-hold calibration instead of being rejected.
+- The `[BOARD]` boot log names the board key, panel size and touch bus.
+
+### Documentation
+
+Added the [8 November follow-up review](docs/REVIEW_2026-11-08.md) of `1.0.1`, with closure evidence for the previous audit, reproduced HTTP deadline/allocation and history-refresh gaps, and an ordered maintenance plan. Updated agent/development guidance and corrected the handbook's weather startup, browser-timeout and source-age descriptions. No application logic, dependencies, version or partition layout changed; physical acceptance remains separate.
+
+---
+
 ## [1.0.1] 08-11-2026
 
 First published release of the 1.0 line. The `v1.0.0` tag failed CI before its release step, so nothing was published from it; 1.0.1 is 1.0.0 plus the fix below.

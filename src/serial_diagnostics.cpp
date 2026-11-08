@@ -213,8 +213,13 @@ void begin() {
     const auto reset=esp_reset_reason();
     DBG_INFO("[BOOT] %s %s reset_reason=%d (%s) heap=%u min_heap=%u debug=%s",
              PROJECT_NAME,FIRMWARE_VERSION,int(reset),resetReason(reset),ESP.getFreeHeap(),ESP.getMinFreeHeap(),debugLevelName(debugLevel));
-    DBG_INFO("[BOARD] %s %s 320x240; TFT=HSPI touch=VSPI serial=115200",
-             CYD_BOARD_NAME,CYD_DRIVER_NAME);
+#if defined(TOUCH_CS)
+    constexpr const char* touchBus="shared-HSPI";
+#else
+    constexpr const char* touchBus="VSPI";
+#endif
+    DBG_INFO("[BOARD] %s (%s) %s %ux%u panel, 320x240 UI; TFT=HSPI touch=%s serial=115200",
+             CYD_BOARD_NAME,CYD_BOARD_KEY,CYD_DRIVER_NAME,unsigned(CYD_NATIVE_HEIGHT),unsigned(CYD_NATIVE_WIDTH),touchBus);
     const auto* partition=esp_ota_get_running_partition();
     DBG_INFO("[BOOT] App slot=%s flash=%u bytes",partition?partition->label:"unknown",ESP.getFlashChipSize());
     logConfig();

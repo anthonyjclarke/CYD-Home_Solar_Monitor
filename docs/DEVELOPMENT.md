@@ -1,5 +1,7 @@
 # Development reference
 
+The [8 November review](REVIEW_2026-11-08.md) records current follow-up findings, closure evidence for the previous audit and validation limits.
+
 Current for `1.0.1`. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, [HISTORY.md](HISTORY.md) for the history design, and the [handbook](index.html) for end-user setup.
 
 ---
@@ -19,6 +21,8 @@ node tests/test_web_dashboard.js
 pio run -e cyd28
 python3 tools/preview_server.py
 ```
+
+`default_envs` is `cyd28`, so a bare `pio run` builds only that; pass `-e` for the others: `cyd24`, `e32r28t-st7789`, `e32r28t-ili9341` and `cyd40`. Each env sets one `BOARD_*` flag that selects its pin, driver and geometry block in `include/config.h`; no flag means the classic 2.8″, which is also what the host tools compile. The UI frame stays 320 × 240 on every board, pushed at `display::originX()`/`originY()`, so the 4.0″ shows it centred. The 4.0″ defines `TOUCH_CS` and reads touch through TFT_eSPI on the display bus; the others keep their own VSPI touch bus. The shared installer workflow builds every `[env:]` and lists each by its `custom_installer_label`.
 
 After PlatformIO installs project libraries, run `python3 tools/check_history_response.py` to validate the real history handler with the pinned ArduinoJson String writer. `python3 tools/check_debug_config.py` also checks the actual configuration loader/saver and debug API validation with host NVS stand-ins. `python3 tools/check_night_config.py` checks night schedule migration and API validation. `tools/check_host.py` includes these checks when the headers are installed; on a clean checkout it reports that this integration check is skipped.
 
@@ -55,15 +59,15 @@ Every build checks image headroom against the actual `firmware.bin`, not the lin
 
 The `1.0.1` build is 1,646,704 bytes, leaving 188,304 bytes. The largest costs measured from the ELF symbols are listed below.
 
-| Item                                    | Bytes   |
-|:----------------------------------------|--------:|
-| Embedded handbook, 25 assets in total   | 302,647 |
-| – footer art `solar-footer.webp`        |  80,860 |
-| – nine browser captures                 | 179,742 |
-| – handbook HTML (gzip)                  |  20,185 |
-| Dashboard page `WEB_PAGE`, uncompressed |  46,720 |
-| `printf`/`scanf` family (newlib)        |  58,155 |
-| mbedTLS client and server handshake     |  13,776 |
+| Item                                      | Bytes     |
+| :---------------------------------------- | --------: |
+| Embedded handbook, 25 assets in total     | 302,647   |
+| – footer art `solar-footer.webp`          | 80,860    |
+| – nine browser captures                   | 179,742   |
+| – handbook HTML (gzip)                    | 20,185    |
+| Dashboard page `WEB_PAGE`, uncompressed   | 46,720    |
+| `printf`/`scanf` family (newlib)          | 58,155    |
+| mbedTLS client and server handshake       | 13,776    |
 
 The footer art is stored at 960 px, twice its largest displayed width of 480 px, at WebP quality 85 because its fine line work softens at 75. One further saving is known but not taken: serving `WEB_PAGE` gzipped, as the handbook already is, would save about 30 KB. Captures follow the encoding rule in [Refreshing visual documentation](#refreshing-visual-documentation).
 
@@ -102,7 +106,7 @@ The optional `debugLevel` field in schema-2 settings and `/api/config` accepts i
 
 `include/debug_levels.h` holds portable level and cadence rules. Routine cycle details and health are limited to roughly 60 seconds at Info. New mode/level changes and occasional totals/weather attempts may report sooner; Verbose logs each new poll snapshot. Repeated snapshots are suppressed, including when an optional request flag stays set between polls. Off suppresses application macros without disabling Improv protocol responses; framework/bootloader logs are separate.
 
-The browser polls status every three seconds and shared device history every minute. Only one status poll runs at a time; replies older than the one shown are dropped. Status requests give up after 12 s and others after 15 s, which then shows the page as disconnected and stops the flow animation. Keep these above the 5 s macOS can spend resolving `solar.local` (an unanswered IPv6 mDNS query). History uses 288 UTC five-minute slots, actual capture timestamps, per-field missing values and report-time availability. Two alternating verified LittleFS banks checkpoint every 15 minutes while dirty, plus controlled restart/update saves. See [the history design](HISTORY.md) for the binary format, identity reset rules, failure behavior and pending board tests. Chart clock labels use the browser timezone; the displayed device clock uses the configured POSIX timezone. Reduced Motion is read when the dashboard loads.
+The browser polls status every three seconds and shared device history every minute. Timer status polls are guarded; a forced refresh after saving may overlap, and replies older than the one shown are dropped. Requests through `api()` give up after 12 s for status and 15 s otherwise. Direct firmware-upload and place-search fetches do not use that helper. A status timeout or failure marks the page disconnected and stops the flow animation. Keep these above the 5 s macOS can spend resolving `solar.local` (an unanswered IPv6 mDNS query). History uses 288 UTC five-minute slots, actual capture timestamps, per-field missing values and report-time availability. Two alternating verified LittleFS banks checkpoint every 15 minutes while dirty, plus controlled restart/update saves. See [the history design](HISTORY.md) for the binary format, identity reset rules, failure behavior and pending board tests. Chart clock labels use the browser timezone; the displayed device clock uses the configured POSIX timezone. Reduced Motion is read when the dashboard loads.
 
 The device serves HTTP on port 80 after station Wi-Fi connects. ArduinoOTA owns mDNS startup; do not call `MDNS.begin()` independently. The separate WiFiManager portal opens after 20 seconds without an initial successful connection, times out after 180 seconds and retries. Once a connection has succeeded in that boot, later Wi-Fi loss uses reconnection alone, whether setup used the portal or a saved network.
 

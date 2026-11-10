@@ -4,7 +4,7 @@ Applies throughout this repository. Read this before changing firmware, tooling 
 
 Run commands in the checkout containing `platformio.ini` and `src/main.cpp`; a chat workspace can be empty. Check `git status --short` before editing.
 
-The `1.0.2` release is prepared locally; its [post-flash test plan](docs/TEST_PLAN_1.0.2.md) records acceptance separately from desktop checks. Do not mark previous-build evidence as acceptance of this build.
+The `1.0.2` release was published on 10-11-2026 by owner decision, ahead of full post-flash acceptance; its [post-flash test plan](docs/TEST_PLAN_1.0.2.md) records acceptance separately from desktop checks. Do not mark previous-build evidence as acceptance of this build.
 
 The runtime state-machine inventory and transition ownership are in [STATE_MACHINES.md](docs/STATE_MACHINES.md). Panel navigation uses `include/panel_state.h`; Wi-Fi policy uses `include/wifi_lifecycle.h`. Browser history uses a settings generation and a queued single-flight refresh; retain its deferred-request tests.
 

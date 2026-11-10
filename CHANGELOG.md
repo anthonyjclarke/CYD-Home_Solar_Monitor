@@ -1,8 +1,8 @@
 # Changelog
 
-## [1.0.2] – prepared 10-11-2026
+## [1.0.2] 10-11-2026
 
-Next patch release, prepared locally on `dev`. Publication and post-flash acceptance are pending; this entry is not a release or hardware-test claim.
+Published by owner decision on 10-11-2026, ahead of full post-flash acceptance. The 4.0″ layout and touch were checked on the owner's board. The other new boards and the remaining cases in the [1.0.2 test plan](docs/TEST_PLAN_1.0.2.md) are still open.
 
 ### Added
 

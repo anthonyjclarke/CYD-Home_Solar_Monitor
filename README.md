@@ -14,7 +14,7 @@ The 2.4″ and 2.8″ boards use a 320 × 240 screen format. The 4.0″ has a la
 
 It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
 
-Version `1.0.2` (prepared; hardware acceptance pending) · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md) · [Post-flash tests](docs/TEST_PLAN_1.0.2.md)
+Version `1.0.2` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md) · [Post-flash tests](docs/TEST_PLAN_1.0.2.md)
 
 <table>
 <tr><th align="left">2.4″ / 2.8″ (320 × 240): centre flow, default</th><th align="left">2.4″ / 2.8″ (320 × 240): cards</th></tr>

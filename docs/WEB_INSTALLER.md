@@ -8,7 +8,7 @@ The local `.github/workflows/firmware.yml` runs host checks and calls the extern
 
 ## Identity and image contract
 
-The reference environment is `cyd28`, labelled “CYD 2.8″ – ESP32-2432S028R”. Prepared `1.0.2` also defines `cyd24`, `e32r28t-st7789`, `e32r28t-ili9341` and `cyd40`; labels/hints are in `platformio.ini`. Additional boards are build-verified and await physical acceptance. Manifest name must match `PROJECT_NAME`, `CYD-Home-Solar-Monitor`. The GitHub repository is `CYD-Home_Solar_Monitor` (underscores). Changing either spelling casually can break links or installer update recognition.
+The reference environment is `cyd28`, labelled “CYD 2.8″ – ESP32-2432S028R”. `1.0.2` also defines `cyd24`, `e32r28t-st7789`, `e32r28t-ili9341` and `cyd40`; labels/hints are in `platformio.ini`. Additional boards are build-verified; the 4.0″ layout and touch were checked on the owner's board, and the others await physical acceptance. Manifest name must match `PROJECT_NAME`, `CYD-Home-Solar-Monitor`. The GitHub repository is `CYD-Home_Solar_Monitor` (underscores). Changing either spelling casually can break links or installer update recognition.
 
 Use separate image parts from `flash_parts.json`, including `boot_app0`, so a device previously running from `app1` boots the newly written app. Never put `firmware-merged.bin` in an update manifest. That clean USB image writes from `0x0` and overwrites NVS; browser/ArduinoOTA app updates take `firmware.bin`.
 
@@ -26,7 +26,7 @@ The repository records releases `v0.6.0`, `v0.7.0` and `v0.8.0` on 4 November 20
 
 ## Tests owed
 
-`1.0.2` is prepared locally; publication and installer acceptance are pending. Use the [post-flash update tests and release gate](TEST_PLAN_1.0.2.md) alongside the checks below.
+`1.0.2` was published on 10-11-2026 by owner decision; installer acceptance is still pending. Use the [post-flash update tests and release gate](TEST_PLAN_1.0.2.md) alongside the checks below.
 
 Complete these before the next release and record date, board variant, prior app slot, firmware version and result. Keep a board MAC in private commissioning notes if needed; redact it from public reports.
 

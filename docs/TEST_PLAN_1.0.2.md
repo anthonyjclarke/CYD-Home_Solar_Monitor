@@ -207,7 +207,7 @@ Test blank-only formatting, nonblank mount failure, corrupt-bank fallback and po
 
 Record per-board outcomes and skipped cases. Release acceptance needs PF01–PF15 where applicable, including normal browser paths and the outstanding installer cases. Do not replace night/provisioning/endurance evidence with a desktop smoke pass. Document any owner-approved exception with its scope/reason. Keep unresolved transport/search/form/update gaps disclosed rather than marking them fixed.
 
-Keep `1.0.2` in prepared status until physical results and the publication decision are recorded. Add dated redacted results to `HARDWARE_VALIDATION.md`; clear installer checks only with live installer evidence. Restore baseline settings/network/debug level, remove test proxies/delays and verify normal operation before leaving.
+Owner-approved exception, 10-11-2026: `1.0.2` was published before the full PF cases ran, after the owner checked the 4.0″ layout and touch. The scope is publication only. Every unrun case stays open and is recorded here when run. Add dated redacted results to `HARDWARE_VALIDATION.md`; clear installer checks only with live installer evidence. Restore baseline settings/network/debug level, remove test proxies/delays and verify normal operation before leaving.
 
 ---
 

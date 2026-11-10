@@ -59,7 +59,7 @@ The handbook currently has no script. Syntax checks do not exercise browser even
 
 Every build checks image headroom against the actual `firmware.bin`, not the linker's app percentage, which under-reports it. `tools/flash_budget.py` reads the `ota_0` size from the partition table, prints a `Flash budget:` line and fails the build (deleting the oversized image) when less than 64 KiB would remain. That margin is a team policy, not a hardware limit; retain the deployed partition contract rather than moving offsets to recover space.
 
-The [1.0.2 test plan](TEST_PLAN_1.0.2.md) records exact image sizes from the prepared build. For comparison, an earlier `1.0.1` build was 1,646,704 bytes, leaving 188,304 bytes; the symbol-size measurements below belong to that earlier build.
+The [1.0.2 test plan](TEST_PLAN_1.0.2.md) records exact image sizes from the release build. For comparison, an earlier `1.0.1` build was 1,646,704 bytes, leaving 188,304 bytes; the symbol-size measurements below belong to that earlier build.
 
 | Item                                      | Bytes     |
 | :---------------------------------------- | --------: |

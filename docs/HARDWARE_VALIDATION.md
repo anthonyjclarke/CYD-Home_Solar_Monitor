@@ -1,6 +1,6 @@
 # Hardware validation
 
-Acceptance record for real CYD hardware, tracking the prepared `1.0.2` release. Execute the [1.0.2 post-flash test plan](TEST_PLAN_1.0.2.md) and add dated results here. Existing checked items retain their original build/date and do not establish 1.0.2 acceptance. Ticked items have dated evidence from the owner's board running against live Home Assistant data; unticked items still need a real CYD. A local build or the synthetic browser fixture never completes an item here.
+Acceptance record for real CYD hardware, tracking the `1.0.2` release (published 10-11-2026). Execute the [1.0.2 post-flash test plan](TEST_PLAN_1.0.2.md) and add dated results here. Existing checked items retain their original build/date and do not establish 1.0.2 acceptance. Ticked items have dated evidence from the owner's board running against live Home Assistant data; unticked items still need a real CYD. A local build or the synthetic browser fixture never completes an item here.
 
 ---
 

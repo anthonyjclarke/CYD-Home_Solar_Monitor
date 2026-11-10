@@ -257,12 +257,12 @@ Final builds passed for all five environments using the final embedded handbook 
 
 | Environment      | Image bytes | Free bytes |
 | ---------------- | ----------: | ---------: |
-| cyd28            | 1,654,992   | 180,016    |
-| cyd24            | 1,654,992   | 180,016    |
-| e32r28t-st7789   | 1,654,960   | 180,048    |
-| e32r28t-ili9341  | 1,655,072   | 179,936    |
-| cyd40            | 1,652,816   | 182,192    |
+| cyd28            | 1,656,864   | 178,144    |
+| cyd24            | 1,656,864   | 178,144    |
+| e32r28t-st7789   | 1,656,848   | 178,160    |
+| e32r28t-ili9341  | 1,656,944   | 178,064    |
+| cyd40            | 1,654,720   | 180,288    |
 
-Smallest margin: 179,936 bytes, on `e32r28t-ili9341`. These sizes include the 4.0″ native 480 × 320 layout code (10-11-2026), which every env compiles; its 320 × 240 output is unchanged. Static build sizes do not establish runtime heap health. Dedicated-touch boards retain the expected TFT_eSPI undefined `TOUCH_CS` warning.
+Smallest margin: 178,064 bytes, on `e32r28t-ili9341`. These sizes include the 4.0″ native 480 × 320 layout code (10-11-2026), which every env compiles; its 320 × 240 output is unchanged. Static build sizes do not establish runtime heap health. Dedicated-touch boards retain the expected TFT_eSPI undefined `TOUCH_CS` warning.
 
 All PF/LAB physical results remain Not run or pending; no hardware checklist was completed. Nothing was flashed, tagged, committed, pushed or published as part of release preparation. The previous-build results in `STATE_MACHINES.md` remain dated pre-version-bump evidence, not the image sizes above.

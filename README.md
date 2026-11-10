@@ -4,33 +4,37 @@
 [![Release](https://img.shields.io/github/v/release/anthonyjclarke/CYD-Home_Solar_Monitor)](https://github.com/anthonyjclarke/CYD-Home_Solar_Monitor/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-espressif32%406.12.0-orange?logo=platformio)](https://platformio.org/)
-[![Board](https://img.shields.io/badge/board-ESP32--2432S028R%20(CYD)-yellow)](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display)
+[![Boards](https://img.shields.io/badge/boards-CYD%202.4%E2%80%B3%20%C2%B7%202.8%E2%80%B3%20%C2%B7%204.0%E2%80%B3-yellow)](#supported-boards-and-screen-formats)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-REST%20API-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![Web installer](https://img.shields.io/badge/install-web%20browser-brightgreen)](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/)
 
-A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-2432S028R). It shows solar generation, house demand, grid import/export and battery power and charge as live, animated flows.
+A home energy-flow display for ESP32 "Cheap Yellow Display" (CYD) boards. It runs on the classic 2.8″ ESP32-2432S028R, the 2.4″ ESP32-2432S024R, the USB-C ESP32-32E 2.8″ and the ESP32-32E 4.0″. It shows solar generation, house demand, grid import/export and battery power and charge as live, animated flows.
+
+The 2.4″ and 2.8″ boards use a 320 × 240 screen format. The 4.0″ has a larger 480 × 320 format with its own layout, not a stretched copy: the same flows with a side rail for the clock, weather, solar today, tomorrow's forecast and battery. See [supported boards and screen formats](#supported-boards-and-screen-formats).
 
 It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
 
 Version `1.0.2` (prepared; hardware acceptance pending) · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md) · [Post-flash tests](docs/TEST_PLAN_1.0.2.md)
 
-**Centre flow (light, default)**
+<table>
+<tr><th align="left">2.4″ / 2.8″ (320 × 240): centre flow, default</th><th align="left">2.4″ / 2.8″ (320 × 240): cards</th></tr>
+<tr><td><img src="docs/images/centre-flow-preview.png" width="320" alt="Centre-flow layout on a 320 × 240 board"></td><td><img src="docs/images/flow-preview.png" width="320" alt="Cards layout on a 320 × 240 board"></td></tr>
+</table>
 
-![Centre-flow layout](docs/images/centre-flow-preview.png)
+**4.0″ (480 × 320): centre flow with the information rail**
 
-**Cards (dark)**
-
-![Cards layout](docs/images/flow-preview.png)
+<img src="docs/images/cyd40-centre-flow-preview.png" width="480" alt="4.0-inch 480 × 320 layout: flow cross with a rail for the clock, weather, solar today, tomorrow and battery">
 
 Panel previews and most browser captures below use synthetic demonstration data. The two browser history charts are a real 24-hour capture from the owner's system on 7 November 2026.
 
-Both layouts show the same readings. Switch between them in the browser under **Settings → Display → Layout**.
+Both layouts show the same readings on every board. Switch between them in the browser under **Settings → Display → Layout**. Previews are drawn at each board's pixel size, so the 4.0″ image is wider.
 
 ---
 
 ## Features
 
 - **Two panel layouts.** Centre flow (light, the default) has the four flows meeting at the inverter, with comets travelling along each pipe the way power flows. Cards (dark) shows the same readings as four cards. Choose either in the web UI under **Settings → Display → Layout**.
+- **Several CYD boards, two screen formats.** 2.4″ and 2.8″ boards draw 320 × 240. The 4.0″ draws its own 480 × 320 versions of every screen: flow, cards, history, boot and setup.
 - **24-hour history.** Five-minute snapshots of actual power, battery level, optional totals and weather, shared by the panel and browser. LittleFS checkpoints every 15 minutes retain completed saves across reboots; missing readings stay gaps. Tap **History** or hold the panel longer than two seconds for Settings.
 - **Battery at a glance.** A gauge filled to the state of energy turns amber below 50% and red below 20%. The status line says when it's a good time to use power.
 - **Optional extras:** today's solar kWh, tomorrow's solar forecast, and weather from Open-Meteo for a location you choose.
@@ -79,19 +83,32 @@ The inverter takes one Modbus client at a time. Home Assistant is that client, w
 | Chrome or Edge  | Desktop browser, for the web installer        |
 | 2.4 GHz Wi-Fi   | The ESP32 can't join 5 GHz-only networks      |
 
-No soldering or wiring. The boards cost about US$10–25; the [CYD community repository](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display) describes the classic CYD, where to buy it and printable cases. Pick the matching board in the web installer:
+No soldering or wiring. The boards cost about US$10–25; the [CYD community repository](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display) describes the classic CYD, where to buy it and printable cases.
 
-| Env               | Board                             | Status   |
-| :---------------- | :-------------------------------- | :------- |
-| `cyd28`           | ESP32-2432S028R 2.8″ ILI9341      | Tested   |
-| `cyd24`           | ESP32-2432S024R 2.4″ ILI9341      | Untested |
-| `e32r28t-st7789`  | Freenove FNK0114B 2.8″ ST7789     | Untested |
-| `e32r28t-ili9341` | Freenove FNK0114F 2.8″ ILI9341    | Untested |
-| `cyd40`           | ESP32-32E 4.0″ ST7796S 480 × 320  | Untested |
+### Supported boards and screen formats
 
-The two `e32r28t` builds are for the USB-C ESP32-32E 2.8″ board with speaker and battery connectors (LCDwiki E32R28T, sold by Freenove as FNK0114); the box or listing says whether its panel is an ST7789 or ILI9341. The 2.8″ and 2.4″ boards show the 320 × 240 display. The 4.0″ draws its own full-screen 480 × 320 layout with the same built-in fonts: the flow cross on the left, and a rail on the right with the clock, weather, solar today, tomorrow's forecast, battery level and History button. A capacitive-touch ("C") 2.4″ board displays but does not respond to taps. Untested boards have been built but not yet run; [hardware validation](docs/HARDWARE_VALIDATION.md) lists what to check.
+Pick the matching board in the web installer, or its env in PlatformIO. The firmware is built per board, so a 4.0″ needs the `cyd40` image.
 
-![4.0″ native layout: flow cross with the clock, solar today, tomorrow and battery rail](docs/images/cyd40-centre-flow-preview.png)
+| Env               | Board                            | Screen format       | Status        |
+| :---------------- | :------------------------------- | :------------------ | :------------ |
+| `cyd28`           | ESP32-2432S028R 2.8″ ILI9341     | 320 × 240           | Tested        |
+| `cyd24`           | ESP32-2432S024R 2.4″ ILI9341     | 320 × 240           | Untested      |
+| `e32r28t-st7789`  | Freenove FNK0114B 2.8″ ST7789    | 320 × 240           | Untested      |
+| `e32r28t-ili9341` | Freenove FNK0114F 2.8″ ILI9341   | 320 × 240           | Untested      |
+| `cyd40`           | ESP32-32E 4.0″ ST7796S           | 480 × 320 (own)     | Partly tested |
+
+The two `e32r28t` builds are for the USB-C ESP32-32E 2.8″ board with speaker and battery connectors (LCDwiki E32R28T, sold by Freenove as FNK0114); the box or listing says whether its panel is an ST7789 or ILI9341. A capacitive-touch ("C") 2.4″ board displays but does not respond to taps.
+
+**320 × 240 boards** (2.4″ and 2.8″) all show the same screens, pictured at the top of this page.
+
+**The 4.0″** has the same pixel density as the 2.8″, so text is the same size; it uses the extra room instead. Every screen has its own 480 × 320 layout in the same fonts. The centre flow moves the cross left, gives its four pipes equal length, and adds a rail with the clock and weather, solar today, tomorrow's forecast, a large battery gauge and the History button. Cards, history (wider chart, full tab names, larger buttons), boot and the setup page are laid out for the larger screen too. Touch targets follow the drawn buttons.
+
+<table>
+<tr><th align="left">4.0″ cards</th><th align="left">4.0″ history</th></tr>
+<tr><td><img src="docs/images/cyd40-flow-preview.png" width="400" alt="4.0-inch cards layout"></td><td><img src="docs/images/cyd40-history-preview.png" width="400" alt="4.0-inch 24-hour history"></td></tr>
+</table>
+
+The owner has checked the 4.0″ layout and touch on a real board; calibration, night mode and a long run are still open. Untested boards have been built but not yet run. [Hardware validation](docs/HARDWARE_VALIDATION.md) lists what to check for each.
 
 ---
 
@@ -180,31 +197,22 @@ At the foot of the page there's a small illustration of the system, with Austral
 
 ## 24-hour history on the panel
 
-The panel keeps the same history as the browser. Tap **History** on the flow screen, choose a tab (Solar, Home, Grid, Batt, Level) or use **Prev/Next** for every other metric, and tap **Home** to return. Each view shows the latest value and how many of the 288 five-minute slots hold data. Numeric metrics also show sampled min, average and max; raw weather codes are categorical points. History follows the layout's theme and stays available while offline.
+The panel keeps the same history as the browser. Tap **History** on the flow screen (in the right rail on the 4.0″), choose a tab (Solar, Home, Grid, Batt, Level; the 4.0″ spells out Battery) or use **Prev/Next** for every other metric, and tap **Home** to return. Each view shows the latest value and how many of the 288 five-minute slots hold data. Numeric metrics also show sampled min, average and max; raw weather codes are categorical points. History follows the layout's theme and stays available while offline.
 
 Since **History** now sits where the Settings button used to be, hold anywhere for more than two seconds to open Settings. Release, then hold again in Settings to calibrate. The first night-time touch only wakes the screen.
 
-**Solar, with a gap.**
-
-![Solar history](docs/images/history-solar-preview.png)
-
-**Battery: + supplying, − charging.**
-
-![Battery history](docs/images/history-battery-preview.png)
-
-**Dark theme (Cards layout).**
-
-![Dark history](docs/images/history-dark-preview.png)
-
-**Other metrics via Prev/Next.**
-
-![Tomorrow max history](docs/images/history-weather-preview.png)
+<table>
+<tr><th align="left">Solar, with a gap</th><th align="left">Battery: + supplying, − charging</th></tr>
+<tr><td><img src="docs/images/history-solar-preview.png" width="320" alt="Solar history"></td><td><img src="docs/images/history-battery-preview.png" width="320" alt="Battery history"></td></tr>
+<tr><th align="left">Dark theme (Cards layout)</th><th align="left">Other metrics via Prev/Next</th></tr>
+<tr><td><img src="docs/images/history-dark-preview.png" width="320" alt="Dark history"></td><td><img src="docs/images/history-weather-preview.png" width="320" alt="Tomorrow max history"></td></tr>
+</table>
 
 Straight after install, or after changing the Home Assistant URL, entities or location, history starts empty and fills as the panel runs:
 
-![History with no samples yet](docs/images/history-empty-preview.png)
+<img src="docs/images/history-empty-preview.png" width="320" alt="History with no samples yet">
 
-These panel pictures use synthetic data, not readings from a real system.
+These panel pictures are 320 × 240 boards with synthetic data, not readings from a real system. The 4.0″ history is pictured under [supported boards](#supported-boards-and-screen-formats).
 
 A sudden outage can lose up to roughly 15 minutes of new samples when storage is healthy. No samples are created without a synchronized device clock or from demo mode. Changing the HA URL, entity mappings, totals or coordinates clears history to avoid mixing sources. Settings, labels and timezone changes otherwise retain it. Corrupt storage is not automatically erased; a storage warning indicates RAM-only collection. See the [history design](docs/HISTORY.md) for storage details.
 

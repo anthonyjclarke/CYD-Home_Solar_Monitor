@@ -34,7 +34,7 @@ When storage is healthy, unexpected power loss can lose roughly the last 15 minu
 
 ## Display and API
 
-The CYD renders into its existing 320 × 240 RGB332 sprite. History has five primary tabs, latest sampled value/time, coverage count, sampled minimum/average/maximum and a signed graph. Prev/Next reaches all other fields. Raw WMO codes are categorical points without an average or interpolated line. Both light and dark themes use exact RGB332 palette levels. Missing data, no clock, storage failure and demo exclusion have explicit states. Offline flow screens retain the History button.
+The CYD renders into its existing 76.8 KB RGB332 sprite: 320 × 240 on the 2.4″/2.8″ boards, and two 480 × 160 bands of a native 480 × 320 layout on the 4.0″ (96 px tabs, wider chart, font-2 statistics). History has five primary tabs, latest sampled value/time, coverage count, sampled minimum/average/maximum and a signed graph. Prev/Next reaches all other fields. Raw WMO codes are categorical points without an average or interpolated line. Both light and dark themes use exact RGB332 palette levels. Missing data, no clock, storage failure and demo exclusion have explicit states. Offline flow screens retain the History button.
 
 History replaces the flow screen Settings button. A hold longer than two seconds opens Settings once, with progress feedback and no tap on release. A separate hold after releasing in Settings retains calibration. A Settings tap returns to flows; the first night-dimmed contact is consumed entirely. Full-screen and motion refresh limits are preserved.
 

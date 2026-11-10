@@ -50,7 +50,7 @@ The browser fixture uses synthetic status/settings and replays the documented re
 
 ## Additional boards
 
-Built but never run. Each needs a board owner to flash its env and report. The ESP32-32E 2.8″ pins come from Freenove's FNK0114 schematic and TFT_eSPI setups; the 4.0″ pins from CYD_AnimatedPixelClock, which runs on that board. A `[BOARD]` serial line names the build at boot.
+The 2.4″ and ESP32-32E 2.8″ boards are built but never run, and use the 320 × 240 screen format. The 4.0″ uses its own 480 × 320 format and has been run on the owner's board (layout and touch checked). Each remaining item needs a board owner to flash its env and report. The ESP32-32E 2.8″ pins come from Freenove's FNK0114 schematic and TFT_eSPI setups; the 4.0″ pins from CYD_AnimatedPixelClock, which runs on that board. A `[BOARD]` serial line names the build at boot.
 
 - [ ] `e32r28t-st7789` (Freenove FNK0114B): colours correct (navy cards, not inverted or red/blue swapped), image not shifted.
 - [ ] `e32r28t-st7789`: taps land where pressed; if an axis is mirrored, the 2-second-hold calibration corrects it.

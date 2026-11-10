@@ -27,9 +27,11 @@ Settings schema, six-source order, public API names, update image contract and p
 
 ### Validation
 
-Host/integration checks, sanitizer suites, all three browser regressions, syntax/documentation checks and all five board builds passed. The smallest free app-slot margin is 179,936 bytes (after the 4.0″ native layout). The [1.0.2 test plan](docs/TEST_PLAN_1.0.2.md) records exact sizes and unchecked post-flash cases, with pass criteria, evidence fields and recovery steps. Real-board and installer acceptance remain separate from desktop checks.
+Host/integration checks, sanitizer suites, all three browser regressions, syntax/documentation checks and all five board builds passed. The smallest free app-slot margin is 178,064 bytes (after the 4.0″ native layout and board documentation). The [1.0.2 test plan](docs/TEST_PLAN_1.0.2.md) records exact sizes and unchecked post-flash cases, with pass criteria, evidence fields and recovery steps. Real-board and installer acceptance remain separate from desktop checks.
 
 ### Documentation
+
+README and handbook now say plainly which CYD boards are supported and that the 4.0″ uses its own 480 × 320 screen format, with a boards table (env, screen format, status) and 4.0″ examples. README panel previews are smaller, shown at each board's pixel size.
 
 Added the [runtime state-machine inventory](docs/STATE_MACHINES.md), covering 27 lifecycle groups with owners, transitions, invariants, coverage and remaining risks. HTTP transport/allocation findings R1/R2 and physical acceptance remain open.
 

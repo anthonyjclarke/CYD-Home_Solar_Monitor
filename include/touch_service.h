@@ -17,7 +17,10 @@ struct State {
 void begin(uint16_t screenWidth, uint16_t screenHeight);
 void update();
 const State& state();
-bool calibrate(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1);
+// rawX/rawY in State are already swapped when swapped() is true. Saving a
+// calibration stores the limits and the swap together.
+bool swapped();
+bool calibrate(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1, bool swapXY);
 
 }  // namespace cyd::touch
 

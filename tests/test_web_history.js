@@ -44,5 +44,36 @@ vm.runInContext(source,context);
     context.api=async()=>{throw Error('offline')};
     await vm.runInContext('refreshHistory(true)',context);
     assert.match(elements.trendNote.textContent,/History unavailable: offline/);
-    console.log('Web history: shared API, gap paths, signed axes, unit selection, refresh rate, clock/storage/demo/error states passed.');
+    const settle=()=>new Promise(resolve=>setImmediate(resolve));
+    const pending=[];let active=0,maxActive=0;
+    context.api=path=>{assert.equal(path,'/api/history?hours=24');active++;maxActive=Math.max(maxActive,active);
+        return new Promise((resolve,reject)=>pending.push({resolve:d=>{active--;resolve(d)},reject:e=>{active--;reject(e)}}))};
+    const changed={...data,end:end+300,samples:[]};
+    const state=()=>vm.runInContext('historyData',context);
+    for(const oldFails of [false,true]){
+        // Save succeeds while old history is loading: clear immediately and
+        // coalesce forced requests, discarding both old replies and old errors.
+        const old=vm.runInContext('refreshHistory(true)',context);await settle();
+        const oldRequest=pending.shift();
+        vm.runInContext('invalidateHistory()',context);
+        assert.equal(state(),null);assert.equal(elements.trend.innerHTML,'');
+        const forced=vm.runInContext('refreshHistory(true)',context);
+        vm.runInContext('refreshHistory(true)',context);await settle();
+        assert.equal(pending.length,0);
+        if(oldFails)oldRequest.reject(Error('old failure'));else oldRequest.resolve(data);
+        await settle();assert.equal(pending.length,1);assert.equal(state(),null);
+        assert.match(elements.trendNote.textContent,/Loading history for the saved settings/);
+        pending.shift().resolve(changed);await Promise.all([old,forced]);
+        assert.equal(state(),changed);assert.equal(pending.length,0);
+        assert.equal(vm.runInContext('historyRequest.phase',context),'idle');
+    }
+    // Save after the old request has completed still bypasses its minute cache.
+    vm.runInContext('invalidateHistory()',context);assert.equal(state(),null);
+    const fresh=vm.runInContext('refreshHistory()',context);await settle();
+    assert.equal(pending.length,1);pending.shift().reject(Error('new failure'));await fresh;
+    assert.equal(state(),null);assert.match(elements.trendNote.textContent,/History unavailable: new failure/);
+    const retry=vm.runInContext('refreshHistory()',context);await settle();
+    pending.shift().resolve(changed);await retry;assert.equal(state(),changed);
+    assert.equal(maxActive,1);
+    console.log('Web history: shared API, gap paths, signed axes, unit selection, refresh rate, clock/storage/demo/error states, save invalidation, queued refresh and superseded replies passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

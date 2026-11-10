@@ -3,6 +3,7 @@
 #include "history_layout.h"
 #include "history_service.h"
 #include "touch_gesture.h"
+#include "panel_state.h"
 #include "display_service.h"
 #include "touch_service.h"
 #include "wifi_service.h"
@@ -11,29 +12,31 @@
 #include "backlight_service.h"
 #include "monitor_web.h"
 #include "serial_diagnostics.h"
+#include "debug.h"
 #include <ctime>
 #include <algorithm>
 
 namespace app {
 namespace {
 TFT_eSprite buffer(&cyd::display::tft());
-bool buffered = false, details = false, wasPressed = false, historyShown = false;
+bool buffered = false, wasPressed = false;
+ui::PanelState panel;
 ui::TouchGesture gesture;
 history::Field historyField = history::Solar;
 uint16_t tapX = 0, tapY = 0;
 uint32_t lastPaint = 0, lastMotion = 0, lastTouch = 0;
 bool flowShown = false;  // The last full frame was the flow screen.
-bool booting = true;
 uint32_t bootStart = 0, connectedAt = 0;
-bool calibrating = false, calibrationHeld = false;
+bool calibrationHeld = false;
 bool waitCalibrationRelease = false;
 unsigned target = 0;
 uint16_t raw[4][2] = {};
 const int targets[4][2] = {{20,20},{299,20},{299,219},{20,219}};
 
-// The frame's position on the panel; non-zero only on panels larger than it.
-int16_t ox() { return cyd::display::originX(); }
-int16_t oy() { return cyd::display::originY(); }
+// Frame-to-panel coordinates for the few things drawn straight to the TFT.
+int16_t px(int16_t x) { return cyd::display::panelX(x); }
+int16_t py(int16_t y) { return cyd::display::panelY(y); }
+void pushWhole() { cyd::display::pushFrame(buffer,0,0,320,240); }
 
 unsigned rgb565(unsigned rgb) {
     return ((rgb>>8)&0xf800) | ((rgb>>5)&0x07e0) | ((rgb>>3)&0x001f);
@@ -68,7 +71,7 @@ void paintInfo() {
     t.drawString("Tap: return / hold 2s: calibrate",10,170,2);
     t.drawString(wifi.connected ? "Use browser for settings and updates" : "Portal: 192.168.4.1 (after 20s)",10,196,2);
     t.drawString("No Home Assistant token in logs",10,219,1);
-    buffer.pushSprite(ox(),oy());
+    pushWhole();
 }
 
 // Start-up screen: one row per step, repainted every 250 ms so Wi-Fi, IP and
@@ -92,19 +95,19 @@ void paintBoot(uint32_t now) {
     }
     v.footer = footer;
     ui::drawBoot(canvas, v);
-    buffer.pushSprite(ox(),oy());
+    pushWhole();
 }
 
 void paintCalibration() {
     auto& t = cyd::display::tft();
     t.fillScreen(TFT_BLACK); t.setTextDatum(TC_DATUM); t.setTextColor(TFT_WHITE,TFT_BLACK);
-    t.drawString("Tap each cross once",ox()+160,oy()+95,2);
-    t.drawString("Timeout: 45 seconds",ox()+160,oy()+120,2);
-    int x=ox()+targets[target][0], y=oy()+targets[target][1];
+    t.drawString("Tap each cross once",px(160),py(95),2);
+    t.drawString("Timeout: 45 seconds",px(160),py(120),2);
+    int x=px(targets[target][0]), y=py(targets[target][1]);
     t.drawLine(x-8,y,x+8,y,TFT_YELLOW); t.drawLine(x,y-8,x,y+8,TFT_YELLOW);
 }
 void sampleCalibration(const cyd::touch::State& touch, uint32_t now) {
-    if (now-lastTouch > 45000) { calibrating=false; details=true; return; }
+    if (now-lastTouch > 45000) { panel.finishCalibration(); return; }
     if (waitCalibrationRelease) {
         if (!touch.pressed) waitCalibrationRelease=false;
         return;
@@ -115,15 +118,27 @@ void sampleCalibration(const cyd::touch::State& touch, uint32_t now) {
     if (!touch.pressed && calibrationHeld) {
         calibrationHeld=false; ++target;
         if (target == 4) {
+            // Moving right across the top and bottom rows should change raw X.
+            // If raw Y changed more, the film's axes are swapped relative to
+            // what was applied while sampling: swap the samples and flip it.
+            const int moveX=abs(raw[1][0]-raw[0][0])+abs(raw[2][0]-raw[3][0]);
+            const int moveY=abs(raw[1][1]-raw[0][1])+abs(raw[2][1]-raw[3][1]);
+            bool swap=cyd::touch::swapped();
+            if (moveY>moveX) {
+                for (auto& r:raw) std::swap(r[0],r[1]);
+                swap=!swap;
+            }
             // Targets are inset 20 pixels; extrapolate to panel edges.
             int x0=(raw[0][0]+raw[3][0])/2, x1=(raw[1][0]+raw[2][0])/2;
             int y0=(raw[0][1]+raw[1][1])/2, y1=(raw[2][1]+raw[3][1])/2;
             int dx=(x1-x0)*20/279, dy=(y1-y0)*20/199;
             bool ok=cyd::touch::calibrate(constrain(x0-dx,0,4095),constrain(x1+dx,0,4095),
-                                         constrain(y0-dy,0,4095),constrain(y1+dy,0,4095));
-            calibrating=false; details=true;
+                                         constrain(y0-dy,0,4095),constrain(y1+dy,0,4095),swap);
+            DBG_INFO("[TOUCH] calibration %s: raw TL %u,%u TR %u,%u BR %u,%u BL %u,%u swap=%d",ok?"saved":"rejected",
+                     raw[0][0],raw[0][1],raw[1][0],raw[1][1],raw[2][0],raw[2][1],raw[3][0],raw[3][1],int(swap));
+            panel.finishCalibration();
             auto& t=cyd::display::tft(); t.fillScreen(TFT_BLACK);
-            t.drawString(ok ? "Calibration saved" : "Calibration rejected",ox()+160,oy()+100,2);
+            t.drawString(ok ? "Calibration saved" : "Calibration rejected",px(160),py(100),2);
         } else paintCalibration();
         lastTouch=now;
     }
@@ -151,7 +166,7 @@ void begin() {
 void update(uint32_t now) {
     const auto& touch = cyd::touch::state();
     const auto& cfg = monitor::config();
-    if (calibrating) {
+    if (panel.screen()==ui::Screen::Calibration) {
         gesture.update(touch.pressed,now,true);
         sampleCalibration(touch,now); wasPressed=touch.pressed; return;
     }
@@ -163,25 +178,27 @@ void update(uint32_t now) {
     const auto event=gesture.update(touch.pressed,now,dimmed);
     if (touch.pressed) lastTouch=now;
     if (event==ui::Gesture::Hold) {
-        if (details) {
+        const auto previous=panel.screen();
+        panel.hold();
+        if (panel.screen()==ui::Screen::Calibration) {
             // A separate hold in Settings retains the existing calibration action.
-            calibrating=true; target=0; calibrationHeld=false; waitCalibrationRelease=true;
+            target=0; calibrationHeld=false; waitCalibrationRelease=true;
             paintCalibration(); wasPressed=true; return;
         }
-        if (booting) diagnostics::bootScreenClosed("Settings opened by hold");
-        details=true; historyShown=false; booting=false; lastPaint=0;
+        if (previous==ui::Screen::Boot) diagnostics::bootScreenClosed("Settings opened by hold");
+        lastPaint=0;
     } else if (event==ui::Gesture::Tap) {
-        if (booting) { booting=false; diagnostics::bootScreenClosed("skipped by touch"); }
-        else if (details) details=false;
-        else if (historyShown) {
-            if (tapY<29 && tapX>=260) historyShown=false;
-            else if (tapY>=31 && tapY<58) historyField=history::tabs[std::min<unsigned>(4,tapX/64)];
+        const auto previous=panel.screen();
+        panel.tap(tapX,tapY);
+        if (previous==ui::Screen::Boot) diagnostics::bootScreenClosed("skipped by touch");
+        else if (previous==ui::Screen::History && panel.screen()==ui::Screen::History) {
+            if (tapY>=31 && tapY<58) historyField=history::tabs[std::min<unsigned>(4,tapX/64)];
             else if (tapY>=209 && (tapX<52 || tapX>=268)) {
                 unsigned i=0;
                 while (i+1<history::FieldCount && history::order[i]!=historyField) ++i;
                 historyField=history::order[(i+history::FieldCount+(tapX<52?-1:1))%history::FieldCount];
             }
-        } else if (tapY>=209 && tapX>=232) historyShown=true;
+        }
         lastPaint=0;
     }
     wasPressed=touch.pressed;
@@ -197,14 +214,14 @@ void update(uint32_t now) {
     if (!full && (cfg.layout != ui::Centre || !flowShown || now-lastMotion < APP_FLOW_FRAME_MS)) return;
     if (full) { lastPaint=now; flowShown=false; }
     lastMotion=now;
-    if (booting) {
+    if (panel.screen()==ui::Screen::Boot) {
         if (!connectedAt && cyd::network::status().connected) connectedAt = now;
         const bool done = connectedAt ? now - connectedAt >= APP_BOOT_HOLD_MS : now - bootStart >= APP_BOOT_MAX_MS;
         if (!done) { paintBoot(now); return; }
-        booting = false;
+        panel.finishBoot();
         diagnostics::bootScreenClosed(connectedAt?"Wi-Fi hold complete":"offline timeout");
     }
-    if (historyShown) {
+    if (panel.screen()==ui::Screen::History) {
         ui::HistoryView h{history::data()};
         h.epoch=clock?uint32_t(epoch):0; h.field=historyField; h.layout=static_cast<ui::Layout>(cfg.layout);
         h.storageOK=history::storageHealthy(); h.demo=cfg.demo;
@@ -212,9 +229,9 @@ void update(uint32_t now) {
         if (gesture.heldMs(now)>300) {
             canvas.rect(0,237,std::min<uint32_t>(320,gesture.heldMs(now)*320/2000),3,0x9292aa);
         }
-        buffer.pushSprite(ox(),oy()); return;
+        pushWhole(); return;
     }
-    if (details) {
+    if (panel.screen()==ui::Screen::Settings) {
         // Repaint at 1 Hz to avoid flashing the setup page.
         static uint32_t infoPaint=0;
         if (now-infoPaint>=1000 || !infoPaint) { paintInfo(); infoPaint=now; }
@@ -248,8 +265,8 @@ void update(uint32_t now) {
     const ui::Box box=ui::drawFlow(canvas,view);
     if (full && gesture.heldMs(now)>300)
         canvas.rect(0,237,std::min<uint32_t>(320,gesture.heldMs(now)*320/2000),3,0x9292aa);
-    if (full) { buffer.pushSprite(ox(),oy()); flowShown=true; }
-    else if (box.w > 0 && box.h > 0) buffer.pushSprite(ox()+box.x,oy()+box.y,box.x,box.y,box.w,box.h);
+    if (full) { pushWhole(); flowShown=true; }
+    else if (box.w > 0 && box.h > 0) cyd::display::pushFrame(buffer,box.x,box.y,box.w,box.h);
 }
 }  // namespace app
 

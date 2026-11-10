@@ -1,6 +1,6 @@
 # Hardware validation
 
-Acceptance record for real CYD hardware, current for `1.0.1`. Ticked items have dated evidence from the owner's board running against live Home Assistant data; unticked items still need a real CYD. A local build or the synthetic browser fixture never completes an item here.
+Acceptance record for real CYD hardware, tracking the prepared `1.0.2` release. Execute the [1.0.2 post-flash test plan](TEST_PLAN_1.0.2.md) and add dated results here. Existing checked items retain their original build/date and do not establish 1.0.2 acceptance. Ticked items have dated evidence from the owner's board running against live Home Assistant data; unticked items still need a real CYD. A local build or the synthetic browser fixture never completes an item here.
 
 ---
 
@@ -22,6 +22,9 @@ Owner's ESP32-2432S028R, SolarEdge Modbus Multi through Home Assistant, Putney N
 | 08-11-2026   | 0.9.1   | Status by IP 0.06 s; `solar.local` 5 s     |
 | 08-11-2026   | 0.9.1   | Live UI correct, no console errors         |
 | 08-11-2026   | 0.9.1   | Boot restored 270 history samples          |
+| 10-11-2026   | 1.0.2   | `cyd40`: history taps missed; recal failed |
+| 10-11-2026   | 1.0.2   | `cyd40` axis swap: history taps correct    |
+| 10-11-2026   | 1.0.2   | `cyd40` 4/3 scaling: jagged; kept 1×       |
 
 The macOS figure is name lookup, not the device: an IPv6 mDNS query for `solar.local` goes unanswered and the Mac waits 5 s. Forcing IPv4, or using the IP address, resolves in milliseconds. Browser request deadlines (12 s status, 15 s others) sit above it.
 
@@ -53,7 +56,8 @@ Built but never run. Each needs a board owner to flash its env and report. The E
 - [ ] ESP32-32E 2.8″: RGB LED stays off and the speaker stays silent (GPIO 4 is the amplifier enable).
 - [ ] `cyd24`: display and touch as on the 2.8″.
 - [ ] `cyd40`: 320 × 240 frame centred, colours correct, backlight dims and turns off.
-- [ ] `cyd40`: shared-bus touch maps taps into the centred frame; calibration targets appear inside it.
+- [x] `cyd40`: shared-bus touch maps taps into the centred frame with the default axis swap (owner, 10-11-2026: history tabs and arrows).
+- [ ] `cyd40`: calibration targets appear inside the frame and save (serial `[TOUCH]` line shows `swap=1`).
 - [ ] Each new board: Wi-Fi, HA readings, weather and history work as on the 2.8″ (heap matches: same frame buffer).
 
 ---

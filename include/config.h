@@ -1,7 +1,7 @@
 #pragma once
 
 #define PROJECT_NAME "CYD-Home-Solar-Monitor"
-#define FIRMWARE_VERSION "1.0.1"
+#define FIRMWARE_VERSION "1.0.2"
 #define IMPROV_SETUP_ENABLED 1
 #define IMPROV_DEVICE_PREFIX "CYD-Solar"
 #define APP_DEFAULT_DEBUG_LEVEL 3
@@ -32,7 +32,7 @@
 // ---- Board selection -------------------------------------------------------
 // Each PlatformIO env sets one BOARD_* flag; none selects the classic 2.8-inch
 // ESP32-2432S028R (also used by the host preview tools). The UI is always a
-// 320 x 240 frame; larger panels show it centred (see display::originX/Y).
+// 320 x 240 frame; larger panels show it centred (see display::pushFrame).
 //
 // Shared by every supported board: display on HSPI's native pins. USE_HSPI_PORT
 // is required - TFT_eSPI defaults to VSPI, which own-bus touch also claims.
@@ -80,6 +80,10 @@
 #define CYD_HAS_LDR 0
 #define LED_R_PIN 22
 #define LDR_PIN -1
+// The touch film reads X/Y swapped relative to the landscape panel (owner's
+// board, 10-11-2026: history taps missed and the old calibration could not
+// recover). Calibration re-detects the swap and stores it.
+#define TOUCH_SWAP_XY 1
 // The default raw span (200-3700 across the whole panel) narrowed to the
 // centred 320 x 240 frame at x 80-399, y 40-279. Calibration replaces it.
 #define TOUCH_X_MIN 783
@@ -153,6 +157,10 @@
 #define TOUCH_X_MAX 3700
 #define TOUCH_Y_MIN 200
 #define TOUCH_Y_MAX 3700
+#endif
+
+#if !defined(TOUCH_SWAP_XY)
+#define TOUCH_SWAP_XY 0
 #endif
 
 #if !defined(TOUCH_CS)

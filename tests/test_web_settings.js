@@ -1,10 +1,10 @@
 // Exercise the actual settings load/submit code, including debug level zero.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const page=fs.readFileSync('src/web/web_page.h','utf8');
-const elements={};let submit,posted;
+const elements={};let submit,posted,invalidations=0,failSave=false;
 function $(id){if(!elements[id]){let value='';elements[id]={get value(){return value},set value(v){value=String(v)},checked:false,textContent:'',addEventListener(event,handler){assert.equal(event,'submit');submit=handler}}}return elements[id]}
 let config={url:'http://fixture.invalid',poll:5,stale:180,brightness:180,nightStart:19,nightEnd:7,debugLevel:3,ca:'',battery:'Test',today:'',forecast:'',place:'',tzName:'UTC',tz:'UTC0',lat:null,lon:null,nightDim:true,demo:false,layout:1,entities:Array.from({length:6},(_,i)=>'sensor.test_'+i)};
-const context=vm.createContext({$,labels:config.entities,api:async(path,body)=>{assert.equal(path,'/api/config');if(body){posted=body;config={...config,...body};return {saved:true}}return config},message(){},refresh:async()=>{},refreshHistory:async()=>{}});
+const context=vm.createContext({$,labels:config.entities,api:async(path,body)=>{assert.equal(path,'/api/config');if(body){if(failSave)throw Error('Save failed');posted=body;config={...config,...body};return {saved:true}}return config},invalidateHistory(){++invalidations},message(){},refresh:async()=>{},refreshHistory:async()=>{}});
 vm.runInContext(page.slice(page.indexOf('async function load()'),page.indexOf('// Flow diagram:')),context);
 vm.runInContext(page.slice(page.indexOf("$('settings').addEventListener('submit'"),page.indexOf('// Settings span several sections')),context);
 (async()=>{
@@ -42,5 +42,9 @@ vm.runInContext(page.slice(page.indexOf("$('settings').addEventListener('submit'
     config.nightStart=21;config.nightEnd=8;
     await vm.runInContext('load()',context);
     assert.equal($('nightDimAt').value,'21:00');assert.equal($('nightOffAt').value,'23:00');assert.equal($('nightOnAt').value,'08:00');
-    console.log('Web settings: debug levels, Off=0, night modes, time precision, disabled fields, midnight, legacy fallback and save/reload passed.');
+    // Invalidate only after a successful save, even if the form stays open.
+    const before=invalidations;failSave=true;
+    await submit({preventDefault(){}});assert.equal(invalidations,before);
+    failSave=false;await submit({preventDefault(){}});assert.equal(invalidations,before+1);
+    console.log('Web settings: debug levels, Off=0, night modes, time precision, disabled fields, midnight, legacy fallback, save/reload and success-only history invalidation passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,8 +1,10 @@
 # Development reference
 
+The [state-machine inventory](STATE_MACHINES.md) maps runtime ownership, transitions, invariants and regression coverage. `include/panel_state.h` owns exclusive panel navigation; `include/wifi_lifecycle.h` owns provisioning/reconnection policy. The browser history request controller invalidates by saved-settings generation and queues a forced refresh while loading.
+
 The [8 November review](REVIEW_2026-11-08.md) records current follow-up findings, closure evidence for the previous audit and validation limits.
 
-Current for `1.0.1`. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, [HISTORY.md](HISTORY.md) for the history design, and the [handbook](index.html) for end-user setup.
+Current for `1.0.2`. The [post-flash test plan](TEST_PLAN_1.0.2.md) contains release-specific checks, result fields and recovery guidance. See [AGENTS.md](../AGENTS.md) for architecture and contribution rules, [HISTORY.md](HISTORY.md) for the history design, and the [handbook](index.html) for end-user setup.
 
 ---
 
@@ -22,11 +24,11 @@ pio run -e cyd28
 python3 tools/preview_server.py
 ```
 
-`default_envs` is `cyd28`, so a bare `pio run` builds only that; pass `-e` for the others: `cyd24`, `e32r28t-st7789`, `e32r28t-ili9341` and `cyd40`. Each env sets one `BOARD_*` flag that selects its pin, driver and geometry block in `include/config.h`; no flag means the classic 2.8″, which is also what the host tools compile. The UI frame stays 320 × 240 on every board, pushed at `display::originX()`/`originY()`, so the 4.0″ shows it centred. The 4.0″ defines `TOUCH_CS` and reads touch through TFT_eSPI on the display bus; the others keep their own VSPI touch bus. The shared installer workflow builds every `[env:]` and lists each by its `custom_installer_label`.
+`default_envs` is `cyd28`, so a bare `pio run` builds only that; pass `-e` for the others: `cyd24`, `e32r28t-st7789`, `e32r28t-ili9341` and `cyd40`. Each env sets one `BOARD_*` flag that selects its pin, driver and geometry block in `include/config.h`; no flag means the classic 2.8″, which is also what the host tools compile. The UI frame stays 320 × 240 on every board and reaches the panel through `display::pushFrame()`, which centres it at 1× on the 4.0″; direct TFT drawing uses `display::panelX()`/`panelY()`. The 4.0″ defines `TOUCH_CS` and reads touch through TFT_eSPI on the display bus; the others keep their own VSPI touch bus. The shared installer workflow builds every `[env:]` and lists each by its `custom_installer_label`.
 
 After PlatformIO installs project libraries, run `python3 tools/check_history_response.py` to validate the real history handler with the pinned ArduinoJson String writer. `python3 tools/check_debug_config.py` also checks the actual configuration loader/saver and debug API validation with host NVS stand-ins. `python3 tools/check_night_config.py` checks night schedule migration and API validation. `tools/check_host.py` includes these checks when the headers are installed; on a clean checkout it reports that this integration check is skipped.
 
-`tools/check_docs.py` checks local documentation links, handbook anchors, Markdown structure, preview dimensions and version identity. `tools/check_host.py` compiles and runs `tests/test_energy.cpp`, `tests/test_history.cpp`, `tests/test_debug.cpp`, `tests/test_boot.cpp`, `tests/test_night.cpp` and `tests/test_flow_status.cpp`, plus `tests/test_body_limit.cpp` and `tests/test_improv.cpp` under AddressSanitizer and UndefinedBehaviorSanitizer, and compiles the shared layout renderer with warnings as errors. It writes six scene SVGs for each of two layouts, a weather-only centre scene, four boot scenes and five history scenes into `docs/images/`. If `rsvg-convert` is available, it refreshes thirteen PNGs too. It does not update browser captures. Boot previews and the browser fixture both read `FIRMWARE_VERSION` from `include/config.h`. All readings in generated examples are synthetic.
+`tools/check_docs.py` checks local documentation links, handbook anchors, Markdown structure, preview dimensions and version identity. `tools/check_host.py` compiles and runs `tests/test_energy.cpp`, `tests/test_history.cpp`, `tests/test_debug.cpp`, `tests/test_boot.cpp`, `tests/test_night.cpp`, `tests/test_lifecycles.cpp` and `tests/test_flow_status.cpp`, plus `tests/test_body_limit.cpp` and `tests/test_improv.cpp` under AddressSanitizer and UndefinedBehaviorSanitizer, and compiles the shared layout renderer with warnings as errors. It writes six scene SVGs for each of two layouts, a weather-only centre scene, four boot scenes and five history scenes into `docs/images/`. If `rsvg-convert` is available, it refreshes thirteen PNGs too. It does not update browser captures. Boot previews and the browser fixture both read `FIRMWARE_VERSION` from `include/config.h`. All readings in generated examples are synthetic.
 
 The preview server runs at `http://127.0.0.1:8765`. It serves the dashboard, fixed-date synthetic status/configuration, history from `tools/fixtures/webui-history.json` (a real 24-hour `/api/history` capture from the owner's board; synthetic if the file is absent), the handbook with its images, a subset of preview images and footer artwork. Append `?theme=dark` for a deterministic dark-theme fixture. Settings are changed in memory only. It does not implement reboot, Wi-Fi reset, upload, authentication, persistence or device validation. Do not use real credentials. Stop with Ctrl-C.
 
@@ -57,7 +59,7 @@ The handbook currently has no script. Syntax checks do not exercise browser even
 
 Every build checks image headroom against the actual `firmware.bin`, not the linker's app percentage, which under-reports it. `tools/flash_budget.py` reads the `ota_0` size from the partition table, prints a `Flash budget:` line and fails the build (deleting the oversized image) when less than 64 KiB would remain. That margin is a team policy, not a hardware limit; retain the deployed partition contract rather than moving offsets to recover space.
 
-The `1.0.1` build is 1,646,704 bytes, leaving 188,304 bytes. The largest costs measured from the ELF symbols are listed below.
+The [1.0.2 test plan](TEST_PLAN_1.0.2.md) records exact image sizes from the prepared build. For comparison, an earlier `1.0.1` build was 1,646,704 bytes, leaving 188,304 bytes; the symbol-size measurements below belong to that earlier build.
 
 | Item                                      | Bytes     |
 | :---------------------------------------- | --------: |

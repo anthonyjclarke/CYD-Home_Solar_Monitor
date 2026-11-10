@@ -29,6 +29,8 @@ with tempfile.TemporaryDirectory(prefix="cyd-solar-check-") as directory:
     subprocess.run([str(test)], check=True)
     subprocess.run(common + [str(root / "tests/test_boot.cpp"), "-o", str(test)], check=True)
     subprocess.run([str(test)], check=True)
+    subprocess.run(common + [str(root / "tests/test_lifecycles.cpp"), "-o", str(test)], check=True)
+    subprocess.run([str(test)], check=True)
     subprocess.run(common + [str(root / "tests/test_night.cpp"), "-o", str(test)], check=True)
     subprocess.run([str(test)], check=True)
     subprocess.run(common + ["-g", "-fsanitize=address,undefined", "-fno-sanitize-recover=all", str(root / "tests/test_body_limit.cpp"), "-o", str(test)], check=True)

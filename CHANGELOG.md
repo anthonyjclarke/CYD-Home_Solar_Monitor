@@ -1,19 +1,38 @@
 # Changelog
 
-## Unreleased
+## [1.0.2] – prepared 10-11-2026
+
+Next patch release, prepared locally on `dev`. Publication and post-flash acceptance are pending; this entry is not a release or hardware-test claim.
 
 ### Added
 
-- **More boards.** New PlatformIO envs and web-installer entries for the 2.4″ ESP32-2432S024R (`cyd24`), the USB-C ESP32-32E 2.8″ board sold by Freenove as FNK0114B with an ST7789 panel (`e32r28t-st7789`) and as FNK0114F with an ILI9341 (`e32r28t-ili9341`), and the 4.0″ ESP32-32E ST7796S (`cyd40`). `include/config.h` holds one pin/driver block per board, selected by a `BOARD_*` build flag; the classic 2.8″ (`cyd28`) build is unchanged. The ESP32-32E boards put the red LED on GPIO 22 and leave GPIO 4, their speaker-amplifier enable, alone. The 4.0″ shows the 320 × 240 display centred and reads touch through TFT_eSPI on the shared display bus. None of the new boards has been run on hardware yet.
+- **More boards.** New PlatformIO envs and web-installer entries for the 2.4″ ESP32-2432S024R (`cyd24`), the USB-C ESP32-32E 2.8″ board sold by Freenove as FNK0114B with an ST7789 panel (`e32r28t-st7789`) and as FNK0114F with an ILI9341 (`e32r28t-ili9341`), and the 4.0″ ESP32-32E ST7796S (`cyd40`). `include/config.h` holds one pin/driver block per board, selected by a `BOARD_*` build flag; the classic 2.8″ (`cyd28`) board configuration is unchanged. The ESP32-32E boards put the red LED on GPIO 22 and leave GPIO 4, their speaker-amplifier enable, alone. The 4.0″ shows the 320 × 240 display centred and reads touch through TFT_eSPI on the shared display bus. None of the new boards has been run on hardware yet.
+
+### Fixed
+
+- Browser history advances a request generation immediately after a successful settings save, clears the old chart and queues one fresh request when an older fetch is pending. Superseded replies/errors are discarded; failed saves preserve history. Permanent deferred-request coverage closes review R3 at the source/host level.
+- **4.0″ touch landed in the wrong place** (owner's `cyd40`, 10-11-2026). Its touch film reads X and Y swapped relative to the landscape panel, so history taps missed and recalibration could not recover. The 4.0″ now swaps touch axes by default. Calibration also detects a swap from the four crosses on any board and stores it with the limits (`solar-touch` key `swap`). A 4.0″ calibration saved before this fix is ignored, since it was made with the wrong axes. The serial log records each calibration's raw corners.
+- Wi-Fi portal retry timing is independent of reconnection attempts, so delayed loop passes cannot repeatedly reset the portal retry deadline. Once connected, outages still use reconnection alone.
 
 ### Changed
 
+- Panel navigation has one explicit screen state in `include/panel_state.h`, preserving tap/hold behavior while eliminating contradictory screen flags. Wi-Fi decisions live in portable `include/wifi_lifecycle.h`; the host runner includes navigation, portal retry, recovery and rollover regressions.
 - Touch calibration accepts a reversed axis, so a board whose touch film is mirrored is corrected by the 2-second-hold calibration instead of being rejected.
 - The `[BOARD]` boot log names the board key, panel size and touch bus.
 
+### Compatibility and known limits
+
+Settings schema, six-source order, public API names, update image contract and partitions are unchanged. No dependencies were added. HTTP idle deadlines/allocation recovery (R1/R2), acknowledged reader pause/update ownership, browser form/search ordering and new-board physical acceptance remain open. The history-save race R3 is closed by permanent host regressions.
+
+### Validation
+
+Host/integration checks, sanitizer suites, all three browser regressions, syntax/documentation checks and all five board builds passed. The smallest free app-slot margin is 186,400 bytes. The [1.0.2 test plan](docs/TEST_PLAN_1.0.2.md) records exact sizes and unchecked post-flash cases, with pass criteria, evidence fields and recovery steps. Real-board and installer acceptance remain separate from desktop checks.
+
 ### Documentation
 
-Added the [8 November follow-up review](docs/REVIEW_2026-11-08.md) of `1.0.1`, with closure evidence for the previous audit, reproduced HTTP deadline/allocation and history-refresh gaps, and an ordered maintenance plan. Updated agent/development guidance and corrected the handbook's weather startup, browser-timeout and source-age descriptions. No application logic, dependencies, version or partition layout changed; physical acceptance remains separate.
+Added the [runtime state-machine inventory](docs/STATE_MACHINES.md), covering 27 lifecycle groups with owners, transitions, invariants, coverage and remaining risks. HTTP transport/allocation findings R1/R2 and physical acceptance remain open.
+
+Added the [8 November follow-up review](docs/REVIEW_2026-11-08.md) of `1.0.1`, with closure evidence for the previous audit, reproduced HTTP deadline/allocation and history-refresh gaps, and an ordered maintenance plan. Updated agent/development guidance and corrected the handbook's weather startup, browser-timeout and source-age descriptions. That documentation review changed no application logic, dependencies, version or partition layout; physical acceptance remains separate.
 
 ---
 

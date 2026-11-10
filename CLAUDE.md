@@ -2,7 +2,7 @@
 
 Read [AGENTS.md](AGENTS.md) for the repository-wide architecture, hardware constraints, data invariants, security rules, build commands and contribution expectations. It is the shared maintainer reference for this project; apply it to Claude work too.
 
-Current source identity is in `include/config.h` (`1.0.1`). User setup is in `README.md` and `docs/index.html`; route/storage details and validation commands are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Outstanding physical-board and installer checks remain in `docs/HARDWARE_VALIDATION.md` and `docs/WEB_INSTALLER.md`.
+Current source identity is in `include/config.h` (`1.0.2`). User setup is in `README.md` and `docs/index.html`; route/storage details and validation commands are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). The release-specific execution plan is [docs/TEST_PLAN_1.0.2.md](docs/TEST_PLAN_1.0.2.md). Outstanding physical-board and installer checks remain in `docs/HARDWARE_VALIDATION.md` and `docs/WEB_INSTALLER.md`.
 
 ---
 

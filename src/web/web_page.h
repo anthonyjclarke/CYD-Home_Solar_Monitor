@@ -256,13 +256,26 @@ k.style.opacity=RM?1:Math.min(1,p/.18,(1-p)/.18).toFixed(2)})}
 if(!RM)requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 function node(id,r,sub){$('n'+id).classList.toggle('stale',!r.fresh);$('nv'+id).textContent=r.hasValue?power(r.value):'–';$('ns'+id).textContent=sub}
-let historyData=null,historyBusy=false,historyFetched=0,historyError='';
+let historyData=null,historyFetched=0,historyError='';
+// Single-flight history requests, with a generation owned by saved settings.
+// A forced refresh during loading queues one follow-up; old replies and errors
+// cannot publish into a newer generation, including during settings reload.
+const historyRequest={phase:'idle',generation:0,queued:false,promise:null};
+function invalidateHistory(){++historyRequest.generation;historyData=null;historyFetched=0;historyError='';
+if(historyRequest.phase==='loading')historyRequest.queued=true;
+$('trend').innerHTML='';$('trendNote').textContent='Loading history for the saved settings…'}
 const POWER=[[6,'--solar'],[1,'--house'],[2,'--grid'],[3,'--battery']];
 function niceStep(range){const raw=range/4,p=Math.pow(10,Math.floor(Math.log10(raw)));for(const m of [1,2,2.5,5,10])if(m*p>=raw)return m*p;return 10*p}
-async function refreshHistory(force=false){if(historyBusy||busy||(!force&&Date.now()-historyFetched<60000))return;historyBusy=true;
-try{const d=await api('/api/history?hours=24');if(d.schema!==1||!Array.isArray(d.samples)||!Array.isArray(d.fields))throw Error('Unsupported history format');historyData=d;historyFetched=Date.now();historyError='';
+function refreshHistory(force=false){if(busy)return Promise.resolve();
+if(historyRequest.phase==='loading'){if(force)historyRequest.queued=true;return historyRequest.promise}
+if(!force&&Date.now()-historyFetched<60000)return Promise.resolve();
+historyRequest.phase='loading';const generation=historyRequest.generation;
+historyRequest.promise=(async()=>{
+try{const d=await api('/api/history?hours=24');if(generation!==historyRequest.generation||busy)return;
+if(d.schema!==1||!Array.isArray(d.samples)||!Array.isArray(d.fields))throw Error('Unsupported history format');historyData=d;historyFetched=Date.now();historyError='';
 if($('historyMetric').options.length===1)d.fields.slice(0,8).forEach((f,i)=>$('historyMetric').add(new Option(f.name+' ('+f.unit+')',String(i))));trend()}
-catch(e){historyError='History unavailable: '+e.message;$('trendNote').textContent=historyError}finally{historyBusy=false}}
+catch(e){if(generation===historyRequest.generation){historyError='History unavailable: '+e.message;$('trendNote').textContent=historyError}}
+finally{historyRequest.phase='idle';if(historyRequest.queued){historyRequest.queued=false;await refreshHistory(true)}}})();return historyRequest.promise}
 function trend(){const svg=$('trend'),W=Math.max(320,Math.round(svg.getBoundingClientRect().width)||640),H=250;svg.setAttribute('viewBox','0 0 '+W+' '+H);
 const d=historyData;if(!d){svg.innerHTML='';return}
 const choice=$('historyMetric').value,powerMode=choice==='power',keys=powerMode?POWER:[[Number(choice),'--accent']],field=d.fields[Number(choice)],kw=powerMode||field.unit==='W',scale=kw?1000:1,unit=kw?'kW':field.unit;
@@ -342,7 +355,7 @@ tile('Weather',w.configured&&w.fresh?w.nowC.toFixed(0)+'<small>°C</small>':D,!w
 function offline(reason){pill('badge','Disconnected','bad');$('crtTitle').textContent='Disconnected';$('led').style.background='#E0644F';$('led').style.boxShadow='0 0 7px #E0644F';
 $('sourceStatus').textContent=reason+(last?' · last update '+age(Math.round((Date.now()-last)/1000))+' ago':'');
 document.querySelectorAll('.tile,.node').forEach(el=>el.classList.add('stale'));Object.keys(FL).forEach(id=>arm(id,false,0,true))}
-$('settings').addEventListener('submit',async e=>{e.preventDefault();const c={};['url','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>c[k]=$(k).value.trim());const lat=$('lat').value.trim(),lon=$('lon').value.trim();c.lat=lat===''?null:Number(lat);c.lon=lon===''?null:Number(lon);['poll','stale','brightness','layout','debugLevel','nightMode'].forEach(k=>c[k]=Number($(k).value));['demo','nightDim','clearToken'].forEach(k=>c[k]=$(k).checked);['nightDimAt','nightOffAt','nightOnAt'].forEach(k=>{const value=nightMinute($(k).value);c[k]=Number.isInteger(value)?value:$(k).disabled?nightMinute($(k).defaultValue):NaN});if(!['nightDimAt','nightOffAt','nightOnAt'].every(k=>Number.isInteger(c[k]))){message('Enter valid night times');return}c.nightStart=Math.floor((c.nightMode===1?c.nightOffAt:c.nightDimAt)/60);c.nightEnd=Math.floor(c.nightOnAt/60);c.entities=labels.map((_,i)=>$('entity'+i).value.trim());c.token=$('token').value;try{await api('/api/config',c);$('token').value='';$('clearToken').checked=false;message('Settings saved');await load();await refresh(true);await refreshHistory(true)}catch(err){message(err.message)}});
+$('settings').addEventListener('submit',async e=>{e.preventDefault();const c={};['url','ca','battery','today','forecast','place','tzName','tz'].forEach(k=>c[k]=$(k).value.trim());const lat=$('lat').value.trim(),lon=$('lon').value.trim();c.lat=lat===''?null:Number(lat);c.lon=lon===''?null:Number(lon);['poll','stale','brightness','layout','debugLevel','nightMode'].forEach(k=>c[k]=Number($(k).value));['demo','nightDim','clearToken'].forEach(k=>c[k]=$(k).checked);['nightDimAt','nightOffAt','nightOnAt'].forEach(k=>{const value=nightMinute($(k).value);c[k]=Number.isInteger(value)?value:$(k).disabled?nightMinute($(k).defaultValue):NaN});if(!['nightDimAt','nightOffAt','nightOnAt'].every(k=>Number.isInteger(c[k]))){message('Enter valid night times');return}c.nightStart=Math.floor((c.nightMode===1?c.nightOffAt:c.nightDimAt)/60);c.nightEnd=Math.floor(c.nightOnAt/60);c.entities=labels.map((_,i)=>$('entity'+i).value.trim());c.token=$('token').value;try{await api('/api/config',c);invalidateHistory();const historyRefresh=refreshHistory(true);$('token').value='';$('clearToken').checked=false;message('Settings saved');await load();await refresh(true);await historyRefresh}catch(err){message(err.message)}});
 // Settings span several sections; a field that fails browser validation may be
 // on a hidden one, so show that section before the browser reports it.
 document.querySelectorAll('#settings input,#settings select,#settings textarea').forEach(el=>el.addEventListener('invalid',()=>{const p=el.closest('.page');if(p&&!p.classList.contains('on'))location.hash=p.id.slice(2)}));

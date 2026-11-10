@@ -12,7 +12,7 @@ A home energy-flow display for the 2.8″ ESP32 "Cheap Yellow Display" (ESP32-24
 
 It is built for a **SolarEdge inverter with a battery and energy meter**, read by **Home Assistant** through the **[SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi)** integration. It was developed on a SolarEdge SE6000 with an LG 9.8 kWh battery. The panel shows Home Assistant's sensors, so without that setup it can only run in demo mode.
 
-Version `1.0.1` · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md)
+Version `1.0.2` (prepared; hardware acceptance pending) · [Install in your browser](https://anthonyjclarke.github.io/CYD-Home_Solar_Monitor/) · [Handbook](docs/index.html) · [Changelog](CHANGELOG.md) · [Post-flash tests](docs/TEST_PLAN_1.0.2.md)
 
 **Centre flow (light, default)**
 
@@ -145,7 +145,7 @@ The panel serves the same handbook at `http://solar.local/guide/`, so help works
 
 ## Browser dashboard
 
-Open `http://solar.local/` from any phone, tablet or computer on your home network. The page follows your light or dark setting. Live status refreshes every three seconds and the rolling 24-hour chart every minute, both from the panel. History survives browser reloads and device restarts through the latest valid checkpoint. If the panel stops answering for 12 seconds, the page shows **Disconnected**, greys the tiles and stops the flow animation until it answers again. On a Mac, `solar.local` can take about 5 seconds to look up each time; the panel's IP address avoids the wait. Optional place search contacts Open-Meteo from the browser, and optional device weather and NTP need external services.
+Open `http://solar.local/` from any phone, tablet or computer on your home network. The page follows your light or dark setting. Live status refreshes every three seconds and the rolling 24-hour chart every minute, both from the panel. History survives browser reloads and device restarts through the latest valid checkpoint. Saving settings clears the browser chart while it fetches current history; replies from before the save are discarded. If the panel stops answering for 12 seconds, the page shows **Disconnected**, greys the tiles and stops the flow animation until it answers again. On a Mac, `solar.local` can take about 5 seconds to look up each time; the panel's IP address avoids the wait. Optional place search contacts Open-Meteo from the browser, and optional device weather and NTP need external services.
 
 ![The whole dashboard: tiles, energy flow, 24-hour history chart and footer](docs/images/webui-dashboard-full.webp)
 
@@ -248,11 +248,11 @@ python3 tools/check_host.py
 pio run -e cyd28
 ```
 
-The reference environment is `cyd28`; `cyd24`, `e32r28t-st7789`, `e32r28t-ili9341` and `cyd40` build the other boards; `pio run -e cyd28 -e cyd24 -e e32r28t-st7789 -e e32r28t-ili9341 -e cyd40` builds all five (`espressif32@6.12.0`, Arduino core 2.0.17, C++17). Host checks cover energy, history, serial levels, boot diagnostics, night scheduling and the panel status line, run the Improv parser and HTTP body cap under sanitizers, and render 22 SVG previews in `docs/images/` plus thirteen PNGs when `rsvg-convert` is installed. With the pinned ArduinoJson headers installed they also test the real history serializer and configuration/API logic using host stand-ins. Run `node tests/test_web_history.js`, `node tests/test_web_settings.js` and `node tests/test_web_dashboard.js` for browser regressions. These checks do not verify physical HTTP transport, NVS, TLS or OTA.
+The reference environment is `cyd28`; `cyd24`, `e32r28t-st7789`, `e32r28t-ili9341` and `cyd40` build the other boards; `pio run -e cyd28 -e cyd24 -e e32r28t-st7789 -e e32r28t-ili9341 -e cyd40` builds all five (`espressif32@6.12.0`, Arduino core 2.0.17, C++17). Host checks cover energy, history, serial levels, boot diagnostics, night scheduling, panel navigation, Wi-Fi lifecycle policy and the panel status line, run the Improv parser and HTTP body cap under sanitizers, and render 22 SVG previews in `docs/images/` plus thirteen PNGs when `rsvg-convert` is installed. With the pinned ArduinoJson headers installed they also test the real history serializer and configuration/API logic using host stand-ins. Run `node tests/test_web_history.js`, `node tests/test_web_settings.js` and `node tests/test_web_dashboard.js` for browser regressions. These checks do not verify physical HTTP transport, NVS, TLS or OTA.
 
 `python3 tools/preview_server.py` serves the dashboard with synthetic data at `http://127.0.0.1:8765`. Settings are in memory only; the fixture includes the handbook and images, but has no reboot or upload endpoints. Use synthetic values only.
 
-The firmware build embeds the handbook and web assets, then writes `firmware.bin`, `firmware-merged.bin` and `flash_parts.json` under `.pio/build/cyd28/`. Every build fails if `firmware.bin` would leave less than 64 KiB of the 1,835,008-byte OTA slot; 1.0.1 leaves 188,304 bytes. Use `firmware.bin` for a settings-preserving app update; the merged image is for a clean USB write at `0x0` and overwrites NVS.
+The firmware build embeds the handbook and web assets, then writes `firmware.bin`, `firmware-merged.bin` and `flash_parts.json` under `.pio/build/cyd28/`. Every build fails if `firmware.bin` would leave less than 64 KiB of the 1,835,008-byte OTA slot. Exact `1.0.2` sizes and desktop results are recorded in the [post-flash test plan](docs/TEST_PLAN_1.0.2.md). Use `firmware.bin` for a settings-preserving app update; the merged image is for a clean USB write at `0x0` and overwrites NVS.
 
 To upload to an authorized connected board:
 
@@ -267,7 +267,7 @@ The default **Info** level reports routine polling and health about once a minut
 
 Replace the example serial port with yours. No credentials are needed to compile. Publish release images through CI, never a locally configured build. The local GitHub Actions workflow installs pinned JSON headers and runs host integration/model checks and all three browser regression suites before calling the shared [cyd-web-installer](https://github.com/anthonyjclarke/cyd-web-installer) workflow; the release convention is a matching `v*` tag on `main`.
 
-See [AGENTS.md](AGENTS.md) for architecture and contribution rules, [development reference](docs/DEVELOPMENT.md) for APIs, storage and checks, [history design](docs/HISTORY.md), and [hardware validation](docs/HARDWARE_VALIDATION.md) and [installer checks](docs/WEB_INSTALLER.md) for board evidence and physical tests still owed.
+See the [state-machine inventory](docs/STATE_MACHINES.md) for runtime transitions and coverage, [AGENTS.md](AGENTS.md) for architecture and contribution rules, [development reference](docs/DEVELOPMENT.md) for APIs, storage and checks, [history design](docs/HISTORY.md), and [hardware validation](docs/HARDWARE_VALIDATION.md) and [installer checks](docs/WEB_INSTALLER.md) for board evidence and physical tests still owed.
 
 ---
 

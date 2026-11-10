@@ -316,9 +316,18 @@ int textHalf[2] = {36, 36};  // Half widths of the grid and battery blocks.
 // Cross geometry: hub centre and radius, grid and battery block centres, the
 // solar reading's top and the HOUSE label's top. On 480 x 320 the cross takes
 // the left 336 px; an information rail replaces the 320 x 240 top row.
-struct Cross { int hubX, hubY, hubR, gridX, batteryX, solarY, houseY; };
-constexpr Cross cross320{140, 115, 9, 38, 244, 50, 157};
-constexpr Cross cross480{168, 150, 10, 52, 284, 40, 204};
+// pipe > 0 gives all four pipes that centre-line length: the grid and battery
+// blocks then sit beside their pipe ends (centres follow the text width) and
+// solar/house are placed to match, with the whole cross centred on the hub.
+struct Cross { int hubX, hubY, hubR, gridX, batteryX, solarY, houseY, pipe; };
+constexpr Cross cross320{140, 115, 9, 38, 244, 50, 157, 0};
+// Free area x 0-336, y 0-288. Solar: hubY - hubR - pipe - stop - 19; house:
+// hubY + hubR + pipe + stop - 3. Ink spans y 29-260 and x >= 7 for the widest
+// block (a 10.00 kW reading is 82 px), clear of the rail and status line.
+constexpr Cross cross480{168, 144, 10, 0, 0, 46, 220, 60};
+static_assert(cross480.solarY == cross480.hubY - cross480.hubR - cross480.pipe - 9 - 19 &&
+              cross480.houseY == cross480.hubY + cross480.hubR + cross480.pipe + 9 - 3,
+              "4.0-inch solar and house pipes must match the side pipes");
 
 void railRule(Canvas& c, int y) { c.rect(350, y, 112, 1, track); }
 
@@ -414,12 +423,22 @@ Box drawCentre(Canvas& c, const FlowView& v) {
     // 3 px below y. On 320 x 240 the solar block starts below the top row so
     // "kWh today" can't touch it.
     const Cross& g = wide ? cross480 : cross320;
-    const int hubX = g.hubX, hubY = g.hubY, hubR = g.hubR, gridX = g.gridX, batteryX = g.batteryX, solarY = g.solarY;
+    const int hubX = g.hubX, hubY = g.hubY, hubR = g.hubR, solarY = g.solarY;
     const int houseY = g.houseY;
     constexpr int pipeGap = 6;
     const float grid = r[energy::Grid].value, battery = r[energy::Battery].value;
     const char* gridState = !u[energy::Grid] ? "No data" : grid > 30 ? "Importing" : grid < -30 ? "Exporting" : "Idle";
     const char* batteryState = !u[energy::Battery] ? "No data" : battery < -30 ? "Charging" : battery > 30 ? "Supplying" : "Idle";
+    // Motion frames reuse the text widths of the last full frame, so the box
+    // they clear always matches the text on screen.
+    if (!v.motionOnly) {
+        textHalf[0] = std::max({c.textWidth(2, "GRID"), readingWidth(c, r[energy::Grid]), c.textWidth(2, gridState)}) / 2;
+        textHalf[1] = std::max({c.textWidth(2, "BATTERY"), readingWidth(c, r[energy::Battery]), c.textWidth(2, batteryState)}) / 2;
+    }
+    const int gridHalf = textHalf[0], batteryHalf = textHalf[1];
+    const int sideOffset = hubR + g.pipe + pipeGap + pipeCap;
+    const int gridX = g.pipe ? hubX - sideOffset - gridHalf : g.gridX;
+    const int batteryX = g.pipe ? hubX + sideOffset + batteryHalf : g.batteryX;
     if (!v.motionOnly) {
     c.text(hubX, solarY - 20, 2, label, Center, "SOLAR");
     reading(c, hubX, solarY, Center, r[energy::Solar], u[energy::Solar], solarInk);
@@ -442,13 +461,6 @@ Box drawCentre(Canvas& c, const FlowView& v) {
     }
     }
 
-    // Motion frames reuse the text widths of the last full frame, so the box
-    // they clear always matches the text on screen.
-    if (!v.motionOnly) {
-        textHalf[0] = std::max({c.textWidth(2, "GRID"), readingWidth(c, r[energy::Grid]), c.textWidth(2, gridState)}) / 2;
-        textHalf[1] = std::max({c.textWidth(2, "BATTERY"), readingWidth(c, r[energy::Battery]), c.textWidth(2, batteryState)}) / 2;
-    }
-    const int gridHalf = textHalf[0], batteryHalf = textHalf[1];
     const float dt = cometMs && v.ms ? std::min<uint32_t>(v.ms - cometMs, 100) / 1000.0f : 0.0f;
     cometMs = v.ms;
     // The pipes and hub sit inside this box, clear of every text block.

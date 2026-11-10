@@ -9,15 +9,16 @@ void begin() {
 }
 TFT_eSPI& tft() { return screen; }
 
-// The 320 x 240 frame sits at 1x, centred on larger panels: scaling the
-// built-in fonts by 4/3 looked jagged and made small text unreadable
-// (owner's 4.0-inch, 10-11-2026).
+// The UI frame fills the panel: 320 x 240 boards draw 320 x 240 and the
+// 4.0-inch draws its own 480 x 320 layout. Scaling a 320 x 240 frame by 4/3
+// looked jagged and made small text unreadable (owner's 4.0-inch,
+// 10-11-2026). Offsets stay for a panel larger than its frame.
 int16_t panelX(int16_t x) { return (screen.width() - CYD_EXPECTED_WIDTH) / 2 + x; }
 int16_t panelY(int16_t y) { return (screen.height() - CYD_EXPECTED_HEIGHT) / 2 + y; }
-void pushFrame(TFT_eSprite& frame, int16_t x, int16_t y, int16_t w, int16_t h) {
-    // A whole frame keeps the original single-window push.
-    if (x == 0 && y == 0 && w == CYD_EXPECTED_WIDTH && h == CYD_EXPECTED_HEIGHT) frame.pushSprite(panelX(0), panelY(0));
-    else frame.pushSprite(panelX(x), panelY(y), x, y, w, h);
+void pushFrame(TFT_eSprite& band, int16_t bandY, int16_t x, int16_t y, int16_t w, int16_t h) {
+    // A whole band keeps the original single-window push.
+    if (x == 0 && y == bandY && w == band.width() && h == band.height()) band.pushSprite(panelX(0), panelY(bandY));
+    else band.pushSprite(panelX(x), panelY(y), x, y - bandY, w, h);
 }
 void showBootMessage(const String& title, const String& detail) {
     screen.fillScreen(TFT_BLACK);

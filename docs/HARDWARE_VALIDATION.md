@@ -25,6 +25,7 @@ Owner's ESP32-2432S028R, SolarEdge Modbus Multi through Home Assistant, Putney N
 | 10-11-2026   | 1.0.2   | `cyd40`: history taps missed; recal failed |
 | 10-11-2026   | 1.0.2   | `cyd40` axis swap: history taps correct    |
 | 10-11-2026   | 1.0.2   | `cyd40` 4/3 scaling: jagged; kept 1×       |
+| 10-11-2026   | 1.0.2   | `cyd40` native 480 × 320: looks/taps right |
 
 The macOS figure is name lookup, not the device: an IPv6 mDNS query for `solar.local` goes unanswered and the Mac waits 5 s. Forcing IPv4, or using the IP address, resolves in milliseconds. Browser request deadlines (12 s status, 15 s others) sit above it.
 
@@ -38,7 +39,8 @@ The macOS figure is name lookup, not the device: an IPv6 mDNS query for `solar.l
 - [x] Solar charge, discharge, grid charging, zero/night, invalid inputs, stale inputs and skewed timestamps pass portable checks.
 - [x] Power units, invalid states and percentage limits are checked.
 - [x] ISO timestamp offsets, stale/future reports and `millis()` rollover are checked.
-- [x] All 22 current SVG previews render: six scenes per layout, weather-only, four boot states and five history states; thirteen PNGs regenerate when the converter is installed.
+- [x] All 28 current SVG previews render: six scenes per layout, weather-only, four boot states, five history states and six 4.0″ native 480 × 320 screens; nineteen PNGs regenerate when the converter is installed.
+- [x] 320 × 240 previews are byte-identical before and after the 4.0″ native layout (10-11-2026).
 - [x] Embedded JavaScript passes syntax checking.
 - [x] Browser fixture shows sample measurements and saves settings through its mock endpoint.
 
@@ -55,10 +57,13 @@ Built but never run. Each needs a board owner to flash its env and report. The E
 - [ ] `e32r28t-ili9341` (Freenove FNK0114F): colours, image and touch as above.
 - [ ] ESP32-32E 2.8″: RGB LED stays off and the speaker stays silent (GPIO 4 is the amplifier enable).
 - [ ] `cyd24`: display and touch as on the 2.8″.
-- [ ] `cyd40`: 320 × 240 frame centred, colours correct, backlight dims and turns off.
-- [x] `cyd40`: shared-bus touch maps taps into the centred frame with the default axis swap (owner, 10-11-2026: history tabs and arrows).
-- [ ] `cyd40`: calibration targets appear inside the frame and save (serial `[TOUCH]` line shows `swap=1`).
-- [ ] Each new board: Wi-Fi, HA readings, weather and history work as on the 2.8″ (heap matches: same frame buffer).
+- [x] `cyd40`: native 480 × 320 layout fills the panel (centre flow with right rail, cards, history, boot, settings), colours correct, backlight dims and turns off.
+- [x] `cyd40`: no seam, tear or clipped glyph at the y = 160 band boundary (grid/battery readings and the rail's battery gauge cross it).
+- [ ] `cyd40`: centre-flow comets move smoothly at 20 fps, and the full 4 fps repaint does not flicker or slow touch/HTTP.
+- [x] `cyd40`: History (rail button), history tabs, Prev/Next and Home respond where drawn (owner, 10-11-2026: native layout looks and responds right; backlight, calibration and endurance still open).
+- [x] `cyd40`: shared-bus touch maps taps into the centred 320 × 240 frame with the default axis swap (owner, 10-11-2026: history tabs and arrows; superseded by the native layout below).
+- [ ] `cyd40`: the old 320 × 240-frame calibration is ignored after the update (taps follow the full-panel defaults). Calibration crosses appear 20 px from the panel corners and save (serial `[TOUCH]` line shows `swap=1`).
+- [ ] Each new board: Wi-Fi, HA readings, weather and history work as on the 2.8″ (heap matches: same 76.8 KB frame buffer, banded on the 4.0″).
 
 ---
 

@@ -7,6 +7,11 @@ enum Align { Left, Center, Right };
 // Cards: original dark four-card grid. Centre: light cross layout with the
 // four flows meeting at a central hub.
 enum Layout : unsigned char { Cards, Centre, LayoutCount };
+// Frame each screen is drawn for: the 320 x 240 every board but the 4.0-inch
+// uses, or the 4.0-inch's native 480 x 320 (same built-in fonts, more room).
+enum Panel : unsigned char { Panel320, Panel480 };
+constexpr int panelWidth(Panel p) { return p == Panel480 ? 480 : 320; }
+constexpr int panelHeight(Panel p) { return p == Panel480 ? 320 : 240; }
 class Canvas {
 public:
     virtual ~Canvas() = default;
@@ -30,6 +35,7 @@ struct FlowView {
     uint32_t ms = 0;  // Frame time; the centre layout's comets advance with it.
     bool motionOnly = false;  // Redraw only the moving pipes and hub (centre layout).
     Layout layout = Centre;
+    Panel panel = Panel320;
     const char* status = "Waiting for readings";
     const char* address = "";
     const char* batteryLabel = "";
@@ -37,7 +43,8 @@ struct FlowView {
 };
 struct Box { int x = 0, y = 0, w = 0, h = 0; };
 // Returns the area holding the animated pipes (empty for the cards layout),
-// which is all a motionOnly frame changes.
+// which is all a motionOnly frame changes. It never exceeds 160 px in height,
+// so a 480 x 320 motion frame fits one band.
 Box drawFlow(Canvas& canvas, const FlowView& view);
 
 // Boot screen: identity, then one row per start-up step so the IP address and
@@ -56,6 +63,21 @@ struct BootView {
     const char* footer = "";
     float progress = 0;  // 0..1 across the boot screen's time on screen.
     Layout layout = Centre;  // Matches the theme of the chosen panel layout.
+    Panel panel = Panel320;
 };
 void drawBoot(Canvas& canvas, const BootView& view);
+
+// Device / setup screen opened by a 2-second hold: how to reach the web page
+// (or the Wi-Fi portal) and the access code. Always dark.
+struct SettingsView {
+    bool connected = false;
+    const char* webUrl = "";      // http://<mdns>.local/
+    const char* ip = "";
+    const char* apName = "";
+    const char* accessCode = "";
+    const char* haUrl = "";
+    const char* version = "";     // Without a leading v.
+    Panel panel = Panel320;
+};
+void drawSettings(Canvas& canvas, const SettingsView& view);
 }  // namespace ui

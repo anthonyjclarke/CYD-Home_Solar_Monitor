@@ -18,9 +18,19 @@
 
 namespace app {
 namespace {
+// UI frame and the band the 8-bit sprite holds. Every board but the 4.0-inch
+// draws its 320 x 240 frame in one pass. The 4.0-inch draws its native
+// 480 x 320 layout as two 480 x 160 bands through the same 76.8 KB sprite: a
+// full 153.6 KB frame does not fit beside Wi-Fi/TLS without PSRAM.
+constexpr ui::Panel kPanel = CYD_EXPECTED_WIDTH >= 480 ? ui::Panel480 : ui::Panel320;
+constexpr int16_t kFrameW = CYD_EXPECTED_WIDTH, kFrameH = CYD_EXPECTED_HEIGHT;
+constexpr int16_t kBandH = kPanel == ui::Panel480 ? kFrameH / 2 : kFrameH;
+static_assert(kFrameW == ui::panelWidth(kPanel) && kFrameH == ui::panelHeight(kPanel), "UI frame must match a ui::Panel");
+static_assert(int32_t(kFrameW) * kBandH == 320 * 240, "Frame band must stay the 76.8 KB 320 x 240 sprite size");
 TFT_eSprite buffer(&cyd::display::tft());
 bool buffered = false, wasPressed = false;
-ui::PanelState panel;
+ui::PanelState panel(ui::targetsFor(kFrameW));
+ui::Box motionBox;  // Pipe box of the last full centre-flow frame.
 ui::TouchGesture gesture;
 history::Field historyField = history::Solar;
 uint16_t tapX = 0, tapY = 0;
@@ -31,47 +41,57 @@ bool calibrationHeld = false;
 bool waitCalibrationRelease = false;
 unsigned target = 0;
 uint16_t raw[4][2] = {};
-const int targets[4][2] = {{20,20},{299,20},{299,219},{20,219}};
+// Calibration crosses, inset 20 px from the frame corners.
+const int targets[4][2] = {{20,20},{kFrameW-21,20},{kFrameW-21,kFrameH-21},{20,kFrameH-21}};
 
 // Frame-to-panel coordinates for the few things drawn straight to the TFT.
 int16_t px(int16_t x) { return cyd::display::panelX(x); }
 int16_t py(int16_t y) { return cyd::display::panelY(y); }
-void pushWhole() { cyd::display::pushFrame(buffer,0,0,320,240); }
 
 unsigned rgb565(unsigned rgb) {
     return ((rgb>>8)&0xf800) | ((rgb>>5)&0x07e0) | ((rgb>>3)&0x001f);
 }
+// Draws frame coordinates into the sprite, which holds frame rows from `top`.
+// The sprite clips whatever falls outside the band, glyphs included.
 class TftCanvas : public ui::Canvas {
 public:
+    int top = 0;
     void rect(int x,int y,int w,int h,unsigned color,int radius=0) override {
-        if (radius) buffer.fillRoundRect(x,y,w,h,radius,rgb565(color));
-        else buffer.fillRect(x,y,w,h,rgb565(color));
+        if (radius) buffer.fillRoundRect(x,y-top,w,h,radius,rgb565(color));
+        else buffer.fillRect(x,y-top,w,h,rgb565(color));
     }
-    void line(int x,int y,int a,int b,unsigned color) override { buffer.drawLine(x,y,a,b,rgb565(color)); }
+    void line(int x,int y,int a,int b,unsigned color) override { buffer.drawLine(x,y-top,a,b-top,rgb565(color)); }
     void text(int x,int y,int font,unsigned color,ui::Align align,const char* s) override {
         buffer.setTextDatum(align == ui::Left ? TL_DATUM : align == ui::Right ? TR_DATUM : TC_DATUM);
-        buffer.setTextColor(rgb565(color)); buffer.drawString(s,x,y,font);
+        buffer.setTextColor(rgb565(color)); buffer.drawString(s,x,y-top,font);
     }
     int textWidth(int font,const char* s) override { return buffer.textWidth(s,font); }
 } canvas;
 
-// Drawn into the frame sprite and pushed whole, so the 1 Hz refresh does not flash.
+// Draws a whole frame and pushes it band by band; `draw` repeats the full
+// layout for each band. Layout state (comet phases) advances on the first
+// pass only, as the second sees the same frame time.
+template <typename Draw> void paintFrame(Draw draw) {
+    for (int16_t top = 0; top < kFrameH; top += kBandH) {
+        canvas.top = top;
+        draw();
+        cyd::display::pushFrame(buffer,top,0,top,kFrameW,kBandH);
+    }
+    canvas.top = 0;
+}
+void holdBar(uint32_t heldMs) {
+    canvas.rect(0,kFrameH-3,std::min<uint32_t>(kFrameW,heldMs*kFrameW/2000),3,0x9292aa);
+}
+
+// Repainted whole at 1 Hz from the frame sprite, so it does not flash.
 void paintInfo() {
-    auto& t = buffer;
     const auto& wifi = cyd::network::status();
-    t.fillSprite(TFT_BLACK); t.setTextDatum(TL_DATUM); t.setTextColor(TFT_WHITE,TFT_BLACK);
-    t.drawString(wifi.connected ? "DEVICE / SETUP" : "CONNECT TO WIFI",10,8,2);
-    t.drawString(wifi.connected ? "http://" APP_MDNS_NAME ".local/" : wifi.apName,10,37,2);
-    t.drawString(wifi.connected ? "or http://" + wifi.ip + "/   OTA code:" : "AP password / device code:",10,62,2);
-    t.setTextColor(TFT_YELLOW,TFT_BLACK);
-    t.drawString(monitor::accessCode(),10,84,4);
-    t.setTextColor(TFT_WHITE,TFT_BLACK);
-    t.drawString("HA: " + monitor::config().url.substring(0,35),10,120,2);
-    t.drawString("Firmware " FIRMWARE_VERSION,10,143,2);
-    t.drawString("Tap: return / hold 2s: calibrate",10,170,2);
-    t.drawString(wifi.connected ? "Use browser for settings and updates" : "Portal: 192.168.4.1 (after 20s)",10,196,2);
-    t.drawString("No Home Assistant token in logs",10,219,1);
-    pushWhole();
+    const String code = monitor::accessCode();
+    ui::SettingsView v;
+    v.panel = kPanel; v.connected = wifi.connected;
+    v.webUrl = "http://" APP_MDNS_NAME ".local/"; v.ip = wifi.ip.c_str(); v.apName = wifi.apName.c_str();
+    v.accessCode = code.c_str(); v.haUrl = monitor::config().url.c_str(); v.version = FIRMWARE_VERSION;
+    paintFrame([&] { ui::drawSettings(canvas, v); });
 }
 
 // Start-up screen: one row per step, repainted every 250 ms so Wi-Fi, IP and
@@ -81,6 +101,7 @@ void paintBoot(uint32_t now) {
     const auto& status = diagnostics::bootStatus();
     ui::BootView v;
     v.layout = static_cast<ui::Layout>(cfg.layout);
+    v.panel = kPanel;
     v.version = "v" FIRMWARE_VERSION;
     for (unsigned i=0;i<boot::RowCount;++i)
         v.rows[i] = {boot::label(i),status.rows[i].value,status.rows[i].state};
@@ -94,15 +115,14 @@ void paintBoot(uint32_t now) {
         v.progress = float(now - bootStart) / APP_BOOT_MAX_MS;
     }
     v.footer = footer;
-    ui::drawBoot(canvas, v);
-    pushWhole();
+    paintFrame([&] { ui::drawBoot(canvas, v); });
 }
 
 void paintCalibration() {
     auto& t = cyd::display::tft();
     t.fillScreen(TFT_BLACK); t.setTextDatum(TC_DATUM); t.setTextColor(TFT_WHITE,TFT_BLACK);
-    t.drawString("Tap each cross once",px(160),py(95),2);
-    t.drawString("Timeout: 45 seconds",px(160),py(120),2);
+    t.drawString("Tap each cross once",px(kFrameW/2),py(kFrameH/2-25),2);
+    t.drawString("Timeout: 45 seconds",px(kFrameW/2),py(kFrameH/2),2);
     int x=px(targets[target][0]), y=py(targets[target][1]);
     t.drawLine(x-8,y,x+8,y,TFT_YELLOW); t.drawLine(x,y-8,x,y+8,TFT_YELLOW);
 }
@@ -131,14 +151,14 @@ void sampleCalibration(const cyd::touch::State& touch, uint32_t now) {
             // Targets are inset 20 pixels; extrapolate to panel edges.
             int x0=(raw[0][0]+raw[3][0])/2, x1=(raw[1][0]+raw[2][0])/2;
             int y0=(raw[0][1]+raw[1][1])/2, y1=(raw[2][1]+raw[3][1])/2;
-            int dx=(x1-x0)*20/279, dy=(y1-y0)*20/199;
+            int dx=(x1-x0)*20/(kFrameW-41), dy=(y1-y0)*20/(kFrameH-41);
             bool ok=cyd::touch::calibrate(constrain(x0-dx,0,4095),constrain(x1+dx,0,4095),
                                          constrain(y0-dy,0,4095),constrain(y1+dy,0,4095),swap);
             DBG_INFO("[TOUCH] calibration %s: raw TL %u,%u TR %u,%u BR %u,%u BL %u,%u swap=%d",ok?"saved":"rejected",
                      raw[0][0],raw[0][1],raw[1][0],raw[1][1],raw[2][0],raw[2][1],raw[3][0],raw[3][1],int(swap));
             panel.finishCalibration();
             auto& t=cyd::display::tft(); t.fillScreen(TFT_BLACK);
-            t.drawString(ok ? "Calibration saved" : "Calibration rejected",px(160),py(100),2);
+            t.drawString(ok ? "Calibration saved" : "Calibration rejected",px(kFrameW/2),py(kFrameH/2-20),2);
         } else paintCalibration();
         lastTouch=now;
     }
@@ -147,7 +167,7 @@ void sampleCalibration(const cyd::touch::State& touch, uint32_t now) {
 
 void begin() {
     buffer.setColorDepth(8);
-    buffered = buffer.createSprite(320,240) != nullptr;
+    buffered = buffer.createSprite(kFrameW,kBandH) != nullptr;
     diagnostics::bootStage("Display",buffered?"frame buffer ready":"frame buffer allocation failed",!buffered);
     if (!buffered) {
         cyd::display::showBootMessage("Low memory", "Restart device to retry display");
@@ -192,11 +212,12 @@ void update(uint32_t now) {
         panel.tap(tapX,tapY);
         if (previous==ui::Screen::Boot) diagnostics::bootScreenClosed("skipped by touch");
         else if (previous==ui::Screen::History && panel.screen()==ui::Screen::History) {
-            if (tapY>=31 && tapY<58) historyField=history::tabs[std::min<unsigned>(4,tapX/64)];
-            else if (tapY>=209 && (tapX<52 || tapX>=268)) {
+            const auto& hit=ui::targetsFor(kFrameW);
+            if (hit.tabs.contains(tapX,tapY)) historyField=history::tabs[hit.tab(tapX)];
+            else if (hit.prev.contains(tapX,tapY) || hit.next.contains(tapX,tapY)) {
                 unsigned i=0;
                 while (i+1<history::FieldCount && history::order[i]!=historyField) ++i;
-                historyField=history::order[(i+history::FieldCount+(tapX<52?-1:1))%history::FieldCount];
+                historyField=history::order[(i+history::FieldCount+(hit.prev.contains(tapX,tapY)?-1:1))%history::FieldCount];
             }
         }
         lastPaint=0;
@@ -224,12 +245,10 @@ void update(uint32_t now) {
     if (panel.screen()==ui::Screen::History) {
         ui::HistoryView h{history::data()};
         h.epoch=clock?uint32_t(epoch):0; h.field=historyField; h.layout=static_cast<ui::Layout>(cfg.layout);
-        h.storageOK=history::storageHealthy(); h.demo=cfg.demo;
-        ui::drawHistory(canvas,h);
-        if (gesture.heldMs(now)>300) {
-            canvas.rect(0,237,std::min<uint32_t>(320,gesture.heldMs(now)*320/2000),3,0x9292aa);
-        }
-        pushWhole(); return;
+        h.storageOK=history::storageHealthy(); h.demo=cfg.demo; h.panel=kPanel;
+        const uint32_t held=gesture.heldMs(now);
+        paintFrame([&] { ui::drawHistory(canvas,h); if (held>300) holdBar(held); });
+        return;
     }
     if (panel.screen()==ui::Screen::Settings) {
         // Repaint at 1 Hz to avoid flashing the setup page.
@@ -256,17 +275,28 @@ void update(uint32_t now) {
     view.address=ip.c_str();
     view.batteryLabel=cfg.batteryLabel.c_str();
     view.layout=static_cast<ui::Layout>(cfg.layout);
+    view.panel=kPanel;
     for (int t=0;t<energy::TotalCount;++t)
         view.totalLive[t]=energy::totalUsable(view.data,static_cast<energy::Total>(t),view.wifi,ageNow);
     view.weatherLive=(view.data.demo || view.wifi) && weather::usable(view.data.weather,ageNow);
     char clockText[8]="";
     if (clock) strftime(clockText,sizeof(clockText),"%H:%M",&local);
     view.time=clockText;
+    if (full) {
+        const uint32_t held=gesture.heldMs(now);
+        ui::Box box;
+        paintFrame([&] { box=ui::drawFlow(canvas,view); if (held>300) holdBar(held); });
+        motionBox=view.layout==ui::Centre ? box : ui::Box{};
+        flowShown=true;
+        return;
+    }
+    // Motion frame: the pipe box is at most one band tall, so the band starts
+    // at its top (always 0 on 320 x 240, where the band is the whole frame).
+    if (kBandH<kFrameH && (motionBox.h<=0 || motionBox.h>kBandH)) return;
+    canvas.top=kBandH<kFrameH ? motionBox.y : 0;
     const ui::Box box=ui::drawFlow(canvas,view);
-    if (full && gesture.heldMs(now)>300)
-        canvas.rect(0,237,std::min<uint32_t>(320,gesture.heldMs(now)*320/2000),3,0x9292aa);
-    if (full) { pushWhole(); flowShown=true; }
-    else if (box.w > 0 && box.h > 0) cyd::display::pushFrame(buffer,box.x,box.y,box.w,box.h);
+    if (box.w > 0 && box.h > 0) cyd::display::pushFrame(buffer,canvas.top,box.x,box.y,box.w,box.h);
+    canvas.top=0;
 }
 }  // namespace app
 

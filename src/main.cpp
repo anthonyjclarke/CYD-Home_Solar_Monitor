@@ -37,9 +37,9 @@ void setup() {
     for (int pin : {LED_R_PIN,LED_G_PIN,LED_B_PIN}) { pinMode(pin,OUTPUT); digitalWrite(pin,HIGH); }
     diagnostics::bootStage("Display","initializing backlight and TFT driver");
     cyd::backlight::begin(); cyd::display::begin();
-    diagnostics::bootStage("Display","driver initialized (320x240)");
+    diagnostics::bootStage("Display",CYD_EXPECTED_WIDTH==480?"driver initialized (480x320)":"driver initialized (320x240)");
     diagnostics::bootStage("Touch","initializing controller and calibration");
-    cyd::touch::begin(320,240);
+    cyd::touch::begin(CYD_EXPECTED_WIDTH,CYD_EXPECTED_HEIGHT);
     diagnostics::bootStage("Touch","controller initialized");
     diagnostics::bootStage("Wi-Fi","starting saved-network connection");
     cyd::network::begin();

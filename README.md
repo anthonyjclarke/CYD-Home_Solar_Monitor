@@ -89,7 +89,9 @@ No soldering or wiring. The boards cost about US$10–25; the [CYD community rep
 | `e32r28t-ili9341` | Freenove FNK0114F 2.8″ ILI9341    | Untested |
 | `cyd40`           | ESP32-32E 4.0″ ST7796S 480 × 320  | Untested |
 
-The two `e32r28t` builds are for the USB-C ESP32-32E 2.8″ board with speaker and battery connectors (LCDwiki E32R28T, sold by Freenove as FNK0114); the box or listing says whether its panel is an ST7789 or ILI9341. Every board shows the same 320 × 240 display; the 4.0″ shows it centred with a black border. A capacitive-touch ("C") 2.4″ board displays but does not respond to taps. Untested boards have been built but not yet run; [hardware validation](docs/HARDWARE_VALIDATION.md) lists what to check.
+The two `e32r28t` builds are for the USB-C ESP32-32E 2.8″ board with speaker and battery connectors (LCDwiki E32R28T, sold by Freenove as FNK0114); the box or listing says whether its panel is an ST7789 or ILI9341. The 2.8″ and 2.4″ boards show the 320 × 240 display. The 4.0″ draws its own full-screen 480 × 320 layout with the same built-in fonts: the flow cross on the left, and a rail on the right with the clock, weather, solar today, tomorrow's forecast, battery level and History button. A capacitive-touch ("C") 2.4″ board displays but does not respond to taps. Untested boards have been built but not yet run; [hardware validation](docs/HARDWARE_VALIDATION.md) lists what to check.
+
+![4.0″ native layout: flow cross with the clock, solar today, tomorrow and battery rail](docs/images/cyd40-centre-flow-preview.png)
 
 ---
 

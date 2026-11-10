@@ -29,6 +29,25 @@ int main() {
     ui::PanelState timedBoot;
     timedBoot.finishBoot(); assert(timedBoot.screen() == Screen::Flow);
 
+    // 4.0-inch native 480 x 320 targets: History in the rail, Home top right.
+    ui::PanelState wide(ui::targetsFor(480));
+    wide.finishBoot();
+    wide.tap(232, 209); assert(wide.screen() == Screen::Flow);  // 320 target is not a 480 one.
+    wide.tap(335, 300); assert(wide.screen() == Screen::Flow);
+    wide.tap(336, 260); assert(wide.screen() == Screen::History);
+    wide.tap(379, 10); assert(wide.screen() == Screen::History);
+    wide.tap(380, 36); assert(wide.screen() == Screen::History);
+    wide.tap(479, 35); assert(wide.screen() == Screen::Flow);
+    wide.tap(479, 319); assert(wide.screen() == Screen::History);
+    static_assert(ui::targets320.tab(0) == 0 && ui::targets320.tab(63) == 0 && ui::targets320.tab(64) == 1 &&
+                  ui::targets320.tab(319) == 4, "320 tabs are 64 px");
+    static_assert(ui::targets480.tab(95) == 0 && ui::targets480.tab(96) == 1 && ui::targets480.tab(479) == 4,
+                  "480 tabs are 96 px");
+    static_assert(ui::targets480.prev.contains(0, 319) && ui::targets480.next.contains(479, 319) &&
+                  !ui::targets480.prev.contains(88, 300) && ui::targets480.tabs.contains(200, 50),
+                  "480 history buttons reach the panel edges");
+    static_assert(&ui::targetsFor(320) == &ui::targets320, "320 x 240 boards keep their targets");
+
     // A wake contact and a settings hold cannot leak taps into the next screen.
     ui::TouchGesture gesture;
     assert(gesture.update(true, 100, true) == ui::Gesture::None);

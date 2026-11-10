@@ -26,47 +26,66 @@ void drawHistory(Canvas& c, const HistoryView& v) {
     const bool light=v.layout==Centre;
     const unsigned bg=light?paper:dark, fg=light?ink:white, label=light?soft:muted, grid=light?rule:darkRule;
     const unsigned color=light && v.field<history::Today?colors[v.field]:light?ink:0xffb655;
-    c.rect(0,0,320,240,bg);
-    c.text(8,6,2,fg,Left,"24H HISTORY");
+    // 480 x 320 keeps the same structure with 96 px tabs, font-2 statistics,
+    // a 422 px chart and larger Prev/Next/Home buttons (ui::targets480).
+    const bool wide=v.panel==Panel480;
+    const int width=wide?480:320, margin=wide?12:8;
+    c.rect(0,0,width,wide?320:240,bg);
+    c.text(margin,wide?8:6,2,fg,Left,"24H HISTORY");
     char text[64], clock[24];
     localClock(clock,sizeof(clock),v.epoch,"%H:%M");
-    c.text(247,7,2,label,Right,clock);
-    c.rect(260,0,60,28,grid,4); c.text(290,6,2,fg,Center,"Home");
+    if (wide) {
+        c.text(372,8,2,label,Right,clock);
+        c.rect(388,2,88,30,grid,5); c.text(432,9,2,fg,Center,"Home");
+    } else {
+        c.text(247,7,2,label,Right,clock);
+        c.rect(260,0,60,28,grid,4); c.text(290,6,2,fg,Center,"Home");
+    }
     const char* tabNames[]={"Solar","Home","Grid","Batt","Level"};
+    const char* wideNames[]={"Solar","Home","Grid","Battery","Level"};
     for (unsigned i=0;i<5;++i) {
         const bool selected=v.field==history::tabs[i];
-        c.rect(i*64+2,31,60,25,selected?grid:bg,3);
-        c.text(i*64+32,35,2,selected?fg:label,Center,tabNames[i]);
+        if (wide) {
+            c.rect(i*96+3,38,90,30,selected?grid:bg,4);
+            c.text(i*96+48,45,2,selected?fg:label,Center,wideNames[i]);
+        } else {
+            c.rect(i*64+2,31,60,25,selected?grid:bg,3);
+            c.text(i*64+32,35,2,selected?fg:label,Center,tabNames[i]);
+        }
     }
-    c.text(8,61,2,color,Left,history::name(v.field));
+    const int nameY=wide?76:61;
+    c.text(margin,nameY,2,color,Left,history::name(v.field));
     const auto s=history::stats(v.store,v.field,v.epoch);
     if (s.count) value(text,sizeof(text),s.latest,v.field);
     else std::snprintf(text,sizeof(text),"-- %s",v.field<history::Today && v.field!=history::Soc?"kW":history::unit(v.field));
-    c.text(312,60,2,fg,Right,text);
+    c.text(width-margin,wide?76:60,2,fg,Right,text);
     if (s.count) {
         localClock(clock,sizeof(clock),s.latestAt,"%d %b %H:%M");
         std::snprintf(text,sizeof(text),"Last %s | %u/288 samples",clock,s.count);
     } else std::snprintf(text,sizeof(text),"%s",v.epoch?"No actual samples yet":"Waiting for clock sync");
-    c.text(8,81,1,label,Left,text);
+    if (wide) c.text(12,96,2,label,Left,text);
+    else c.text(8,81,1,label,Left,text);
     const bool code=v.field==history::WeatherCode || v.field==history::TomorrowCode;
     if (s.count && !code) {
-        // Compact signed statistics; each column stays inside its 104 px box.
+        // Compact signed statistics; each column stays inside its 104 px box
+        // (on 480 x 320, font 2 in 110 px columns on their own row).
         const float scale=v.field<history::Today && v.field!=history::Soc?1000:1;
         const char* u=scale==1000?"kW":history::unit(v.field);
         const float vals[]={s.minimum,s.mean,s.maximum};
         const char* labels[]={"Min","Avg","Max"};
         for (unsigned i=0;i<3;++i) {
             std::snprintf(text,sizeof(text),"%s %.1f%s",labels[i],vals[i]/scale,u);
-            c.text(8+i*104,97,1,label,Left,text);
+            if (wide) c.text(12+i*110,114,2,label,Left,text);
+            else c.text(8+i*104,97,1,label,Left,text);
         }
     }
-    constexpr int left=42, right=310, top=118, bottom=189;
+    const int left=wide?44:42, right=wide?466:310, top=wide?140:118, bottom=wide?246:189;
     float lo=s.count?std::min(0.0f,s.minimum):0, hi=s.count?std::max(0.0f,s.maximum):(v.field<history::Today && v.field!=history::Soc?1000:1);
     if (v.field==history::Soc) { lo=0; hi=100; }
     if (hi-lo<0.01f) hi=lo+1;
     auto y=[&](float val) { return bottom-int((val-lo)/(hi-lo)*(bottom-top)); };
     const bool kw=v.field<history::Today && v.field!=history::Soc;
-    c.text(4,110,1,label,Left,kw?"kW":history::unit(v.field));
+    c.text(wide?6:4,top-8,1,label,Left,kw?"kW":history::unit(v.field));
     for (unsigned i=0;i<3;++i) {
         float val=lo+(hi-lo)*i/2;
         std::snprintf(text,sizeof(text),"%.1f",val/(kw?1000:1));
@@ -88,11 +107,16 @@ void drawHistory(Canvas& c, const HistoryView& v) {
         for (unsigned i=0;i<5;++i) {
             const uint32_t t=v.epoch-history::duration+i*history::duration/4;
             localClock(clock,sizeof(clock),t,"%H:%M");
-            c.text(left+i*(right-left)/4,195,1,label,i==0?Left:i==4?Right:Center,clock);
+            c.text(left+i*(right-left)/4,bottom+6,1,label,i==0?Left:i==4?Right:Center,clock);
         }
     }
-    c.rect(2,211,48,27,grid,3); c.text(26,217,2,fg,Center,"Prev");
-    c.rect(270,211,48,27,grid,3); c.text(294,217,2,fg,Center,"Next");
+    if (wide) {
+        c.rect(3,278,76,38,grid,5); c.text(41,289,2,fg,Center,"Prev");
+        c.rect(401,278,76,38,grid,5); c.text(439,289,2,fg,Center,"Next");
+    } else {
+        c.rect(2,211,48,27,grid,3); c.text(26,217,2,fg,Center,"Prev");
+        c.rect(270,211,48,27,grid,3); c.text(294,217,2,fg,Center,"Next");
+    }
     bool unknown=false;
     if (v.epoch && v.field<history::Today) {
         const uint32_t first=history::bucket(v.epoch)-(history::capacity-1)*history::interval;
@@ -101,6 +125,11 @@ void drawHistory(Canvas& c, const HistoryView& v) {
     }
     const char* note=v.demo?"Actual history | demo excluded":!v.storageOK?"RAM only / storage fault":unknown?"5 min | source age unknown":
         v.field==history::Grid?"+import / -export":v.field==history::Battery?"+supply / -charge":"5 min samples | gaps = no data";
+    if (wide) {
+        c.text(240,280,2,label,Center,note);
+        c.text(240,299,2,label,Center,"Hold 2 s: Settings");
+        return;
+    }
     c.text(160,213,1,label,Center,note);
     c.text(160,227,1,label,Center,"Hold >2s: Settings");
 }

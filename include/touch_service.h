@@ -18,7 +18,7 @@ void begin(uint16_t screenWidth, uint16_t screenHeight);
 void update();
 const State& state();
 // rawX/rawY in State are already swapped when swapped() is true. Saving a
-// calibration stores the limits and the swap together.
+// calibration stores the limits, the swap and the UI frame width together.
 bool swapped();
 bool calibrate(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1, bool swapXY);
 

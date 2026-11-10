@@ -1,0 +1,56 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='640' viewBox='0 0 480 320'><style>text{font-family:DejaVu Sans,sans-serif}</style>
+<rect x='0' y='0' width='480' height='320' rx='0' fill='#ffffff'/>
+<rect x='340' y='8' width='132' height='304' rx='8' fill='#dbdbaa'/>
+<text x='352' y='35' font-size='25' text-anchor='start' fill='#242455'>14:32</text>
+<rect x='350' y='50' width='112' height='1' rx='0' fill='#b6b6aa'/>
+<text x='352' y='71' font-size='13' text-anchor='start' fill='#6d6d55'>Solar today</text>
+<text x='352' y='95' font-size='25' text-anchor='start' fill='#b6b6aa'>--</text>
+<text x='372' y='97' font-size='13' text-anchor='start' fill='#b6b6aa'>kWh</text>
+<text x='352' y='123' font-size='13' text-anchor='start' fill='#6d6d55'>Tomorrow</text>
+<text x='352' y='145' font-size='13' text-anchor='start' fill='#b6b6aa'>--</text>
+<rect x='350' y='160' width='112' height='1' rx='0' fill='#b6b6aa'/>
+<text x='352' y='181' font-size='13' text-anchor='start' fill='#6d6d55'>LG 9.8 kWh</text>
+<rect x='359' y='190' width='14' height='4' rx='1' fill='#b6b6aa'/>
+<rect x='354' y='194' width='24' height='62' rx='3' fill='#b6b6aa'/>
+<rect x='356' y='196' width='20' height='58' rx='2' fill='#ffffff'/>
+<text x='392' y='229' font-size='25' text-anchor='start' fill='#b6b6aa'>--</text>
+<text x='411' y='231' font-size='13' text-anchor='start' fill='#6d6d55'>%</text>
+<text x='392' y='249' font-size='13' text-anchor='start' fill='#6d6d55'>charged</text>
+<rect x='348' y='272' width='116' height='34' rx='5' fill='#ffffff'/>
+<text x='406' y='294' font-size='13' text-anchor='middle' fill='#242455'>History</text>
+<text x='168' y='33' font-size='13' text-anchor='middle' fill='#6d6d55'>SOLAR</text>
+<text x='151' y='59' font-size='25' text-anchor='start' fill='#b6b6aa'>--</text>
+<text x='170' y='61' font-size='13' text-anchor='start' fill='#b6b6aa'>kW</text>
+<text x='52' y='132' font-size='13' text-anchor='middle' fill='#6d6d55'>GRID</text>
+<text x='35' y='158' font-size='25' text-anchor='start' fill='#b6b6aa'>--</text>
+<text x='54' y='160' font-size='13' text-anchor='start' fill='#b6b6aa'>kW</text>
+<text x='52' y='173' font-size='13' text-anchor='middle' fill='#b6b6aa'>No data</text>
+<text x='284' y='132' font-size='13' text-anchor='middle' fill='#6d6d55'>BATTERY</text>
+<text x='267' y='158' font-size='25' text-anchor='start' fill='#b6b6aa'>--</text>
+<text x='286' y='160' font-size='13' text-anchor='start' fill='#b6b6aa'>kW</text>
+<text x='284' y='173' font-size='13' text-anchor='middle' fill='#b6b6aa'>No data</text>
+<text x='168' y='217' font-size='13' text-anchor='middle' fill='#6d6d55'>HOUSE</text>
+<text x='151' y='244' font-size='25' text-anchor='start' fill='#b6b6aa'>--</text>
+<text x='170' y='246' font-size='13' text-anchor='start' fill='#b6b6aa'>kW</text>
+<rect x='165' y='65' width='7' height='79' rx='3' fill='#dbdbaa'/>
+<path d='M168 68 L168 140' fill='none' stroke='#b6b6aa'/>
+<rect x='82' y='147' width='80' height='7' rx='3' fill='#dbdbaa'/>
+<path d='M85 150 L158 150' fill='none' stroke='#b6b6aa'/>
+<rect x='175' y='147' width='76' height='7' rx='3' fill='#dbdbaa'/>
+<path d='M178 150 L247 150' fill='none' stroke='#b6b6aa'/>
+<rect x='165' y='157' width='7' height='45' rx='3' fill='#dbdbaa'/>
+<path d='M168 160 L168 198' fill='none' stroke='#b6b6aa'/>
+<rect x='158' y='140' width='21' height='21' rx='10' fill='#9292aa'/>
+<rect x='160' y='142' width='17' height='17' rx='8' fill='#ffffff'/>
+<path d='M164 150 L165 148' fill='none' stroke='#9292aa'/>
+<path d='M165 148 L166 148' fill='none' stroke='#9292aa'/>
+<path d='M166 148 L167 150' fill='none' stroke='#9292aa'/>
+<path d='M167 150 L168 152' fill='none' stroke='#9292aa'/>
+<path d='M168 152 L169 152' fill='none' stroke='#9292aa'/>
+<path d='M169 152 L170 150' fill='none' stroke='#9292aa'/>
+<path d='M170 150 L171 148' fill='none' stroke='#9292aa'/>
+<path d='M171 148 L172 148' fill='none' stroke='#9292aa'/>
+<path d='M172 148 L173 150' fill='none' stroke='#9292aa'/>
+<rect x='12' y='295' width='11' height='11' rx='5' fill='#b6b6aa'/>
+<text x='30' y='305' font-size='13' text-anchor='start' fill='#6d6d55'>Waiting / stale or unavailable</text>
+</svg>

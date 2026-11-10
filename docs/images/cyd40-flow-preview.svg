@@ -1,0 +1,69 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='640' viewBox='0 0 480 320'><style>text{font-family:DejaVu Sans,sans-serif}</style>
+<rect x='0' y='0' width='480' height='320' rx='0' fill='#000000'/>
+<text x='12' y='22' font-size='13' text-anchor='start' fill='#ffffff'>25.6 kWh SOLAR TODAY</text>
+<text x='396' y='23' font-size='13' text-anchor='end' fill='#ffffff'>24&#176;</text>
+<rect x='361' y='10' width='7' height='7' rx='3' fill='#ffb655'/>
+<path d='M364 8 L364 7' fill='none' stroke='#ffb655'/>
+<path d='M364 18 L364 19' fill='none' stroke='#ffb655'/>
+<path d='M359 13 L358 13' fill='none' stroke='#ffb655'/>
+<path d='M369 13 L370 13' fill='none' stroke='#ffb655'/>
+<path d='M361 10 L360 9' fill='none' stroke='#ffb655'/>
+<path d='M367 10 L368 9' fill='none' stroke='#ffb655'/>
+<path d='M361 16 L360 17' fill='none' stroke='#ffb655'/>
+<path d='M367 16 L368 17' fill='none' stroke='#ffb655'/>
+<rect x='352' y='19' width='16' height='6' rx='3' fill='#9292aa'/>
+<rect x='354' y='16' width='8' height='8' rx='4' fill='#9292aa'/>
+<rect x='359' y='14' width='9' height='9' rx='4' fill='#9292aa'/>
+<text x='341' y='23' font-size='13' text-anchor='end' fill='#9292aa'>14:32</text>
+<rect x='408' y='6' width='60' height='24' rx='5' fill='#004955'/>
+<text x='438' y='23' font-size='13' text-anchor='middle' fill='#49dbaa'>HA</text>
+<rect x='12' y='40' width='212' height='92' rx='8' fill='#002455'/>
+<rect x='24' y='53' width='3' height='12' rx='1' fill='#ffb655'/>
+<text x='33' y='64' font-size='13' text-anchor='start' fill='#ffb655'>SOLAR</text>
+<text x='24' y='93' font-size='25' text-anchor='start' fill='#ffffff'>4.40 kW</text>
+<text x='24' y='121' font-size='13' text-anchor='start' fill='#9292aa'>Calculated / DC</text>
+<rect x='256' y='40' width='212' height='92' rx='8' fill='#002455'/>
+<rect x='268' y='53' width='3' height='12' rx='1' fill='#49dbaa'/>
+<text x='277' y='64' font-size='13' text-anchor='start' fill='#49dbaa'>HOME</text>
+<text x='268' y='93' font-size='25' text-anchor='start' fill='#ffffff'>1.99 kW</text>
+<text x='268' y='121' font-size='13' text-anchor='start' fill='#9292aa'>Home demand / AC</text>
+<rect x='12' y='176' width='212' height='92' rx='8' fill='#002455'/>
+<rect x='24' y='189' width='3' height='12' rx='1' fill='#b6db55'/>
+<text x='33' y='200' font-size='13' text-anchor='start' fill='#b6db55'>CHARGING / DC</text>
+<text x='24' y='229' font-size='25' text-anchor='start' fill='#ffffff'>3.90 kW</text>
+<text x='24' y='257' font-size='13' text-anchor='start' fill='#9292aa'>LG 9.8 kWh  28.5%</text>
+<rect x='256' y='176' width='212' height='92' rx='8' fill='#002455'/>
+<rect x='268' y='189' width='3' height='12' rx='1' fill='#6db6ff'/>
+<text x='277' y='200' font-size='13' text-anchor='start' fill='#6db6ff'>GRID IMPORT</text>
+<text x='268' y='229' font-size='25' text-anchor='start' fill='#ffffff'>1.53 kW</text>
+<text x='268' y='257' font-size='13' text-anchor='start' fill='#9292aa'>Whole-property meter</text>
+<rect x='153' y='246' width='28' height='13' rx='2' fill='#9292aa'/>
+<rect x='181' y='249' width='3' height='7' rx='0' fill='#9292aa'/>
+<rect x='154' y='247' width='26' height='11' rx='1' fill='#002455'/>
+<rect x='155' y='248' width='7' height='9' rx='1' fill='#db9255'/>
+<path d='M118 133 L118 147' fill='none' stroke='#ffb655'/>
+<path d='M118 147 L210 147' fill='none' stroke='#ffb655'/>
+<path d='M210 147 L205 150' fill='none' stroke='#ffb655'/>
+<path d='M210 147 L205 144' fill='none' stroke='#ffb655'/>
+<rect x='141' y='146' width='3' height='3' rx='0' fill='#ffffff'/>
+<path d='M270 147 L362 147' fill='none' stroke='#49dbaa'/>
+<path d='M362 147 L357 150' fill='none' stroke='#49dbaa'/>
+<path d='M362 147 L357 144' fill='none' stroke='#49dbaa'/>
+<rect x='293' y='146' width='3' height='3' rx='0' fill='#ffffff'/>
+<path d='M362 147 L362 133' fill='none' stroke='#49dbaa'/>
+<path d='M118 161 L118 175' fill='none' stroke='#b6db55'/>
+<path d='M210 161 L118 161' fill='none' stroke='#b6db55'/>
+<path d='M118 161 L123 158' fill='none' stroke='#b6db55'/>
+<path d='M118 161 L123 164' fill='none' stroke='#b6db55'/>
+<rect x='185' y='160' width='3' height='3' rx='0' fill='#ffffff'/>
+<path d='M362 161 L362 175' fill='none' stroke='#6db6ff'/>
+<path d='M362 161 L270 161' fill='none' stroke='#6db6ff'/>
+<path d='M270 161 L275 158' fill='none' stroke='#6db6ff'/>
+<path d='M270 161 L275 164' fill='none' stroke='#6db6ff'/>
+<rect x='337' y='160' width='3' height='3' rx='0' fill='#ffffff'/>
+<rect x='220' y='140' width='40' height='28' rx='5' fill='#242455'/>
+<text x='240' y='157' font-size='9' text-anchor='middle' fill='#9292aa'>INV</text>
+<text x='12' y='303' font-size='13' text-anchor='start' fill='#9292aa'>Live / hold for settings</text>
+<rect x='348' y='272' width='116' height='34' rx='5' fill='#242455'/>
+<text x='406' y='294' font-size='13' text-anchor='middle' fill='#ffffff'>History</text>
+</svg>

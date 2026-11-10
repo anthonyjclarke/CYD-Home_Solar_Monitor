@@ -1,0 +1,19 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='640' viewBox='0 0 480 320'><style>text{font-family:DejaVu Sans,sans-serif}</style>
+<rect x='0' y='0' width='480' height='320' rx='0' fill='#000000'/>
+<text x='16' y='31' font-size='25' text-anchor='start' fill='#ffffff'>Device / setup</text>
+<text x='464' y='33' font-size='13' text-anchor='end' fill='#9292aa'>Firmware 1.0.2</text>
+<rect x='16' y='48' width='448' height='1' rx='0' fill='#242455'/>
+<text x='16' y='75' font-size='13' text-anchor='start' fill='#9292aa'>Web page</text>
+<text x='120' y='75' font-size='13' text-anchor='start' fill='#ffffff'>http://solar.local/</text>
+<text x='16' y='101' font-size='13' text-anchor='start' fill='#9292aa'>or</text>
+<text x='120' y='101' font-size='13' text-anchor='start' fill='#ffffff'>http://192.0.2.95/</text>
+<text x='16' y='127' font-size='13' text-anchor='start' fill='#9292aa'>Home Asst</text>
+<text x='120' y='127' font-size='13' text-anchor='start' fill='#ffffff'>http://homeassistant.local:8123</text>
+<text x='16' y='161' font-size='13' text-anchor='start' fill='#9292aa'>OTA / device code</text>
+<text x='16' y='187' font-size='25' text-anchor='start' fill='#ffff00'>4821-7730</text>
+<text x='16' y='227' font-size='13' text-anchor='start' fill='#ffffff'>Use the browser for settings and updates</text>
+<text x='16' y='249' font-size='13' text-anchor='start' fill='#9292aa'>No Home Assistant token in logs</text>
+<rect x='16' y='268' width='448' height='1' rx='0' fill='#242455'/>
+<text x='16' y='295' font-size='13' text-anchor='start' fill='#ffffff'>Tap anywhere: return</text>
+<text x='464' y='295' font-size='13' text-anchor='end' fill='#ffffff'>Hold 2 s: calibrate touch</text>
+</svg>

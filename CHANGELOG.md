@@ -16,6 +16,7 @@ Next patch release, prepared locally on `dev`. Publication and post-flash accept
 
 ### Changed
 
+- **4.0″ native 480 × 320 layout** (`cyd40`). The 4.0″ no longer shows the 320 × 240 display centred in a black border; each screen has its own full-panel layout in the same built-in fonts 1/2/4. Centre flow puts the cross on the left and adds a rail with the clock and weather now, solar today, tomorrow's forecast, battery label, large gauge and level, and the History button. Cards, history (96 px tabs, wider chart, font-2 statistics, larger Prev/Next/Home), boot and the device/setup screen are laid out for 480 × 320 too. Memory is unchanged: the 76.8 KB RGB332 sprite becomes two 480 × 160 bands, each drawn from the full layout, and motion frames draw one band at the pipe box. Touch defaults now span the whole panel, calibration crosses sit at its corners, and a calibration saved for the old centred frame is ignored (`solar-touch` key `frame`). The device/setup screen moved into the shared `src/ui` renderer. Every other board's display is pixel-identical (host previews unchanged). The owner checked the layout and touch on a 4.0″ on 10-11-2026; calibration, backlight and endurance checks remain open.
 - Panel navigation has one explicit screen state in `include/panel_state.h`, preserving tap/hold behavior while eliminating contradictory screen flags. Wi-Fi decisions live in portable `include/wifi_lifecycle.h`; the host runner includes navigation, portal retry, recovery and rollover regressions.
 - Touch calibration accepts a reversed axis, so a board whose touch film is mirrored is corrected by the 2-second-hold calibration instead of being rejected.
 - The `[BOARD]` boot log names the board key, panel size and touch bus.
@@ -26,7 +27,7 @@ Settings schema, six-source order, public API names, update image contract and p
 
 ### Validation
 
-Host/integration checks, sanitizer suites, all three browser regressions, syntax/documentation checks and all five board builds passed. The smallest free app-slot margin is 186,400 bytes. The [1.0.2 test plan](docs/TEST_PLAN_1.0.2.md) records exact sizes and unchecked post-flash cases, with pass criteria, evidence fields and recovery steps. Real-board and installer acceptance remain separate from desktop checks.
+Host/integration checks, sanitizer suites, all three browser regressions, syntax/documentation checks and all five board builds passed. The smallest free app-slot margin is 179,936 bytes (after the 4.0″ native layout). The [1.0.2 test plan](docs/TEST_PLAN_1.0.2.md) records exact sizes and unchecked post-flash cases, with pass criteria, evidence fields and recovery steps. Real-board and installer acceptance remain separate from desktop checks.
 
 ### Documentation
 

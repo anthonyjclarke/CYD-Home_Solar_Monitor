@@ -65,10 +65,17 @@ with tempfile.TemporaryDirectory(prefix="cyd-solar-check-") as directory:
     for scene in ["solar", "battery", "empty", "dark", "weather"]:
         with (output / f"history-{scene}-preview.svg").open("w") as image:
             subprocess.run([str(renderer), "history", scene], stdout=image, check=True)
+    # The 4.0-inch (cyd40) draws native 480 x 320 layouts; one of each screen.
+    wide = {"cyd40-centre-flow-preview": ["0", "1"], "cyd40-centre-stale-preview": ["5", "1"], "cyd40-flow-preview": ["0", "0"],
+            "cyd40-history-preview": ["history", "solar"], "cyd40-boot-preview": ["boot", "1"], "cyd40-settings-preview": ["settings"]}
+    for name, args in wide.items():
+        with (output / f"{name}.svg").open("w") as image:
+            subprocess.run([str(renderer), "wide", *args], stdout=image, check=True)
+    print("Rendered the 4.0-inch native 480 x 320 flow, cards, history, boot and settings screens in docs/images/.")
     converter = shutil.which("rsvg-convert")
     if not converter and Path("/opt/homebrew/bin/rsvg-convert").exists():
         converter = "/opt/homebrew/bin/rsvg-convert"
     if converter:
-        for name in ["flow-preview", "centre-flow-preview", "centre-export-preview", "centre-weather-preview", "boot-preview", "boot-dark-preview", "boot-waiting-preview", "boot-warning-preview", "history-solar-preview", "history-battery-preview", "history-empty-preview", "history-dark-preview", "history-weather-preview"]:
+        for name in ["flow-preview", "centre-flow-preview", "centre-export-preview", "centre-weather-preview", "boot-preview", "boot-dark-preview", "boot-waiting-preview", "boot-warning-preview", "history-solar-preview", "history-battery-preview", "history-empty-preview", "history-dark-preview", "history-weather-preview", *wide]:
             subprocess.run([converter, "-o", str(output / f"{name}.png"), str(output / f"{name}.svg")], check=True)
         print("Rendered preview PNGs with rsvg-convert.")

@@ -67,7 +67,7 @@ Pass: identities agree, the baseline survives an app-only update, no unexpected 
 
 In Centre and Cards, exercise Flow → History, each metric tab, Prev/Next, Home → Flow and hold → Settings. A hold release must not also tap. Tap Settings at the History-button position: that contact only returns to Flow. Repeat from History and during continuous animation.
 
-Check labels, colours, directions, clipping and hit targets. Settings must refresh without flashing; Centre animation must not make touch/HTTP unusable. On `cyd40`, the frame, text and targets are centred within the panel. Check RGB remains off and ESP32-32E speakers remain silent.
+Check labels, colours, directions, clipping and hit targets. Settings must refresh without flashing; Centre animation must not make touch/HTTP unusable. On `cyd40`, every screen fills the 480 × 320 panel natively: the centre flow has a right rail with the History button, and there must be no seam or clipped glyph at the y = 160 band boundary. Targets follow `ui::targets480`. Check RGB remains off and ESP32-32E speakers remain silent.
 
 Pass: one screen and action per contact, correct geometry/themes and usable HTTP/touch. Recovery: restore the baseline layout; record failed hit targets before recalibrating.
 
@@ -257,12 +257,12 @@ Final builds passed for all five environments using the final embedded handbook 
 
 | Environment      | Image bytes | Free bytes |
 | ---------------- | ----------: | ---------: |
-| cyd28            | 1,648,528   | 186,480    |
-| cyd24            | 1,648,528   | 186,480    |
-| e32r28t-st7789   | 1,648,496   | 186,512    |
-| e32r28t-ili9341  | 1,648,608   | 186,400    |
-| cyd40            | 1,646,256   | 188,752    |
+| cyd28            | 1,654,992   | 180,016    |
+| cyd24            | 1,654,992   | 180,016    |
+| e32r28t-st7789   | 1,654,960   | 180,048    |
+| e32r28t-ili9341  | 1,655,072   | 179,936    |
+| cyd40            | 1,652,816   | 182,192    |
 
-Smallest margin: 186,400 bytes, on `e32r28t-ili9341`. Static build sizes do not establish runtime heap health. Dedicated-touch boards retain the expected TFT_eSPI undefined `TOUCH_CS` warning.
+Smallest margin: 179,936 bytes, on `e32r28t-ili9341`. These sizes include the 4.0″ native 480 × 320 layout code (10-11-2026), which every env compiles; its 320 × 240 output is unchanged. Static build sizes do not establish runtime heap health. Dedicated-touch boards retain the expected TFT_eSPI undefined `TOUCH_CS` warning.
 
 All PF/LAB physical results remain Not run or pending; no hardware checklist was completed. Nothing was flashed, tagged, committed, pushed or published as part of release preparation. The previous-build results in `STATE_MACHINES.md` remain dated pre-version-bump evidence, not the image sizes above.

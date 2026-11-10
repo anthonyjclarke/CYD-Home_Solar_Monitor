@@ -181,6 +181,76 @@ void drawCards(Canvas& c, const FlowView& v) {
     c.text(272,220,2,white,Center,"History");
 }
 
+// Cards on 480 x 320: four 212 x 92 cards around the inverter, font-2 notes,
+// the clock in the header and History at ui::targets480.history.
+void drawCardsWide(Canvas& c, const FlowView& v) {
+    const auto& r = v.data.readings;
+    c.rect(0, 0, 480, 320, bg);
+    char title[32] = "HOME ENERGY";
+    if (v.totalLive[energy::Today]) std::snprintf(title, sizeof(title), "%.1f kWh SOLAR TODAY", v.data.totals[energy::Today].value);
+    c.text(12, 9, 2, white, Left, title);
+    bool all = true;
+    for (auto metric : energy::displayMetrics) all &= v.usable[metric];
+    const char* badge = v.data.demo ? "DEMO" : !v.wifi ? "OFFLINE" : all ? "HA" : "WAIT";
+    int headerRight = 396;
+    if (v.weatherLive) {
+        char now[12];
+        std::snprintf(now, sizeof(now), "%.0f`", v.data.weather.nowC);  // Font 2 draws ` as a degree sign.
+        c.text(headerRight, 10, 2, white, Right, now);
+        headerRight -= c.textWidth(2, now) + 24;
+        skyIcon(c, headerRight, 7, weather::skyFor(v.data.weather.nowCode), amber, muted, blue);
+        headerRight -= 10;
+    }
+    if (*v.time) c.text(headerRight, 10, 2, muted, Right, v.time);
+    c.rect(408, 6, 60, 24, v.data.demo ? badgeDemo : badgeLive, 5);
+    c.text(438, 10, 2, v.data.demo ? amber : teal, Center, badge);
+
+    const float battery = r[energy::Battery].value, grid = r[energy::Grid].value;
+    const bool batteryLive = v.usable[energy::Battery];
+    const char* batteryTitle = !batteryLive ? "BATTERY / DC" : battery < -30 ? "CHARGING / DC" : battery > 30 ? "SUPPLYING / DC" : "BATTERY IDLE";
+    const char* gridTitle = !v.usable[energy::Grid] ? "GRID / AC" : grid > 30 ? "GRID IMPORT" : grid < -30 ? "GRID EXPORT" : "GRID IDLE";
+    char soc[40];
+    const char* gap = *v.batteryLabel ? "  " : "";
+    if (r[energy::Soc].valid || r[energy::Soc].receivedMs)
+        std::snprintf(soc, sizeof(soc), "%s%s%.1f%%", v.batteryLabel, gap, r[energy::Soc].value);
+    else std::snprintf(soc, sizeof(soc), "%s%s--%%", v.batteryLabel, gap);
+    struct Card { int x, y; unsigned accent; const char* title; energy::Metric metric; const char* note; bool live; };
+    const Card cards[] = {
+        {12, 40, amber, "SOLAR", energy::Solar, "Calculated / DC", true},
+        {256, 40, teal, "HOME", energy::Home, "Home demand / AC", true},
+        {12, 176, lime, batteryTitle, energy::Battery, soc, v.usable[energy::Soc]},
+        {256, 176, blue, gridTitle, energy::Grid, "Whole-property meter", true}};
+    for (const auto& k : cards) {
+        c.rect(k.x, k.y, 212, 92, panel, 8);
+        c.rect(k.x + 12, k.y + 13, 3, 12, k.accent, 1);
+        c.text(k.x + 21, k.y + 11, 2, k.accent, Left, k.title);
+        power(c, k.x + 12, k.y + 34, r[k.metric], v.usable[k.metric]);
+        c.text(k.x + 12, k.y + 68, 2, k.live ? muted : dim, Left, k.note);
+    }
+    batteryGauge(c, 24 + c.textWidth(2, soc) + 8, 246, 28, 13, r[energy::Soc], v.usable[energy::Soc], muted, panel, lime);
+
+    // Four net flows meet at the inverter between the cards, as on 320 x 240.
+    const bool solarActive = v.usable[energy::Solar] && r[energy::Solar].value > 30;
+    c.line(118, 133, 118, 147, solarActive ? amber : dim);
+    arrow(c, 118, 147, 210, 147, amber, solarActive, v.phase);
+    const bool homeActive = v.usable[energy::Home] && r[energy::Home].value > 30;
+    arrow(c, 270, 147, 362, 147, teal, homeActive, v.phase);
+    c.line(362, 147, 362, 133, homeActive ? teal : dim);
+    const bool batteryActive = batteryLive && std::abs(battery) > 30;
+    c.line(118, 161, 118, 175, batteryActive ? lime : dim);
+    if (battery > 0) arrow(c, 118, 161, 210, 161, lime, batteryActive, v.phase);
+    else arrow(c, 210, 161, 118, 161, lime, batteryActive, v.phase);
+    const bool gridActive = v.usable[energy::Grid] && std::abs(grid) > 30;
+    c.line(362, 161, 362, 175, gridActive ? blue : dim);
+    if (grid < 0) arrow(c, 270, 161, 362, 161, blue, gridActive, v.phase);
+    else arrow(c, 362, 161, 270, 161, blue, gridActive, v.phase);
+    c.rect(220, 140, 40, 28, hub, 5);
+    c.text(240, 150, 1, muted, Center, "INV");
+    c.text(12, 290, 2, muted, Left, v.status);
+    c.rect(348, 272, 116, 34, hub, 5);
+    c.text(406, 281, 2, white, Center, "History");
+}
+
 // Value in font 4 with a small grey unit, positioned by alignment of the pair.
 void reading(Canvas& c, int x, int y, Align align, const energy::Reading& r, bool live, unsigned color) {
     char number[20];
@@ -243,11 +313,70 @@ float cometPhase[4] = {0.45f, 0.4f, 0.55f, 0.5f};
 uint32_t cometMs = 0;
 int textHalf[2] = {36, 36};  // Half widths of the grid and battery blocks.
 
+// Cross geometry: hub centre and radius, grid and battery block centres, the
+// solar reading's top and the HOUSE label's top. On 480 x 320 the cross takes
+// the left 336 px; an information rail replaces the 320 x 240 top row.
+struct Cross { int hubX, hubY, hubR, gridX, batteryX, solarY, houseY; };
+constexpr Cross cross320{140, 115, 9, 38, 244, 50, 157};
+constexpr Cross cross480{168, 150, 10, 52, 284, 40, 204};
+
+void railRule(Canvas& c, int y) { c.rect(350, y, 112, 1, track); }
+
+// Right rail on 480 x 320: clock and weather now, solar today, tomorrow's
+// forecast, battery level and the History button (ui::targets480.history).
+void drawRail(Canvas& c, const FlowView& v) {
+    constexpr int x = 340, w = 132, left = x + 12, right = x + w - 10;
+    const auto& r = v.data.readings;
+    c.rect(x, 8, w, 304, bandIdle, 8);
+    c.text(left, 16, 4, *v.time ? ink : track, Left, *v.time ? v.time : "--:--");
+    if (v.weatherLive) {
+        char now[12];
+        std::snprintf(now, sizeof(now), "%.0f`", v.data.weather.nowC);  // Font 2 draws ` as a degree sign.
+        c.text(right, 22, 2, ink, Right, now);
+        skyIcon(c, right - c.textWidth(2, now) - 22, 18, weather::skyFor(v.data.weather.nowCode), solarFlow, hubDot, gridInk);
+    }  // Demo and offline show in the status line; the clock leaves no room here.
+    railRule(c, 50);
+    c.text(left, 58, 2, label, Left, "Solar today");
+    char text[24];
+    const bool today = v.totalLive[energy::Today];
+    if (today) std::snprintf(text, sizeof(text), "%.2f", v.data.totals[energy::Today].value);
+    else std::snprintf(text, sizeof(text), "--");
+    c.text(left, 76, 4, today ? solarInk : track, Left, text);
+    c.text(left + c.textWidth(4, text) + 4, 84, 2, today ? label : track, Left, "kWh");
+    // Tomorrow: the solar forecast in kWh, else the forecast maximum temperature.
+    c.text(left, 110, 2, label, Left, "Tomorrow");
+    const bool forecast = v.totalLive[energy::Tomorrow];
+    if (forecast) std::snprintf(text, sizeof(text), "~%.0f kWh", v.data.totals[energy::Tomorrow].value);
+    else if (v.weatherLive) std::snprintf(text, sizeof(text), "%.0f`", v.data.weather.tomorrowMaxC);
+    else std::snprintf(text, sizeof(text), "--");
+    int textX = left;
+    if (v.weatherLive) {
+        skyIcon(c, left, 130, weather::skyFor(v.data.weather.tomorrowCode), solarFlow, hubDot, gridInk);
+        textX += 28;
+    }
+    c.text(textX, 132, 2, forecast ? solarInk : v.weatherLive ? ink : track, Left, text);
+    railRule(c, 160);
+    c.text(left, 168, 2, label, Left, *v.batteryLabel ? v.batteryLabel : "Battery");
+    uprightBattery(c, x + 14, 194, 24, 62, r[energy::Soc], v.usable[energy::Soc]);
+    const bool socKnown = r[energy::Soc].valid || r[energy::Soc].receivedMs;
+    if (socKnown) std::snprintf(text, sizeof(text), "%.0f", r[energy::Soc].value);
+    else std::snprintf(text, sizeof(text), "--");
+    c.text(x + 52, 210, 4, v.usable[energy::Soc] ? batteryInk : track, Left, text);
+    c.text(x + 52 + c.textWidth(4, text) + 3, 218, 2, label, Left, "%");
+    c.text(x + 52, 236, 2, label, Left, "charged");
+    c.rect(x + 8, 272, w - 16, 34, paper, 5);
+    c.text(x + w / 2, 281, 2, ink, Center, "History");
+}
+
 // A motionOnly frame redraws just the pipes and hub, inside the returned box.
 Box drawCentre(Canvas& c, const FlowView& v) {
     const auto& r = v.data.readings;
     const auto& u = v.usable;
-    if (!v.motionOnly) {
+    const bool wide = v.panel == Panel480;
+    if (!v.motionOnly && wide) {
+        c.rect(0, 0, 480, 320, paper);
+        drawRail(c, v);
+    } else if (!v.motionOnly) {
     c.rect(0, 0, 320, 240, paper);
     // Top row: today's solar energy (else the clock) and tomorrow's forecast.
     if (v.totalLive[energy::Today]) {
@@ -279,33 +408,38 @@ Box drawCentre(Canvas& c, const FlowView& v) {
     else if (!v.wifi) c.text(308, 14, 2, label, Right, "OFFLINE");
     }
 
-    // Labelled blocks around a hub at (140,115): solar above, house below, grid
-    // left and battery right, the side blocks centred on x = 38 and x = 244.
-    // Every pipe stops exactly pipeGap px from the ink of its block. Font tops:
-    // font 4 digits end 19 px below y, font 2 capitals start 3 px below y.
-    // The solar block starts below the top row so "kWh today" can't touch it.
-    constexpr int hubX = 140, hubY = 115, hubR = 9, pipeGap = 6, gridX = 38, batteryX = 244, solarY = 50;
+    // Labelled blocks around the hub: solar above, house below, grid left and
+    // battery right. Every pipe stops exactly pipeGap px from the ink of its
+    // block. Font tops: font 4 digits end 19 px below y, font 2 capitals start
+    // 3 px below y. On 320 x 240 the solar block starts below the top row so
+    // "kWh today" can't touch it.
+    const Cross& g = wide ? cross480 : cross320;
+    const int hubX = g.hubX, hubY = g.hubY, hubR = g.hubR, gridX = g.gridX, batteryX = g.batteryX, solarY = g.solarY;
+    const int houseY = g.houseY;
+    constexpr int pipeGap = 6;
     const float grid = r[energy::Grid].value, battery = r[energy::Battery].value;
     const char* gridState = !u[energy::Grid] ? "No data" : grid > 30 ? "Importing" : grid < -30 ? "Exporting" : "Idle";
     const char* batteryState = !u[energy::Battery] ? "No data" : battery < -30 ? "Charging" : battery > 30 ? "Supplying" : "Idle";
     if (!v.motionOnly) {
     c.text(hubX, solarY - 20, 2, label, Center, "SOLAR");
     reading(c, hubX, solarY, Center, r[energy::Solar], u[energy::Solar], solarInk);
-    c.text(gridX, 84, 2, label, Center, "GRID");
-    reading(c, gridX, 104, Center, r[energy::Grid], u[energy::Grid], gridInk);
-    c.text(gridX, 125, 2, u[energy::Grid] ? gridInk : track, Center, gridState);
-    c.text(batteryX, 84, 2, label, Center, "BATTERY");
-    reading(c, batteryX, 104, Center, r[energy::Battery], u[energy::Battery], batteryInk);
-    c.text(batteryX, 125, 2, u[energy::Battery] ? batteryInk : track, Center, batteryState);
-    c.text(hubX, 157, 2, label, Center, "HOUSE");
-    reading(c, hubX, 178, Center, r[energy::Home], u[energy::Home], ink);
+    c.text(gridX, hubY - 31, 2, label, Center, "GRID");
+    reading(c, gridX, hubY - 11, Center, r[energy::Grid], u[energy::Grid], gridInk);
+    c.text(gridX, hubY + 10, 2, u[energy::Grid] ? gridInk : track, Center, gridState);
+    c.text(batteryX, hubY - 31, 2, label, Center, "BATTERY");
+    reading(c, batteryX, hubY - 11, Center, r[energy::Battery], u[energy::Battery], batteryInk);
+    c.text(batteryX, hubY + 10, 2, u[energy::Battery] ? batteryInk : track, Center, batteryState);
+    c.text(hubX, houseY, 2, label, Center, "HOUSE");
+    reading(c, hubX, houseY + 21, Center, r[energy::Home], u[energy::Home], ink);
 
+    if (!wide) {
     char soc[12];
     const bool socKnown = r[energy::Soc].valid || r[energy::Soc].receivedMs;
     if (socKnown) std::snprintf(soc, sizeof(soc), "%.0f%%", r[energy::Soc].value);
     else std::snprintf(soc, sizeof(soc), "--%%");
     uprightBattery(c, 291, 88, 18, 56, r[energy::Soc], u[energy::Soc]);
     c.text(300, 148, 2, u[energy::Soc] ? ink : track, Center, soc);
+    }
     }
 
     // Motion frames reuse the text widths of the last full frame, so the box
@@ -321,7 +455,7 @@ Box drawCentre(Canvas& c, const FlowView& v) {
     const int stop = pipeGap + pipeCap;
     Box box;
     box.x = gridX + gridHalf + pipeGap; box.y = solarY + 19 + pipeGap;
-    box.w = batteryX - batteryHalf - pipeGap - box.x; box.h = 157 + 3 - pipeGap - box.y;
+    box.w = batteryX - batteryHalf - pipeGap - box.x; box.h = houseY + 3 - pipeGap - box.y;
     if (v.motionOnly) c.rect(box.x, box.y, box.w, box.h, paper);
     // Grid +import flows into the hub; battery +discharge flows into the hub.
     pipe(c, hubX, solarY + 19 + stop, hubX, hubY - hubR, bandSolar, tailSolar, solarFlow,
@@ -330,7 +464,7 @@ Box drawCentre(Canvas& c, const FlowView& v) {
          u[energy::Grid] && std::abs(grid) > 30, std::abs(grid) / 1000, cometPhase[1], dt, grid > 0);
     pipe(c, hubX + hubR, hubY, batteryX - batteryHalf - stop, hubY, bandBattery, tailBattery, batteryInk,
          u[energy::Battery] && std::abs(battery) > 30, std::abs(battery) / 1000, cometPhase[2], dt, battery < 0);
-    pipe(c, hubX, hubY + hubR, hubX, 157 + 3 - stop, bandHouse, tailHouse, ink,
+    pipe(c, hubX, hubY + hubR, hubX, houseY + 3 - stop, bandHouse, tailHouse, ink,
          u[energy::Home] && r[energy::Home].value > 30, r[energy::Home].value / 1000, cometPhase[3], dt, true);
     // Hub: a ring with a small sine wave, the inverter.
     dot(c, hubX, hubY, hubR, hubDot);
@@ -344,6 +478,11 @@ Box drawCentre(Canvas& c, const FlowView& v) {
     const bool good = all && !v.data.demo && (grid < -100 || (battery < -100 && r[energy::Soc].value >= 95));
     const char* status = good ? (v.reportKnown ? "Good time to use power" : "Spare power / age unknown") :
                          all && !v.data.demo ? (v.reportKnown ? "All readings live" : "Live / source age unknown") : v.status;
+    if (wide) {
+        c.rect(12, 295, 11, 11, good ? goodDot : all ? hubDot : track, 5);
+        c.text(30, 292, 2, good ? batteryInk : label, Left, status);
+        return box;
+    }
     c.rect(12, 218, 9, 9, good ? goodDot : all ? hubDot : track, 4);
     c.text(27, 218, 1, good ? batteryInk : label, Left, status);
     c.rect(232,210,80,26,bandIdle,4);
@@ -356,35 +495,92 @@ void drawBoot(Canvas& c, const BootView& v) {
     const bool dark = v.layout == Cards;
     const unsigned back = dark ? bg : paper, text = dark ? white : ink, soft = dark ? muted : label;
     const unsigned rule = dark ? hub : track, ok = dark ? lime : batteryInk, wait = dark ? amber : solarFlow;
-    c.rect(0, 0, 320, 240, back);
-    sun(c, 24, 24, 7, dark ? amber : solarFlow);
-    c.text(44, 12, 4, text, Left, "Solar Monitor");
-    c.text(308, 18, 2, soft, Right, v.version);
-    c.rect(12, 46, 296, 1, rule);
+    // 480 x 320: wider margins, 28 px rows and 324 px for each value.
+    const bool wide = v.panel == Panel480;
+    const int width = panelWidth(v.panel), margin = wide ? 16 : 12, rowY = wide ? 66 : 54, rowStep = wide ? 28 : 21;
+    const int valueX = wide ? 140 : 104, valueWidth = wide ? 324 : 204, barY = wide ? 266 : 204;
+    c.rect(0, 0, width, panelHeight(v.panel), back);
+    if (wide) sun(c, 28, 28, 8, dark ? amber : solarFlow);
+    else sun(c, 24, 24, 7, dark ? amber : solarFlow);
+    c.text(wide ? 50 : 44, wide ? 16 : 12, 4, text, Left, "Solar Monitor");
+    c.text(width - margin, wide ? 22 : 18, 2, soft, Right, v.version);
+    c.rect(margin, wide ? 54 : 46, width - 2 * margin, 1, rule);
     for (int i = 0; i < BootView::rowCount; ++i) {
         const BootRow& row = v.rows[i];
         if (!*row.label) continue;
-        const int y = 54 + i * 21;
-        if (row.state != BootInfo)
-            c.rect(14, y + 4, 8, 8, row.state == BootOk ? ok : row.state == BootWaiting ? wait : lowRed, 4);
-        c.text(30, y, 2, soft, Left, row.label);
+        const int y = rowY + i * rowStep;
+        if (row.state != BootInfo) {
+            const unsigned dotColor = row.state == BootOk ? ok : row.state == BootWaiting ? wait : lowRed;
+            if (wide) c.rect(20, y + 4, 9, 9, dotColor, 4);
+            else c.rect(14, y + 4, 8, 8, dotColor, 4);
+        }
+        c.text(wide ? 40 : 30, y, 2, soft, Left, row.label);
         char value[48]; std::snprintf(value,sizeof(value),"%s",row.value);
         size_t length=std::strlen(value);
-        const bool clipped=c.textWidth(2,value)>204;
-        while (length>3 && c.textWidth(2,value)>204) value[--length]='\0';
+        const bool clipped=c.textWidth(2,value)>valueWidth;
+        while (length>3 && c.textWidth(2,value)>valueWidth) value[--length]='\0';
         if (clipped && length>=3) std::strcpy(value+length-3,"...");
-        c.text(104, y, 2, row.state == BootProblem ? lowRed : text, Left, value);
+        c.text(valueX, y, 2, row.state == BootProblem ? lowRed : text, Left, value);
     }
     // Progress across the boot screen's time on screen, then what happens next.
     const float p = v.progress < 0 ? 0 : v.progress > 1 ? 1 : v.progress;
-    c.rect(12, 204, 296, 5, rule, 2);
-    if (p > 0) c.rect(12, 204, int(296 * p + 0.5f), 5, dark ? amber : solarInk, 2);
-    c.text(160, 216, 2, soft, Center, v.footer);
+    const int barW = width - 2 * margin, barH = wide ? 6 : 5;
+    c.rect(margin, barY, barW, barH, rule, wide ? 3 : 2);
+    if (p > 0) c.rect(margin, barY, int(barW * p + 0.5f), barH, dark ? amber : solarInk, wide ? 3 : 2);
+    c.text(width / 2, wide ? 286 : 216, 2, soft, Center, v.footer);
+}
+
+void drawSettings(Canvas& c, const SettingsView& v) {
+    constexpr unsigned yellow = 0xffff00;
+    static_assert(rgb332(yellow), "Palette must be exact RGB332 levels");
+    char line[64];
+    if (v.panel != Panel480) {
+        // The original 320 x 240 device screen, unchanged.
+        c.rect(0, 0, 320, 240, bg);
+        c.text(10, 8, 2, white, Left, v.connected ? "DEVICE / SETUP" : "CONNECT TO WIFI");
+        c.text(10, 37, 2, white, Left, v.connected ? v.webUrl : v.apName);
+        if (v.connected) std::snprintf(line, sizeof(line), "or http://%s/   OTA code:", v.ip);
+        else std::snprintf(line, sizeof(line), "AP password / device code:");
+        c.text(10, 62, 2, white, Left, line);
+        c.text(10, 84, 4, yellow, Left, v.accessCode);
+        std::snprintf(line, sizeof(line), "HA: %.35s", v.haUrl);
+        c.text(10, 120, 2, white, Left, line);
+        std::snprintf(line, sizeof(line), "Firmware %s", v.version);
+        c.text(10, 143, 2, white, Left, line);
+        c.text(10, 170, 2, white, Left, "Tap: return / hold 2s: calibrate");
+        c.text(10, 196, 2, white, Left, v.connected ? "Use browser for settings and updates" : "Portal: 192.168.4.1 (after 20s)");
+        c.text(10, 219, 1, white, Left, "No Home Assistant token in logs");
+        return;
+    }
+    c.rect(0, 0, 480, 320, bg);
+    c.text(16, 12, 4, white, Left, v.connected ? "Device / setup" : "Connect to Wi-Fi");
+    std::snprintf(line, sizeof(line), "Firmware %s", v.version);
+    c.text(464, 20, 2, muted, Right, line);
+    c.rect(16, 48, 448, 1, hub);
+    if (v.connected) std::snprintf(line, sizeof(line), "http://%s/", v.ip);
+    const char* rows[][2] = {
+        {v.connected ? "Web page" : "Network", v.connected ? v.webUrl : v.apName},
+        {v.connected ? "or" : "Portal", v.connected ? line : "http://192.168.4.1/ (after 20 s)"},
+        {"Home Asst", v.haUrl}};
+    for (int i = 0; i < 3; ++i) {
+        char value[48];
+        std::snprintf(value, sizeof(value), "%.42s", rows[i][1]);
+        c.text(16, 62 + i * 26, 2, muted, Left, rows[i][0]);
+        c.text(120, 62 + i * 26, 2, white, Left, value);
+    }
+    c.text(16, 148, 2, muted, Left, v.connected ? "OTA / device code" : "AP password / device code");
+    c.text(16, 168, 4, yellow, Left, v.accessCode);
+    c.text(16, 214, 2, white, Left, v.connected ? "Use the browser for settings and updates" : "Join the network above to set up Wi-Fi");
+    c.text(16, 236, 2, muted, Left, "No Home Assistant token in logs");
+    c.rect(16, 268, 448, 1, hub);
+    c.text(16, 282, 2, white, Left, "Tap anywhere: return");
+    c.text(464, 282, 2, white, Right, "Hold 2 s: calibrate touch");
 }
 
 Box drawFlow(Canvas& c, const FlowView& v) {
     if (v.layout == Centre) return drawCentre(c, v);
-    drawCards(c, v);
+    if (v.panel == Panel480) drawCardsWide(c, v);
+    else drawCards(c, v);
     return {};
 }
 }  // namespace ui

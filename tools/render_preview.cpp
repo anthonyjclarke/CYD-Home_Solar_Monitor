@@ -43,7 +43,18 @@ public:
 };
 int main(int argc,char**argv) {
     SvgCanvas c;
-    const char* head="<svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>\n";
+    // A leading "wide" renders the 4.0-inch's native 480 x 320 layouts.
+    ui::Panel panel=ui::Panel320;
+    if (argc>1 && std::string(argv[1])=="wide") { panel=ui::Panel480; --argc; ++argv; }
+    const char* head=panel==ui::Panel480?
+        "<svg xmlns='http://www.w3.org/2000/svg' width='960' height='640' viewBox='0 0 480 320'><style>text{font-family:DejaVu Sans,sans-serif}</style>\n":
+        "<svg xmlns='http://www.w3.org/2000/svg' width='960' height='720' viewBox='0 0 320 240'><style>text{font-family:DejaVu Sans,sans-serif}</style>\n";
+    if (argc>1 && std::string(argv[1])=="settings") {  // settings [portal]: device screen, sample address and code.
+        ui::SettingsView s; s.panel=panel; s.connected=argc<=2;
+        s.webUrl="http://solar.local/"; s.ip="192.0.2.95"; s.apName="CYD-Solar-1A2B";
+        s.accessCode="4821-7730"; s.haUrl="http://homeassistant.local:8123"; s.version=FIRMWARE_VERSION;
+        std::cout<<head;ui::drawSettings(c,s);std::cout<<"</svg>\n";return 0;
+    }
     if (argc>1 && std::string(argv[1])=="history") {
         // Explicitly synthetic history for layout QA, never persisted on a CYD.
         history::Store store;
@@ -58,14 +69,14 @@ int main(int argc,char**argv) {
             s.readings[energy::Solar].value=std::max(0.0f,4500*std::sin(float(i)/288*6.28f));
             store.add(history::capture(s,true,1000,capturedAt,180,5));
         }
-        ui::HistoryView v{store}; v.epoch=epoch; v.storageOK=true;
+        ui::HistoryView v{store}; v.epoch=epoch; v.storageOK=true; v.panel=panel;
         if (scene=="battery") v.field=history::Battery;
         if (scene=="weather") v.field=history::TomorrowTemperature;
         if (scene=="dark") v.layout=ui::Cards;
         std::cout<<head;ui::drawHistory(c,v);std::cout<<"</svg>\n";return 0;
     }
     if(argc>1&&std::string(argv[1])=="boot") {  // boot <layout>: sample start-up screen after Wi-Fi connects.
-        ui::BootView b;b.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Centre;b.version="v" FIRMWARE_VERSION;
+        ui::BootView b;b.panel=panel;b.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Centre;b.version="v" FIRMWARE_VERSION;
         boot::Inputs in;
         in.connected=in.clock=in.token=in.solar=in.sourceTimeKnown=in.historyHealthy=true;
         in.sources=6; in.restore=history::RestoreState::Restored; in.historySamples=144;
@@ -83,7 +94,7 @@ int main(int argc,char**argv) {
         std::cout<<head;ui::drawBoot(c,b);std::cout<<"</svg>\n";return 0;
     }
     unsigned scene=argc>1?std::atoi(argv[1]):0;
-    ui::FlowView v;v.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Cards;v.time="14:32";v.data=energy::demoSnapshot(1000,scene);v.wifi=true;v.phase=1;
+    ui::FlowView v;v.layout=argc>2?static_cast<ui::Layout>(std::atoi(argv[2])):ui::Cards;v.time="14:32";v.data=energy::demoSnapshot(1000,scene);v.wifi=true;v.phase=1;v.panel=panel;
     for(bool& b:v.usable)b=true;
     for(bool& b:v.totalLive)b=true;
     v.weatherLive=true;

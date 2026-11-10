@@ -218,8 +218,9 @@ void begin() {
 #else
     constexpr const char* touchBus="VSPI";
 #endif
-    DBG_INFO("[BOARD] %s (%s) %s %ux%u panel, 320x240 UI; TFT=HSPI touch=%s serial=115200",
-             CYD_BOARD_NAME,CYD_BOARD_KEY,CYD_DRIVER_NAME,unsigned(CYD_NATIVE_HEIGHT),unsigned(CYD_NATIVE_WIDTH),touchBus);
+    DBG_INFO("[BOARD] %s (%s) %s %ux%u panel, %ux%u UI; TFT=HSPI touch=%s serial=115200",
+             CYD_BOARD_NAME,CYD_BOARD_KEY,CYD_DRIVER_NAME,unsigned(CYD_NATIVE_HEIGHT),unsigned(CYD_NATIVE_WIDTH),
+             unsigned(CYD_EXPECTED_WIDTH),unsigned(CYD_EXPECTED_HEIGHT),touchBus);
     const auto* partition=esp_ota_get_running_partition();
     DBG_INFO("[BOOT] App slot=%s flash=%u bytes",partition?partition->label:"unknown",ESP.getFlashChipSize());
     logConfig();

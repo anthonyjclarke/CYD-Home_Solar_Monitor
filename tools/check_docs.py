@@ -73,14 +73,16 @@ def main():
     images = sorted((ROOT / "docs/images").glob("*.svg"))
     for path in images:
         svg = ET.fromstring(path.read_text())
-        if svg.get("viewBox") != "0 0 320 240":
-            fail(path, "panel preview must have a 320 x 240 viewBox")
+        # cyd40-* previews show the 4.0-inch's native 480 x 320 layouts.
+        expected = "0 0 480 320" if path.name.startswith("cyd40-") else "0 0 320 240"
+        if svg.get("viewBox") != expected:
+            fail(path, f"panel preview must have a {expected[4:].replace(' ', ' x ')} viewBox")
     version = re.search(r'#define FIRMWARE_VERSION "([^"]+)"',
                         (ROOT / "include/config.h").read_text())[1]
     for path in [ROOT / "README.md", handbook, ROOT / "CHANGELOG.md"]:
         if version not in path.read_text():
             fail(path, f"current version {version} absent")
-    for path in sorted((ROOT / "docs/images").glob("boot-*.svg")):
+    for path in sorted((ROOT / "docs/images").glob("*boot-*.svg")):
         if f"v{version}" not in path.read_text():
             fail(path, "boot image version differs from firmware; regenerate previews")
     if ERRORS:

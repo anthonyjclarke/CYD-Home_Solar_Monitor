@@ -31,8 +31,9 @@
 
 // ---- Board selection -------------------------------------------------------
 // Each PlatformIO env sets one BOARD_* flag; none selects the classic 2.8-inch
-// ESP32-2432S028R (also used by the host preview tools). The UI is always a
-// 320 x 240 frame; larger panels show it centred (see display::pushFrame).
+// ESP32-2432S028R (also used by the host preview tools). CYD_EXPECTED_WIDTH x
+// CYD_EXPECTED_HEIGHT is the UI frame: 320 x 240 on every board except the
+// 4.0-inch, which draws its own 480 x 320 layout in two bands (app.cpp).
 //
 // Shared by every supported board: display on HSPI's native pins. USE_HSPI_PORT
 // is required - TFT_eSPI defaults to VSPI, which own-bus touch also claims.
@@ -49,8 +50,6 @@
 #define LOAD_GLCD
 #define LOAD_FONT2
 #define LOAD_FONT4
-#define CYD_EXPECTED_WIDTH 320
-#define CYD_EXPECTED_HEIGHT 240
 #define CYD_LANDSCAPE_ROT 1
 #define CYD_RGB_ACTIVE_LOW 1
 #define LED_G_PIN 16
@@ -75,6 +74,8 @@
 #define CYD_DRIVER_NAME "ST7796S"
 #define CYD_NATIVE_WIDTH 320
 #define CYD_NATIVE_HEIGHT 480
+#define CYD_EXPECTED_WIDTH 480
+#define CYD_EXPECTED_HEIGHT 320
 #define TFT_BL_PIN 27
 #define CYD_HAS_RGB_LED 1
 #define CYD_HAS_LDR 0
@@ -84,12 +85,11 @@
 // board, 10-11-2026: history taps missed and the old calibration could not
 // recover). Calibration re-detects the swap and stores it.
 #define TOUCH_SWAP_XY 1
-// The default raw span (200-3700 across the whole panel) narrowed to the
-// centred 320 x 240 frame at x 80-399, y 40-279. Calibration replaces it.
-#define TOUCH_X_MIN 783
-#define TOUCH_X_MAX 3117
-#define TOUCH_Y_MIN 637
-#define TOUCH_Y_MAX 3262
+// Raw span across the whole 480 x 320 panel. Calibration replaces it.
+#define TOUCH_X_MIN 200
+#define TOUCH_X_MAX 3700
+#define TOUCH_Y_MIN 200
+#define TOUCH_Y_MAX 3700
 
 #elif defined(BOARD_E32R28T_ST7789) || defined(BOARD_E32R28T_ILI9341)
 // 2.8-inch ESP32-32E (LCDwiki E32R28T / Freenove FNK0114B and FNK0114F).
@@ -157,6 +157,11 @@
 #define TOUCH_X_MAX 3700
 #define TOUCH_Y_MIN 200
 #define TOUCH_Y_MAX 3700
+#endif
+
+#if !defined(CYD_EXPECTED_WIDTH)
+#define CYD_EXPECTED_WIDTH 320
+#define CYD_EXPECTED_HEIGHT 240
 #endif
 
 #if !defined(TOUCH_SWAP_XY)

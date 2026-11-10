@@ -53,10 +53,14 @@ void begin(uint16_t w, uint16_t h) {
         uint16_t saved[4];
         // A corrupt or out-of-range record keeps the built-in defaults. A
         // record without the swap key predates it and was made unswapped:
-        // valid as-is on unswapped boards, meaningless on swapped ones.
+        // valid as-is on unswapped boards, meaningless on swapped ones. Limits
+        // map raw readings onto the UI frame they were sampled on; a record
+        // without the frame key was made on a 320 x 240 frame (the 4.0-inch
+        // before its native 480 x 320 layout) and is ignored on other frames.
         const bool hasSwap = p.isKey("swap");
+        const bool sameFrame = p.isKey("frame") ? p.getUShort("frame", 0) == w : w == 320;
         if (p.getBytesLength("limits") == sizeof(saved) && p.getBytes("limits", saved, sizeof(saved)) == sizeof(saved) &&
-            validLimits(saved) && (hasSwap || !TOUCH_SWAP_XY)) {
+            validLimits(saved) && (hasSwap || !TOUCH_SWAP_XY) && sameFrame) {
             memcpy(limits, saved, sizeof(limits));
             if (hasSwap) swapXY = p.getBool("swap", swapXY);
         }
@@ -91,7 +95,8 @@ bool calibrate(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1, bool swap) {
     if (!validLimits(next)) return false;
     Preferences p;
     if (!p.begin("solar-touch", false)) return false;
-    bool ok = p.putBytes("limits", next, sizeof(next)) == sizeof(next) && p.putBool("swap", swap);
+    bool ok = p.putBytes("limits", next, sizeof(next)) == sizeof(next) && p.putBool("swap", swap) &&
+              p.putUShort("frame", width) == sizeof(uint16_t);
     p.end();
     if (ok) { memcpy(limits, next, sizeof(limits)); swapXY = swap; }
     return ok;

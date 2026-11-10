@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+Linked LCD Wizard’s [CYD identification guide](https://lcdwizard.com/blog/which-cyd-have-i-got) from the README and handbook board-selection sections, with credit in both acknowledgements sections. The optional external diagnostic is identified as separate firmware.
+
+Recorded the owner’s 11 November `cyd40` normal-operation report as general smoke-test evidence; detailed acceptance cases remain open. Corrected the contributor guide to recognise the existing `cyd40` board evidence.
+
+---
+
 ## [1.0.2] 10-11-2026
 
 Published by owner decision on 10-11-2026, ahead of full post-flash acceptance. The 4.0″ layout and touch were checked on the owner's board. The other new boards and the remaining cases in the [1.0.2 test plan](docs/TEST_PLAN_1.0.2.md) are still open.

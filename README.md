@@ -89,6 +89,8 @@ No soldering or wiring. The boards cost about US$10–25; the [CYD community rep
 
 Pick the matching board in the web installer, or its env in PlatformIO. The firmware is built per board, so a 4.0″ needs the `cyd40` image.
 
+Not sure which CYD you have? [LCD Wizard’s board-identification guide](https://lcdwizard.com/blog/which-cyd-have-i-got) helps distinguish common CYD variants by display orientation, colours and touch behaviour. Match its findings to this project’s supported profiles below. Its optional diagnostic installs separate firmware; keep your settings before using it and reinstall Solar Monitor afterward.
+
 | Env               | Board                            | Screen format       | Status        |
 | :---------------- | :------------------------------- | :------------------ | :------------ |
 | `cyd28`           | ESP32-2432S028R 2.8″ ILI9341     | 320 × 240           | Tested        |
@@ -283,7 +285,7 @@ See the [state-machine inventory](docs/STATE_MACHINES.md) for runtime transition
 
 ## Acknowledgements
 
-Thank you to the projects this one builds on:
+Thank you to the projects and resources that support this monitor:
 
 - **Energy and Home Assistant:**
     - [SolarEdge Modbus Multi](https://github.com/WillCodeForCats/solaredge-modbus-multi) by WillCodeForCats, plus its [template-sensor wiki](https://github.com/WillCodeForCats/solaredge-modbus-multi/wiki/Template-Sensors-for-Power-and-Energy);
@@ -291,6 +293,7 @@ Thank you to the projects this one builds on:
     - [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/) and [Solcast](https://github.com/BJReplay/ha-solcast-solar).
 - **Weather:** [Open-Meteo](https://open-meteo.com/). Weather data by Open-Meteo.com, licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **Hardware:** the [ESP32 Cheap Yellow Display](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display) community, led by Brian Lough.
+- **Board identification:** [LCD Wizard’s CYD guide](https://lcdwizard.com/blog/which-cyd-have-i-got), for helping users identify display and touch variants before choosing a board profile.
 - **Firmware libraries:**
     - [Arduino core for ESP32](https://github.com/espressif/arduino-esp32) and [PlatformIO](https://platformio.org/);
     - [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI) by Bodmer;

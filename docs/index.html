@@ -124,6 +124,7 @@ figcaption{color:var(--muted);font-size:14px;margin-top:8px;max-width:780px}
 </tbody></table>
 <p>No soldering or extra wiring is needed. The board's RGB LED, SD slot, speaker, battery connector and spare pins are unused.</p>
 <h3 id="boards">Supported boards and screen formats</h3>
+<p>Not sure which CYD you have? <a href="https://lcdwizard.com/blog/which-cyd-have-i-got">LCD Wizard’s board-identification guide</a> helps distinguish common CYD variants by display orientation, colours and touch behaviour. Match its findings to the supported profiles below. Its optional diagnostic installs separate firmware; keep your settings before using it and reinstall Solar Monitor afterward.</p>
 <p>Firmware is built per board, so pick the matching board in the installer, or its environment in PlatformIO. There are two screen formats. The 2.4- and 2.8-inch boards draw the 320×240 screens shown throughout this handbook. The 4.0-inch draws its own 480×320 version of every screen.</p>
 <table><thead><tr><th>Board</th><th>Environment</th><th>Screen format</th><th>Status</th></tr></thead><tbody>
 <tr><td>ESP32-2432S028R 2.8″ ILI9341, micro-USB (classic CYD)</td><td><code>cyd28</code></td><td>320×240</td><td>Tested; the reference board</td></tr>
@@ -433,6 +434,7 @@ Like the house sensor, it becomes <i>unknown</i> rather than guessing when eithe
 <h3>Hardware and firmware</h3>
 <table><thead><tr><th>Project</th><th>Used for</th></tr></thead><tbody>
 <tr><td><a href="https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display">ESP32 Cheap Yellow Display</a> by Brian Lough and the community</td><td>Board documentation, pinouts and buying guide for the ESP32-2432S028R.</td></tr>
+<tr><td><a href="https://lcdwizard.com/blog/which-cyd-have-i-got">LCD Wizard’s CYD identification guide</a></td><td>Help identifying display and touch variants before choosing a board profile.</td></tr>
 <tr><td><a href="https://github.com/espressif/arduino-esp32">Arduino core for ESP32</a> and <a href="https://platformio.org/">PlatformIO</a></td><td>Framework and build system.</td></tr>
 <tr><td><a href="https://github.com/Bodmer/TFT_eSPI">TFT_eSPI</a> by Bodmer</td><td>Display driver and fonts.</td></tr>
 <tr><td><a href="https://github.com/PaulStoffregen/XPT2046_Touchscreen">XPT2046_Touchscreen</a> by Paul Stoffregen</td><td>Touch controller.</td></tr>

@@ -8,24 +8,27 @@ Acceptance record for real CYD hardware, tracking the `1.0.2` release (published
 
 Owner's ESP32-2432S028R, SolarEdge Modbus Multi through Home Assistant, Putney NSW. The `0.9.1` builds are the `1.0.1` code before the version number and a CI-only compiler fix. "Live UI correct" means the tiles, flow, history chart, trimmed picker and resized footer all showed as expected.
 
-| Date         | Build   | Observation                                |
-| :----------- | :------ | :----------------------------------------- |
-| 04-11-2026   | 0.8.0   | Centre layout matches preview              |
-| 04-11-2026   | 0.8.0   | `http://solar.local/` opens on an iPhone   |
-| 07-11-2026   | 0.9.1   | Weather TLS `-9984` was heap; now HTTP     |
-| 07-11-2026   | 0.9.1   | Weather 200; `min_heap` 64 KB over 4 min   |
-| 07-11-2026   | 0.9.1   | No Wi-Fi: portal opened; later resets OK   |
-| 07-11-2026   | 0.9.1   | 24 h `/api/history`: 272 of 288 slots      |
-| 07-11-2026   | 0.9.1   | History kept across USB app flash          |
-| 08-11-2026   | 0.9.1   | Boot: 6/6 live, weather 200                |
-| 08-11-2026   | 0.9.1   | `min_heap` 73.5 KB after boot              |
-| 08-11-2026   | 0.9.1   | Status by IP 0.06 s; `solar.local` 5 s     |
-| 08-11-2026   | 0.9.1   | Live UI correct, no console errors         |
-| 08-11-2026   | 0.9.1   | Boot restored 270 history samples          |
-| 10-11-2026   | 1.0.2   | `cyd40`: history taps missed; recal failed |
-| 10-11-2026   | 1.0.2   | `cyd40` axis swap: history taps correct    |
-| 10-11-2026   | 1.0.2   | `cyd40` 4/3 scaling: jagged; kept 1×       |
-| 10-11-2026   | 1.0.2   | `cyd40` native 480 × 320: looks/taps right |
+| Date         | Build    | Observation                                |
+| :----------- | :------  | :----------------------------------------- |
+| 04-11-2026   | 0.8.0    | Centre layout matches preview              |
+| 04-11-2026   | 0.8.0    | `http://solar.local/` opens on an iPhone   |
+| 07-11-2026   | 0.9.1    | Weather TLS `-9984` was heap; now HTTP     |
+| 07-11-2026   | 0.9.1    | Weather 200; `min_heap` 64 KB over 4 min   |
+| 07-11-2026   | 0.9.1    | No Wi-Fi: portal opened; later resets OK   |
+| 07-11-2026   | 0.9.1    | 24 h `/api/history`: 272 of 288 slots      |
+| 07-11-2026   | 0.9.1    | History kept across USB app flash          |
+| 08-11-2026   | 0.9.1    | Boot: 6/6 live, weather 200                |
+| 08-11-2026   | 0.9.1    | `min_heap` 73.5 KB after boot              |
+| 08-11-2026   | 0.9.1    | Status by IP 0.06 s; `solar.local` 5 s     |
+| 08-11-2026   | 0.9.1    | Live UI correct, no console errors         |
+| 08-11-2026   | 0.9.1    | Boot restored 270 history samples          |
+| 10-11-2026   | 1.0.2    | `cyd40`: history taps missed; recal failed |
+| 10-11-2026   | 1.0.2    | `cyd40` axis swap: history taps correct    |
+| 10-11-2026   | 1.0.2    | `cyd40` 4/3 scaling: jagged; kept 1×       |
+| 10-11-2026   | 1.0.2    | `cyd40` native 480 × 320: looks/taps right |
+| 11-11-2026   | Unstated | `cyd40`: owner reports normal operation    |
+
+On 11 November 2026 the owner reported that the `cyd40` seems to be working fine. This is a general smoke-test report; exact firmware build, duration and individual acceptance cases were not specified. Calibration, night scheduling, update recovery and endurance cases remain open unless separately evidenced.
 
 The macOS figure is name lookup, not the device: an IPv6 mDNS query for `solar.local` goes unanswered and the Mac waits 5 s. Forcing IPv4, or using the IP address, resolves in milliseconds. Browser request deadlines (12 s status, 15 s others) sit above it.
 
